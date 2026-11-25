@@ -28,6 +28,19 @@ export function BattleLog({ lines }: { lines: readonly string[] }) {
     return () => document.removeEventListener('pointerdown', close);
   }, [pinned]);
 
+  // Escape closes an open log first, before the global back action leaves the battle.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      e.preventDefault();
+      setPinned(false);
+      setHovered(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
+
   return (
     <div
       className="battle-log"

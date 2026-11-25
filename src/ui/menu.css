@@ -1,0 +1,219 @@
+/* Main menu, Settings, and confirm dialogs. */
+
+.main-menu {
+  justify-content: center;
+  align-items: center;
+  gap: 18px;
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+  text-align: center;
+}
+
+.title-logo {
+  margin: 0;
+  line-height: 0;
+}
+
+.title-tagline {
+  font-size: 0.9rem;
+}
+
+/* The hero squares up to a slime, standing on a strip of floor. */
+.title-scene {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 56px;
+  padding: 8px 24px 6px;
+  border-bottom: 3px solid var(--border);
+}
+
+.menu-buttons {
+  width: min(100%, 320px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.btn-menu {
+  width: 100%;
+  font-size: 1.05rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.btn-danger {
+  background: var(--red);
+  color: #fff;
+}
+
+/* Above the Spellbook and the battle's result overlay. */
+.confirm-overlay {
+  z-index: 30;
+}
+
+.confirm h2 {
+  font-size: 1.3rem;
+}
+
+.confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.confirm-actions .btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.confirm-actions .btn:first-child {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+/* Settings: a panel over the menu or the paused run. */
+.settings-overlay {
+  z-index: 20;
+  align-items: start;
+  padding-top: max(16px, env(safe-area-inset-top));
+}
+
+.settings {
+  width: min(100%, 420px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 12px 16px 20px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.settings:focus {
+  outline: none;
+}
+
+.settings-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: -8px;
+}
+
+.settings-head h2 {
+  font-size: 1.2rem;
+}
+
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.settings-row .btn {
+  justify-content: center;
+  font-size: 0.95rem;
+}
+
+.btn-menu-danger {
+  color: #ff8a8d;
+  border-color: color-mix(in srgb, var(--red) 55%, var(--border));
+}
+
+.settings-hint {
+  font-size: 0.8rem;
+}
+
+/* Seed: "Seed 12345 [Seeded] Copy" */
+.seed-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.seed-value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+  user-select: all;
+}
+
+.seed-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.seed-tag-seeded {
+  border-color: var(--purple);
+  color: #cbb2f5;
+  background: color-mix(in srgb, var(--purple) 15%, transparent);
+}
+
+.seed-copy {
+  margin-left: auto;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.seed-entry {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.seed-input {
+  min-height: 48px;
+  min-width: 0;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.seed-input[aria-invalid='true'] {
+  border-color: var(--red);
+}
+
+.seed-start {
+  width: auto;
+  padding: 0 22px;
+}
+
+.seed-error {
+  font-size: 0.8rem;
+  color: #ff8a8d;
+}
+
+.run-end-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}

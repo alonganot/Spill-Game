@@ -1,14 +1,18 @@
 import type { RunConfig, RunState } from '../engine';
 import { DieFaces } from './DiceEditor';
+import { SeedLine } from './SeedLine';
 
 interface RunEndScreenProps {
   run: RunState;
   config: RunConfig;
   seed: number;
+  seeded: boolean;
   onNewRun: () => void;
+  onReplaySeed: () => void;
+  onMainMenu: () => void;
 }
 
-export function RunEndScreen({ run, config, seed, onNewRun }: RunEndScreenProps) {
+export function RunEndScreen({ run, config, seed, seeded, onNewRun, onReplaySeed, onMainMenu }: RunEndScreenProps) {
   const won = run.phase === 'victory';
   const enemy = config.stages[run.stageIndex]?.enemy.name;
   return (
@@ -30,10 +34,20 @@ export function RunEndScreen({ run, config, seed, onNewRun }: RunEndScreenProps)
           ))}
         </ul>
       </div>
-      <button type="button" className="btn btn-primary" onClick={onNewRun}>
-        New run
-      </button>
-      <p className="seed">Seed {seed}</p>
+      <SeedLine seed={seed} seeded={seeded} />
+      <div className="run-end-actions">
+        <button type="button" className="btn btn-primary" onClick={onNewRun}>
+          New run
+        </button>
+        <div className="settings-row">
+          <button type="button" className="btn btn-menu" onClick={onReplaySeed}>
+            Replay seed
+          </button>
+          <button type="button" className="btn btn-menu" onClick={onMainMenu}>
+            Main menu
+          </button>
+        </div>
+      </div>
     </section>
   );
 }

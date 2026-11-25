@@ -644,11 +644,6 @@
 .result h2.victory { color: var(--accent); }
 .result h2.defeat { color: var(--red); }
 
-.seed {
-  font-size: 0.7rem;
-  color: var(--muted);
-}
-
 /* Ready spells + Spellbook */
 .spells-section .section-head {
   align-items: center;
