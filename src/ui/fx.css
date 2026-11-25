@@ -1,0 +1,196 @@
+/* Combat feedback: sprite reactions, floating numbers, spell bolts, mix splashes.
+   Classes come from stageFxFor / floatsFor in fx.ts and are keyed per playback beat. */
+
+/* Idle bob; the hero breathes a little slower than enemies. */
+.bob {
+  animation: bob 1.6s ease-in-out infinite;
+}
+
+.bob-slow {
+  animation-duration: 2.4s;
+}
+
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+/* Knocked out: fades and sinks, then stays gone. */
+.defeated {
+  animation: defeat 0.6s ease-in forwards;
+}
+
+@keyframes defeat {
+  to { transform: translateY(10px) scaleY(0.85); opacity: 0; filter: grayscale(1); }
+}
+
+/* Taking a hit: a white flash plus a shake. */
+.fighter.fx-hit {
+  animation: shake 0.35s ease, flash 0.22s ease-out;
+}
+
+@keyframes flash {
+  0% { filter: brightness(3) saturate(0); }
+  100% { filter: none; }
+}
+
+/* Status ticks: a tinted pulse with the status icon rising off the sprite. */
+.fighter.fx-poison,
+.fighter.fx-burn {
+  position: relative;
+  animation: shake 0.3s ease, var(--tint-anim) 0.45s ease-out;
+}
+
+.fighter.fx-poison { --tint-anim: tint-poison; }
+.fighter.fx-burn { --tint-anim: tint-burn; }
+
+.fighter.fx-poison::after,
+.fighter.fx-burn::after {
+  position: absolute;
+  left: 50%;
+  top: 20%;
+  font-size: 1.1rem;
+  animation: puff-up 0.5s ease-out forwards;
+}
+
+.fighter.fx-poison::after { content: '☠'; color: #7ee08a; }
+.fighter.fx-burn::after { content: '🔥'; }
+
+@keyframes tint-poison {
+  0% { filter: drop-shadow(0 0 6px #3fb950) hue-rotate(60deg); }
+  100% { filter: none; }
+}
+
+@keyframes tint-burn {
+  0%, 40% { filter: drop-shadow(0 0 6px #f08a24) brightness(1.4); }
+  20%, 60% { filter: drop-shadow(0 0 2px #e5484d); }
+  100% { filter: none; }
+}
+
+@keyframes puff-up {
+  from { transform: translate(-50%, 0) scale(0.6); opacity: 1; }
+  to { transform: translate(-50%, -22px) scale(1.2); opacity: 0; }
+}
+
+/* Gaining block: a blue shield glow. */
+.fighter.fx-guard {
+  animation: guard 0.4s ease-out;
+}
+
+@keyframes guard {
+  0% { filter: drop-shadow(0 0 0 #3e7bfa); }
+  40% { filter: drop-shadow(0 0 8px #6f9cff) brightness(1.15); }
+  100% { filter: none; }
+}
+
+/* The enemy winds up and lunges down toward you. */
+.fighter.fx-lunge {
+  animation: lunge 0.3s ease-in-out;
+}
+
+@keyframes lunge {
+  0% { transform: none; }
+  35% { transform: translateY(-4px) scale(0.96); }
+  70% { transform: translateY(12px) scale(1.1); }
+  100% { transform: none; }
+}
+
+/* The hero hops as the spell leaves the brush. */
+.fighter.fx-cast {
+  animation: cast 0.3s ease-out;
+}
+
+@keyframes cast {
+  0% { transform: none; }
+  40% { transform: translateY(-5px); }
+  100% { transform: none; }
+}
+
+/* Floating numbers */
+.floats {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  z-index: 2;
+}
+
+.float {
+  font-weight: 800;
+  font-size: 1.15rem;
+  line-height: 1;
+  white-space: nowrap;
+  text-shadow: 0 2px 0 #000, 0 0 6px rgb(0 0 0 / 0.8);
+  animation: float-up 0.75s ease-out both;
+}
+
+.float-damage { color: #ff6b6f; }
+.float-poison { color: #7ee08a; }
+.float-burn { color: #ffae6b; }
+.float-block { color: #9cc0ff; font-size: 0.95rem; }
+.float-blocked { color: var(--muted); font-size: 0.75rem; }
+
+@keyframes float-up {
+  0% { transform: translateY(6px) scale(0.7); opacity: 0; }
+  20% { transform: translateY(0) scale(1.15); opacity: 1; }
+  70% { opacity: 1; }
+  100% { transform: translateY(-20px) scale(1); opacity: 0; }
+}
+
+/* Spell bolt from the hero's brush to the enemy (positions set in Projectile). */
+.projectile {
+  position: fixed;
+  z-index: 15;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  background: var(--fx-color);
+  box-shadow: 0 0 10px 3px var(--fx-color), 0 0 0 2px #14121a;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.projectile.flying {
+  animation: fly 0.3s cubic-bezier(0.4, 0, 0.8, 1) forwards;
+}
+
+@keyframes fly {
+  0% { transform: translate(0, 0) scale(0.6); opacity: 1; }
+  85% { opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(1.4); opacity: 0; }
+}
+
+/* Mix splash: the new color pops in with a ring of its own color. */
+.chip.chip-splash {
+  animation: splash-pop 0.3s ease-out, splash-ring 0.45s ease-out;
+}
+
+@keyframes splash-pop {
+  0% { transform: scale(0.3); }
+  60% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+@keyframes splash-ring {
+  0% { box-shadow: 0 0 0 0 var(--splash); }
+  100% { box-shadow: 0 0 0 14px transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bob,
+  .defeated,
+  .fighter,
+  .fighter::after,
+  .float,
+  .projectile.flying,
+  .chip.chip-splash {
+    animation: none !important;
+  }
+
+  .defeated { opacity: 0.3; filter: grayscale(1); }
+  .projectile { display: none; }
+}

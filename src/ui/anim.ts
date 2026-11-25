@@ -5,7 +5,7 @@ import type { BattleEvent } from '../engine';
  * timings only; gameplay numbers live in `src/data/`.
  */
 const BEAT_MS: Record<BattleEvent['type'], number> = {
-  triggered: 250,
+  triggered: 320,
   mixed: 300,
   damaged: 450,
   blockGained: 350,

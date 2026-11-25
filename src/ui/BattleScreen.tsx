@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState, type CSSProperties } from 'react';
 import {
   canAfford,
   findMixPlan,
@@ -8,26 +8,25 @@ import {
   type BattleConfig,
   type BattleEvent,
   type BattleState,
+  type Color,
   type MixRecipe,
-  type Target,
 } from '../engine';
-import { enemySprite, HERO_SPRITE } from '../data/sprites';
-import { Badges, ColorDot, CostDots, HpBar } from './components';
+import { enemySprite } from '../data/sprites';
+import { Badges, ColorDot, HpBar } from './components';
+import { BattleLog } from './BattleLog';
+import { SpellCard, Spellbook, type Spell } from './Spellbook';
 import { dieLandMs } from './anim';
 import { TrayDie } from './PixelDie';
-import { PixelSprite } from './PixelSprite';
-import { COLOR_LABEL, describeEffect, describeIntent, formatEvent } from './format';
+import { EnemyStage, HeroStage, Projectile } from './Fighters';
+import { COLOR_HEX, floatsFor, stageFxFor } from './fx';
+import { COLOR_LABEL, describeIntent, formatEvent } from './format';
 import { beforeOpeningRoll, buildTimeline } from './timeline';
 import { chipsForPlan } from './mixHint';
 import { usePlayback } from './usePlayback';
 import './battle.css';
+import './fx.css';
 
 type RolledEvent = Extract<BattleEvent, { type: 'rolled' }>;
-
-/** Who takes a hit on this beat, if anyone. */
-function hitTarget(event: BattleEvent | null): Target | null {
-  return event?.type === 'damaged' && event.amount > 0 ? event.target : null;
-}
 
 interface BattleScreenProps {
   battle: BattleState;
@@ -75,31 +74,63 @@ export function BattleScreen({
 
   const intent = getEnemyIntent(playing ? before : state, config);
   const enemyArt = enemySprite(config.enemy.id);
-  const hit = playing ? hitTarget(step.event) : null;
+  // Effects only play while the beats run; once settled, the sprites rest.
+  const beatEvent = playing ? step.event : null;
   const beatKey = `${actionCount}-${index}`;
+  const enemyStageRef = useRef<HTMLDivElement>(null);
+  const heroStageRef = useRef<HTMLDivElement>(null);
+  // A spell that harms the enemy sends a bolt of its first cost color.
+  const castAttack =
+    beatEvent?.type === 'triggered' ? config.attacks.find((x) => x.id === beatEvent.attackId) : undefined;
+  const castColor = castAttack && (Object.keys(castAttack.cost)[0] as Color | undefined);
+  const boltColor =
+    castAttack && castColor && castAttack.effects.some((e) => e.type !== 'block') ? COLOR_HEX[castColor] : null;
+  // A mix appends its output to the pool, so the splash goes on the last chip.
+  const splashColor = beatEvent?.type === 'mixed' ? COLOR_HEX[beatEvent.output] : null;
   const isOver = state.phase !== 'player';
   const locked = isOver || playing;
-  const log = (playing ? events.slice(0, index + 1) : events)
-    .map((e) => formatEvent(e, config))
-    .filter((line): line is string => line !== null);
+  // The fight's log: every earlier action, plus this action up to the current beat.
+  const toLines = (evs: readonly BattleEvent[]) =>
+    evs.map((e) => formatEvent(e, config)).filter((line): line is string => line !== null);
+  const [history, setHistory] = useState({ count: actionCount, past: [] as string[], latest: events });
+  if (history.count !== actionCount) {
+    setHistory({ count: actionCount, past: [...history.past, ...toLines(history.latest)].slice(-200), latest: events });
+  }
+  const logLines = [...history.past, ...toLines(playing ? events.slice(0, index + 1) : events)];
 
-  // Spells the pool can't pay yet, but could after some mixes.
-  const mixPlans = useMemo(() => {
-    const plans = new Map<string, MixRecipe[]>();
-    for (const attack of config.attacks) {
-      if (canAfford(pool, attack.cost)) continue;
-      const plan = findMixPlan(pool, attack.cost, config.recipes);
-      if (plan && plan.length > 0) plans.set(attack.id, plan);
-    }
-    return plans;
-  }, [pool, config]);
+  // Every spell with whether it can be cast now, after some mixes, or not at all.
+  const spells = useMemo<Spell[]>(
+    () =>
+      config.attacks.map((attack) => {
+        if (canAfford(pool, attack.cost)) return { attack, status: 'ready' };
+        const plan = findMixPlan(pool, attack.cost, config.recipes);
+        return plan && plan.length > 0 ? { attack, status: 'craftable', plan } : { attack, status: 'locked' };
+      }),
+    [pool, config],
+  );
+  const readySpells = spells.filter((s) => s.status === 'ready');
+  const craftableCount = spells.filter((s) => s.status === 'craftable').length;
+
+  const [bookOpen, setBookOpen] = useState(false);
+  const [unavailableOnly, setUnavailableOnly] = useState(false);
   const [hintedAttack, setHintedAttack] = useState<string | null>(null);
-  const hintedPlan = !locked && hintedAttack ? mixPlans.get(hintedAttack) : undefined;
+  const hintedPlan = !locked && hintedAttack ? spells.find((s) => s.attack.id === hintedAttack)?.plan : undefined;
   const hintedChips = hintedPlan ? chipsForPlan(pool, hintedPlan) : [];
+
+  const closeBook = useCallback(() => {
+    setBookOpen(false);
+    setHintedAttack(null);
+  }, []);
 
   /** Tapping a craftable spell selects the chips for its next mix, ready for the Mix button. */
   function prepareMix(plan: MixRecipe[]) {
     setSelected(chipsForPlan(pool, plan).slice(0, 2));
+    closeBook();
+  }
+
+  function cast(attackId: string) {
+    closeBook();
+    act({ type: 'trigger', attackId });
   }
 
   const selectedColors = selected.map((i) => pool[i]).filter((c) => c !== undefined);
@@ -122,9 +153,15 @@ export function BattleScreen({
     <>
       <section className="card enemy with-sprite">
         {enemyArt && (
-          <div key={hit === 'enemy' ? beatKey : 'still'} className={`sprite-stage${hit === 'enemy' ? ' hit' : ''}`}>
-            <PixelSprite sprite={enemyArt} frame="idle" size={88} label={config.enemy.name} />
-          </div>
+          <EnemyStage
+            ref={enemyStageRef}
+            sprite={enemyArt}
+            name={config.enemy.name}
+            fx={beatEvent ? stageFxFor(beatEvent, 'enemy') : null}
+            floats={floatsFor(beatEvent, 'enemy')}
+            beatKey={beatKey}
+            defeated={enemy.hp === 0}
+          />
         )}
         <div className="card-body">
           <div className="card-title">
@@ -140,16 +177,16 @@ export function BattleScreen({
         </div>
       </section>
 
-      <section className="log" aria-live="polite">
-        {log.map((line, i) => (
-          <p key={`${actionCount}-${i}`}>{line}</p>
-        ))}
-      </section>
+      <BattleLog lines={logLines} />
 
       <section className="card player with-sprite">
-        <div key={hit === 'player' ? beatKey : 'still'} className={`hero-stage${hit === 'player' ? ' hit' : ''}`}>
-          <PixelSprite sprite={HERO_SPRITE} frame={hit === 'player' ? 'hit' : 'idle'} size={48} label="You" />
-        </div>
+        <HeroStage
+          ref={heroStageRef}
+          fx={beatEvent ? stageFxFor(beatEvent, 'player') : null}
+          floats={floatsFor(beatEvent, 'player')}
+          beatKey={beatKey}
+          defeated={player.hp === 0}
+        />
         <div className="card-body">
           <div className="card-row">
             <div className="card-title">
@@ -175,12 +212,23 @@ export function BattleScreen({
             // While dice land, each new chip pops in as its die lands.
             const fromDie = i - before.pool.length;
             const landing = rolling && fromDie >= 0;
+            const splash = splashColor !== null && i === pool.length - 1;
+            const classes = ['chip', `chip-${color}`];
+            if (selected.includes(i)) classes.push('selected');
+            if (landing) classes.push('chip-landing');
+            if (hintedChips.includes(i)) classes.push('chip-hint');
+            if (splash) classes.push('chip-splash');
+            const style: CSSProperties | undefined = landing
+              ? { animationDelay: `${dieLandMs(fromDie)}ms` }
+              : splash
+                ? ({ '--splash': splashColor } as CSSProperties)
+                : undefined;
             return (
             <button
               key={i}
               type="button"
-              className={`chip chip-${color}${selected.includes(i) ? ' selected' : ''}${landing ? ' chip-landing' : ''}${hintedChips.includes(i) ? ' chip-hint' : ''}`}
-              style={landing ? { animationDelay: `${dieLandMs(fromDie)}ms` } : undefined}
+              className={classes.join(' ')}
+              style={style}
               onClick={() => toggle(i)}
               disabled={locked}
               aria-pressed={selected.includes(i)}
@@ -211,37 +259,57 @@ export function BattleScreen({
         </div>
       </section>
 
-      <section className="attacks">
-        {config.attacks.map((attack) => {
-          const affordable = canAfford(pool, attack.cost);
-          const plan = mixPlans.get(attack.id);
-          const effects = attack.effects.map(describeEffect).join(' · ');
-          const mixes = plan ? `${plan.length} mix${plan.length > 1 ? 'es' : ''}` : '';
-          return (
-            <button
-              key={attack.id}
-              type="button"
-              className={`attack${plan ? ' attack-craftable' : ''}`}
-              aria-label={`${attack.name}: ${effects}${plan ? `. Needs ${mixes} first; tap to pick the colors` : ''}`}
-              disabled={(!affordable && !plan) || locked}
-              onClick={() => (plan ? prepareMix(plan) : act({ type: 'trigger', attackId: attack.id }))}
-              onPointerEnter={() => plan && setHintedAttack(attack.id)}
-              onPointerLeave={() => setHintedAttack(null)}
-              onFocus={() => plan && setHintedAttack(attack.id)}
-              onBlur={() => setHintedAttack(null)}
-            >
-              {plan && (
-                <span className="attack-mix-tag" aria-hidden="true">
-                  ⚗ {mixes}
-                </span>
-              )}
-              <span className="attack-name">{attack.name}</span>
-              <CostDots cost={attack.cost} />
-              <span className="attack-fx">{effects}</span>
-            </button>
-          );
-        })}
+      <section className="spells-section">
+        <div className="section-head">
+          <h3>Ready spells</h3>
+          <button
+            type="button"
+            className="book-btn"
+            aria-haspopup="dialog"
+            aria-expanded={bookOpen}
+            onClick={() => setBookOpen(true)}
+            aria-label={`Open spellbook${craftableCount ? `, ${craftableCount} can be mixed` : ''}`}
+          >
+            <span aria-hidden="true">📖</span> Spellbook
+            {craftableCount > 0 && (
+              <span className="book-badge" aria-hidden="true">
+                ⚗{craftableCount}
+              </span>
+            )}
+          </button>
+        </div>
+        {readySpells.length === 0 ? (
+          <p className="muted no-spells">
+            No spell is ready. Mix colors, or open the Spellbook to see what you could make.
+          </p>
+        ) : (
+          <div className="attacks">
+            {readySpells.map((spell) => (
+              <SpellCard
+                key={spell.attack.id}
+                spell={spell}
+                disabled={locked}
+                onCast={() => cast(spell.attack.id)}
+                onPrepareMix={prepareMix}
+                onHint={setHintedAttack}
+              />
+            ))}
+          </div>
+        )}
       </section>
+
+      {bookOpen && (
+        <Spellbook
+          spells={spells}
+          locked={locked}
+          unavailableOnly={unavailableOnly}
+          onToggleUnavailableOnly={() => setUnavailableOnly((v) => !v)}
+          onCast={cast}
+          onPrepareMix={prepareMix}
+          onHint={setHintedAttack}
+          onClose={closeBook}
+        />
+      )}
 
       <footer className="footer footer-battle">
         <div className="dice-tray" role="group" aria-label="Your dice">
@@ -261,6 +329,8 @@ export function BattleScreen({
           End turn
         </button>
       </footer>
+
+      {boltColor && <Projectile key={beatKey} from={heroStageRef} to={enemyStageRef} color={boltColor} />}
 
       {playing && <button type="button" className="skip-layer" aria-label="Skip animation" onClick={skip} />}
 

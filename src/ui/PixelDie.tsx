@@ -4,17 +4,8 @@ import type { SpriteSheet } from '../data/sprites';
 import { DIE_FLICKER_MS } from './anim';
 import { ColorDot } from './components';
 import { COLOR_LABEL } from './format';
+import { COLOR_HEX } from './fx';
 import { PixelSprite } from './PixelSprite';
-
-/** Same values as the color tokens in global.css; SVG fills need literal colors. */
-const COLOR_HEX: Record<Color, string> = {
-  red: '#e5484d',
-  blue: '#3e7bfa',
-  green: '#3fb950',
-  purple: '#9b5de5',
-  cyan: '#22c3d6',
-  orange: '#f08a24',
-};
 
 // A 10×10 die with a paint drop of the face color in the middle.
 // Small enough that six dice and the End turn button share one row at 375px.

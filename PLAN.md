@@ -1,7 +1,7 @@
 # PLAN.md — Spill Development Roadmap
 
 ## Current Focus
-**Milestone 3 done; Milestone 4 next (Graphics & Juice).** A full 5-fight run with rewards and a dice shop is playable via `npm run dev` (`src/ui/RunScreen.tsx`, driven by `useRun` and `src/engine/run.ts`). Balance tuning is deferred to Milestone 7.
+**Milestone 4 done; Milestone 5 next (Menus & Screen Flow).** A full 5-fight run with rewards, a dice shop, pixel-art sprites, and beat-by-beat combat playback is playable via `npm run dev` (`src/ui/RunScreen.tsx`, driven by `useRun` and `src/engine/run.ts`). Balance tuning is deferred to Milestone 7.
 
 ## Milestones
 
@@ -29,14 +29,15 @@
 - [x] Start runs with 2 Standard dice and a dice cap of 3.
 - [x] Handle full run victory, defeat, and new run reset.
 
-### Milestone 4: Graphics & Juice
+### Milestone 4: Graphics & Juice ✅
 - [x] Pixel-art enemy sprites drawn in code: pixel grids in `src/data/sprites.ts`, rendered crisply as SVG (`src/ui/PixelSprite.tsx`), one per enemy (Puddle Slime, Thorn Sprite, Rust Golem, Ink Blob, The Blot), plus a small hero sprite (idle/cast/hit poses).
 - [x] Step-by-step event playback: each action's events play as timed beats (HP/block/pool step per beat), input locked meanwhile, tap to skip (`src/ui/timeline.ts`, `src/ui/usePlayback.ts`).
-- [ ] Simple sprite animation: idle bob, hit flash/shake when damaged, attack lunge on the enemy's turn, defeat fade.
+- [x] Simple sprite animation: idle bob and enemy blinks, hit flash/shake when damaged, attack lunge on the enemy's turn, hero cast pose with a paint bolt to the enemy, defeat fade (`src/ui/Fighters.tsx`).
 - [x] Dice roll animation: a pixel dice tray (`src/ui/PixelDie.tsx`) beside End turn; dice tumble through their own faces and land on the rolled face, new pool chips pop in as each die lands, and overflow dice grey out. Hover or tap a die to see all its faces.
-- [x] Craftable-spell hints: spells the pool could pay after mixing are marked (⚗ N mixes); hovering one highlights the chips to mix, tapping it selects them for the Mix button (`findMixPlan` in `src/engine/mixing.ts`).
-- [ ] Combat feedback: floating damage/block numbers, status tick visuals (poison/burn), and a mix "splash" when two colors combine.
-- [ ] All animations stay UI-only (`src/ui/`), driven by engine events; the engine is unchanged.
+- [x] Spellbook and craftable-spell hints: the battle screen lists only ready spells; a 📖 Spellbook sheet lists every spell (with an "Unavailable only" toggle). Spells payable after mixing are marked (⚗ N mixes); hovering one highlights the chips to mix, tapping it selects them for the Mix button (`src/ui/Spellbook.tsx`, `findMixPlan` in `src/engine/mixing.ts`).
+- [x] Battle log behind a "📜 Battle log" button (hover or tap) with the whole fight's history, so the layout never shifts (`src/ui/BattleLog.tsx`).
+- [x] Combat feedback: floating damage/block numbers, status tick visuals (poison/burn), a block glow, and a mix "splash" when two colors combine (`src/ui/fx.ts`, `src/ui/fx.css`).
+- [x] All animations stay UI-only (`src/ui/`), driven by engine events. The only engine addition is the pure `findMixPlan` helper; combat rules are unchanged.
 
 ### Milestone 5: Menus & Screen Flow
 - [ ] Main menu: title, New run, Continue (only while a run is in progress this session), Settings.
