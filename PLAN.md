@@ -33,7 +33,8 @@
 - [x] Pixel-art enemy sprites drawn in code: pixel grids in `src/data/sprites.ts`, rendered crisply as SVG (`src/ui/PixelSprite.tsx`), one per enemy (Puddle Slime, Thorn Sprite, Rust Golem, Ink Blob, The Blot), plus a small hero sprite (idle/cast/hit poses).
 - [x] Step-by-step event playback: each action's events play as timed beats (HP/block/pool step per beat), input locked meanwhile, tap to skip (`src/ui/timeline.ts`, `src/ui/usePlayback.ts`).
 - [ ] Simple sprite animation: idle bob, hit flash/shake when damaged, attack lunge on the enemy's turn, defeat fade.
-- [ ] Dice roll animation: dice tumble and land on their rolled face at turn start, with rolled colors flying into the pool.
+- [x] Dice roll animation: a pixel dice tray (`src/ui/PixelDie.tsx`) beside End turn; dice tumble through their own faces and land on the rolled face, new pool chips pop in as each die lands, and overflow dice grey out. Hover or tap a die to see all its faces.
+- [x] Craftable-spell hints: spells the pool could pay after mixing are marked (⚗ N mixes); hovering one highlights the chips to mix, tapping it selects them for the Mix button (`findMixPlan` in `src/engine/mixing.ts`).
 - [ ] Combat feedback: floating damage/block numbers, status tick visuals (poison/burn), and a mix "splash" when two colors combine.
 - [ ] All animations stay UI-only (`src/ui/`), driven by engine events; the engine is unchanged.
 

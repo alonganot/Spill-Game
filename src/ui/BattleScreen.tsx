@@ -1,21 +1,28 @@
 import { useMemo, useState } from 'react';
 import {
   canAfford,
+  findMixPlan,
   findRecipe,
   getEnemyIntent,
   type BattleAction,
   type BattleConfig,
   type BattleEvent,
   type BattleState,
+  type MixRecipe,
   type Target,
 } from '../engine';
 import { enemySprite, HERO_SPRITE } from '../data/sprites';
 import { Badges, ColorDot, CostDots, HpBar } from './components';
+import { dieLandMs } from './anim';
+import { TrayDie } from './PixelDie';
 import { PixelSprite } from './PixelSprite';
 import { COLOR_LABEL, describeEffect, describeIntent, formatEvent } from './format';
 import { beforeOpeningRoll, buildTimeline } from './timeline';
+import { chipsForPlan } from './mixHint';
 import { usePlayback } from './usePlayback';
 import './battle.css';
+
+type RolledEvent = Extract<BattleEvent, { type: 'rolled' }>;
 
 /** Who takes a hit on this beat, if anyone. */
 function hitTarget(event: BattleEvent | null): Target | null {
@@ -50,6 +57,17 @@ export function BattleScreen({
   const steps = useMemo(() => buildTimeline(before, events, state), [before, events, state]);
   const { step, index, playing, skip } = usePlayback(steps, actionCount);
 
+  // The tray shows the last roll through mixes and attacks, and keeps the
+  // previous roll on screen until this action's roll beat comes up.
+  const rollIndex = events.findIndex((e) => e.type === 'rolled');
+  const rollEvent = rollIndex >= 0 ? (events[rollIndex] as RolledEvent) : undefined;
+  const [rolls, setRolls] = useState<{ current?: RolledEvent; previous?: RolledEvent }>({ current: rollEvent });
+  if (rollEvent && rollEvent !== rolls.current) setRolls({ current: rollEvent, previous: rolls.current });
+  const beforeRollBeat = playing && rollEvent !== undefined && index < rollIndex;
+  const shownRoll = beforeRollBeat ? rolls.previous : (rollEvent ?? rolls.current);
+  const rolling = playing && step.event?.type === 'rolled';
+  const keptCount = shownRoll ? shownRoll.colors.length - shownRoll.discarded.length : 0;
+
   // While the beats play, show the numbers of the current beat, not the final ones.
   const player = { ...state.player, ...step.player };
   const enemy = { ...state.enemy, ...step.enemy };
@@ -64,6 +82,25 @@ export function BattleScreen({
   const log = (playing ? events.slice(0, index + 1) : events)
     .map((e) => formatEvent(e, config))
     .filter((line): line is string => line !== null);
+
+  // Spells the pool can't pay yet, but could after some mixes.
+  const mixPlans = useMemo(() => {
+    const plans = new Map<string, MixRecipe[]>();
+    for (const attack of config.attacks) {
+      if (canAfford(pool, attack.cost)) continue;
+      const plan = findMixPlan(pool, attack.cost, config.recipes);
+      if (plan && plan.length > 0) plans.set(attack.id, plan);
+    }
+    return plans;
+  }, [pool, config]);
+  const [hintedAttack, setHintedAttack] = useState<string | null>(null);
+  const hintedPlan = !locked && hintedAttack ? mixPlans.get(hintedAttack) : undefined;
+  const hintedChips = hintedPlan ? chipsForPlan(pool, hintedPlan) : [];
+
+  /** Tapping a craftable spell selects the chips for its next mix, ready for the Mix button. */
+  function prepareMix(plan: MixRecipe[]) {
+    setSelected(chipsForPlan(pool, plan).slice(0, 2));
+  }
 
   const selectedColors = selected.map((i) => pool[i]).filter((c) => c !== undefined);
   const [a, b] = selectedColors;
@@ -134,18 +171,24 @@ export function BattleScreen({
         </div>
         <div className="pool">
           {pool.length === 0 && <span className="muted">Empty. End the turn to roll.</span>}
-          {pool.map((color, i) => (
+          {pool.map((color, i) => {
+            // While dice land, each new chip pops in as its die lands.
+            const fromDie = i - before.pool.length;
+            const landing = rolling && fromDie >= 0;
+            return (
             <button
               key={i}
               type="button"
-              className={`chip chip-${color}${selected.includes(i) ? ' selected' : ''}`}
+              className={`chip chip-${color}${selected.includes(i) ? ' selected' : ''}${landing ? ' chip-landing' : ''}${hintedChips.includes(i) ? ' chip-hint' : ''}`}
+              style={landing ? { animationDelay: `${dieLandMs(fromDie)}ms` } : undefined}
               onClick={() => toggle(i)}
               disabled={locked}
               aria-pressed={selected.includes(i)}
             >
               {COLOR_LABEL[color]}
             </button>
-          ))}
+            );
+          })}
         </div>
         <div className="mixbar">
           {selectedColors.length < 2 ? (
@@ -171,16 +214,27 @@ export function BattleScreen({
       <section className="attacks">
         {config.attacks.map((attack) => {
           const affordable = canAfford(pool, attack.cost);
+          const plan = mixPlans.get(attack.id);
           const effects = attack.effects.map(describeEffect).join(' · ');
+          const mixes = plan ? `${plan.length} mix${plan.length > 1 ? 'es' : ''}` : '';
           return (
             <button
               key={attack.id}
               type="button"
-              className="attack"
-              aria-label={`${attack.name}: ${effects}`}
-              disabled={!affordable || locked}
-              onClick={() => act({ type: 'trigger', attackId: attack.id })}
+              className={`attack${plan ? ' attack-craftable' : ''}`}
+              aria-label={`${attack.name}: ${effects}${plan ? `. Needs ${mixes} first; tap to pick the colors` : ''}`}
+              disabled={(!affordable && !plan) || locked}
+              onClick={() => (plan ? prepareMix(plan) : act({ type: 'trigger', attackId: attack.id }))}
+              onPointerEnter={() => plan && setHintedAttack(attack.id)}
+              onPointerLeave={() => setHintedAttack(null)}
+              onFocus={() => plan && setHintedAttack(attack.id)}
+              onBlur={() => setHintedAttack(null)}
             >
+              {plan && (
+                <span className="attack-mix-tag" aria-hidden="true">
+                  ⚗ {mixes}
+                </span>
+              )}
               <span className="attack-name">{attack.name}</span>
               <CostDots cost={attack.cost} />
               <span className="attack-fx">{effects}</span>
@@ -189,7 +243,20 @@ export function BattleScreen({
         })}
       </section>
 
-      <footer className="footer">
+      <footer className="footer footer-battle">
+        <div className="dice-tray" role="group" aria-label="Your dice">
+          {config.dice.map((die, i) => (
+            <TrayDie
+              key={i}
+              die={die}
+              result={shownRoll?.colors[i]}
+              rolling={rolling}
+              rollKey={actionCount}
+              landMs={dieLandMs(i)}
+              discarded={shownRoll !== undefined && i >= keptCount}
+            />
+          ))}
+        </div>
         <button type="button" className="btn btn-primary" onClick={() => act({ type: 'endTurn' })} disabled={locked}>
           End turn
         </button>
