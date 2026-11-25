@@ -1,0 +1,107 @@
+import {
+  applyRunAction,
+  createRun,
+  createSeededRng,
+  type Rng,
+  type RunAction,
+  type RunConfig,
+  type RunState,
+} from '../engine';
+
+/**
+ * A run in progress, saved as its seed plus every action that succeeded.
+ * The engine is deterministic, so replaying the actions rebuilds the run
+ * exactly, random rolls included.
+ */
+export interface RunSave {
+  version: 1;
+  seed: number;
+  seeded: boolean;
+  actions: RunAction[];
+}
+
+export const SAVE_KEY = 'spill.run.v1';
+
+const ACTION_TYPES = new Set<RunAction['type']>([
+  'battle',
+  'continue',
+  'chooseReward',
+  'buyDie',
+  'repaint',
+  'buyHeal',
+  'buyCapUpgrade',
+  'leaveShop',
+]);
+
+function isAction(value: unknown): value is RunAction {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    ACTION_TYPES.has((value as { type?: unknown }).type as RunAction['type'])
+  );
+}
+
+/** A save read back from storage, or null if it isn't one this version understands. */
+export function parseSave(text: string | null): RunSave | null {
+  if (text === null) return null;
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (typeof data !== 'object' || data === null) return null;
+  const { version, seed, seeded, actions } = data as Record<string, unknown>;
+  if (version !== 1) return null;
+  if (typeof seed !== 'number' || !Number.isInteger(seed) || seed < 0) return null;
+  if (typeof seeded !== 'boolean') return null;
+  if (!Array.isArray(actions) || !actions.every(isAction)) return null;
+  return { version, seed, seeded, actions };
+}
+
+/**
+ * Rebuilds a saved run by replaying its actions on its seed. Returns null if
+ * any action no longer applies (for example after a balance change).
+ */
+export function replayRun(save: RunSave, config: RunConfig): { rng: Rng; run: RunState } | null {
+  try {
+    const rng = createSeededRng(save.seed);
+    let run = createRun(config, rng).state;
+    for (const action of save.actions) {
+      const result = applyRunAction(run, action, config, rng);
+      if (!result.ok) return null;
+      run = result.state;
+    }
+    return { rng, run };
+  } catch {
+    // A malformed action can throw deep in the engine; treat it like a failed replay.
+    return null;
+  }
+}
+
+// Storage access can throw (private mode, blocked site data, full quota). Saving
+// is a convenience, so every failure is swallowed and the game carries on.
+
+export function saveRun(save: RunSave): void {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(save));
+  } catch {
+    // Ignore: the run just won't survive a reload.
+  }
+}
+
+export function loadRun(): RunSave | null {
+  try {
+    return parseSave(localStorage.getItem(SAVE_KEY));
+  } catch {
+    return null;
+  }
+}
+
+export function clearRun(): void {
+  try {
+    localStorage.removeItem(SAVE_KEY);
+  } catch {
+    // Ignore.
+  }
+}

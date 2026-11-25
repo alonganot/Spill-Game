@@ -1,7 +1,7 @@
 # PLAN.md — Spill Development Roadmap
 
 ## Current Focus
-**Milestone 5 done; Milestone 6 next (Capacitor & Mobile).** A full 5-fight run with rewards, a dice shop, pixel-art sprites, and beat-by-beat combat playback is playable via `npm run dev` (`src/ui/RunScreen.tsx`, driven by `useRun` and `src/engine/run.ts`). Balance tuning is deferred to Milestone 7.
+**Milestone 6 in progress (Desktop & Responsive).** V1 is a PC game: it should fill a desktop screen and stay playable on a phone-sized window; mobile app builds are out of V1. A full 5-fight run with a main menu, seeded runs, rewards, a dice shop, pixel-art sprites, and beat-by-beat combat playback is playable via `npm run dev` (`src/ui/RunScreen.tsx`, driven by `useRun` and `src/engine/run.ts`). Balance tuning is deferred to Milestone 7.
 
 ## Milestones
 
@@ -43,18 +43,17 @@
 - [x] Main menu: a pixel title scene (`TITLE_SPRITE` logo, the hero facing a slime), New run (asks before abandoning a run in progress), Continue (only while a run is in progress this session), Settings (`src/ui/MainMenu.tsx`).
 - [x] Settings (`src/ui/SettingsScreen.tsx`): the run's seed with a Seeded/Random tag and Copy; Restart run (same seed, fight 1) and Abandon run, each with a confirm; start a seeded run from a typed seed (1–9 digits, `parseSeed` in `src/ui/seed.ts`). The run-end screen also shows the seed, with Replay seed and Main menu.
 - [x] In-run ☰ button opens a pause panel over the run (Resume, Main menu); it works mid-animation.
-- [x] Screen-flow stack in the UI layer (`src/ui/screenFlow.ts`), with one back action (Escape now, the Android back button in M6). Open layers (Spellbook, battle log, dialogs) close first. The run lives in `App` and its screen stays mounted while hidden, so Continue resumes a battle exactly where it was.
+- [x] Screen-flow stack in the UI layer (`src/ui/screenFlow.ts`), with one back action (Escape, or the ← Back button). Open layers (Spellbook, battle log, dialogs) close first. The run lives in `App` and its screen stays mounted while hidden, so Continue resumes a battle exactly where it was.
 
-### Milestone 6: Capacitor & Mobile
-- [ ] Add Capacitor and generate the Android project. Generate the iOS project too, but it can only be built on a Mac.
-- [ ] Save the run in progress on the device (seed plus action list, replayed on load) so Continue survives a reload or app kill.
-- [ ] `src/mobile/` adapters: app lifecycle (pause/resume, Android back button → menu/back) and optional haptics on hits/taps, behind a small interface with web no-op fallbacks.
-- [ ] Safe-area and status-bar handling; portrait lock.
-- [ ] Web build stays playable (`npm run dev` / `npm run build`); test on an Android emulator or device.
+### Milestone 6: Desktop & Responsive
+- [ ] Desktop battle layout (900px and wider): a wide arena with the hero and enemy facing each other at large pixel sizes, a side panel with the color pool and spells, and the dice tray and End turn along the bottom. Phones keep the single column.
+- [ ] Responsive main menu, reward, shop, dice editor, Settings, and run-end screens that use the width on a PC.
+- [ ] Hover tooltips for spells, status badges, block, enemy intent, and dice (tap on touch screens).
+- [x] Save the run in progress in the browser (`src/ui/runSave.ts`): the seed plus every successful action, written after each action to localStorage key `spill.run.v1` and replayed on load, so Continue survives a reload. Abandoning or finishing a run clears it; a corrupt or outdated save is ignored.
 
 ### Milestone 7: V1 Wrap-up
 - [ ] Balance tuning pass in `src/data/`, checked with the run simulation test. A simple greedy bot currently wins about 193 of 200 seeded runs (all its losses are at the boss), so the run is too easy for skilled play; aim for a meaningfully harder elite and boss.
-- [ ] Store-ready build: app icon, splash screen, app id and versioning, signed Android release build (AAB), and notes for building iOS on a Mac.
+- [ ] Windows desktop app with Electron: the web build in a window with an app icon, title, and minimum size, plus a versioned installer (electron-builder, NSIS).
 - [ ] Final bug sweep and docs update.
 
 ## Explicitly Out of Scope for V1
@@ -62,3 +61,4 @@
 - Ads, IAP, or complex economy systems (the simple gold dice shop in Milestone 3 is in scope).
 - Multiplayer or heavy custom shaders.
 - Sound effects and music.
+- Mobile app builds (Capacitor, Android/iOS). The web build stays mobile-friendly.
