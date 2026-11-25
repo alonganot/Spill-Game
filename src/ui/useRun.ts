@@ -5,6 +5,7 @@ import {
   createRun,
   createSeededRng,
   type BattleEvent,
+  type BattleState,
   type Rng,
   type RunAction,
   type RunConfig,
@@ -18,8 +19,10 @@ export interface RunView {
   seed: number;
   rng: Rng;
   run: RunState;
-  /** Battle events from the most recent action, for the battle log. */
+  /** Battle events from the most recent action, for the battle log and playback. */
   events: BattleEvent[];
+  /** The battle as it was before the most recent action, when that action was a battle action. */
+  prevBattle: BattleState | null;
   error: RunError | null;
   /** Increments on every successful action; used to replay feedback animations. */
   actionCount: number;
@@ -29,7 +32,7 @@ function startView(): RunView {
   const seed = Math.floor(Math.random() * 1_000_000);
   const rng = createSeededRng(seed);
   const { state, events } = createRun(CONFIG, rng);
-  return { seed, rng, run: state, events, error: null, actionCount: 0 };
+  return { seed, rng, run: state, events, prevBattle: null, error: null, actionCount: 0 };
 }
 
 /**
@@ -57,7 +60,15 @@ export function useRun(): {
     const current = viewRef.current;
     const result = applyRunAction(current.run, action, CONFIG, current.rng);
     const next: RunView = result.ok
-      ? { ...current, run: result.state, events: result.events, error: null, actionCount: current.actionCount + 1 }
+      ? {
+          ...current,
+          run: result.state,
+          events: result.events,
+          // Only a battle action continues the same fight; anything else starts a new one.
+          prevBattle: action.type === 'battle' ? current.run.battle : null,
+          error: null,
+          actionCount: current.actionCount + 1,
+        }
       : { ...current, error: result.error };
     commit(next);
   }, [commit]);

@@ -31,7 +31,7 @@
 
 ### Milestone 4: Graphics & Juice
 - [x] Pixel-art enemy sprites drawn in code: pixel grids in `src/data/sprites.ts`, rendered crisply as SVG (`src/ui/PixelSprite.tsx`), one per enemy (Puddle Slime, Thorn Sprite, Rust Golem, Ink Blob, The Blot), plus a small hero sprite (idle/cast/hit poses).
-- [ ] Step-by-step event playback: each action's events play as timed beats (HP/block/pool step per beat), input locked meanwhile, tap to skip.
+- [x] Step-by-step event playback: each action's events play as timed beats (HP/block/pool step per beat), input locked meanwhile, tap to skip (`src/ui/timeline.ts`, `src/ui/usePlayback.ts`).
 - [ ] Simple sprite animation: idle bob, hit flash/shake when damaged, attack lunge on the enemy's turn, defeat fade.
 - [ ] Dice roll animation: dice tumble and land on their rolled face at turn start, with rolled colors flying into the pool.
 - [ ] Combat feedback: floating damage/block numbers, status tick visuals (poison/burn), and a mix "splash" when two colors combine.

@@ -97,8 +97,31 @@
   flex: none;
 }
 
-.card.hit {
+.hero-stage {
+  flex: none;
+}
+
+.sprite-stage.hit,
+.hero-stage.hit {
   animation: shake 0.35s ease;
+}
+
+/* Catches taps while a playback runs, so one tap skips to the end. */
+.skip-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sprite-stage.hit,
+  .hero-stage.hit {
+    animation: none;
+  }
 }
 
 @keyframes shake {
