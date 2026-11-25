@@ -59,6 +59,44 @@
   gap: 8px;
 }
 
+/* Cards with a sprite: art on the left, name/intent/HP on the right. */
+.card.with-sprite {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
+.card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.enemy .card-body {
+  align-items: flex-start;
+}
+
+.enemy .card-body .hp {
+  align-self: stretch;
+}
+
+.sprite-stage {
+  flex: none;
+  width: 88px;
+  height: 88px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: radial-gradient(circle at 50% 85%, var(--surface-2) 0 45%, transparent 46%);
+}
+
+.sprite {
+  display: block;
+  flex: none;
+}
+
 .card.hit {
   animation: shake 0.35s ease;
 }

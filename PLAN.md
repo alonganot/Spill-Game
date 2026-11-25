@@ -1,8 +1,7 @@
 # PLAN.md — Spill Development Roadmap
 
 ## Current Focus
-**Milestone 3 done; Milestone 4 next (Polish, Juice & Mobile Packaging).** A full 5-fight run with rewards and a dice shop is playable via `npm run dev` (`src/ui/RunScreen.tsx`, driven by `useRun` and `src/engine/run.ts`).
-Balance notes for M4: a simple greedy bot wins about 193 of 200 seeded runs (all its losses are at the boss), so the run is too easy for skilled play, though a manual playthrough finished the boss on 1 HP. With 5–6 dice the shop screen will need scrolling on small phones.
+**Milestone 3 done; Milestone 4 next (Graphics & Juice).** A full 5-fight run with rewards and a dice shop is playable via `npm run dev` (`src/ui/RunScreen.tsx`, driven by `useRun` and `src/engine/run.ts`). Balance tuning is deferred to Milestone 7.
 
 ## Milestones
 
@@ -30,12 +29,33 @@ Balance notes for M4: a simple greedy bot wins about 193 of 200 seeded runs (all
 - [x] Start runs with 2 Standard dice and a dice cap of 3.
 - [x] Handle full run victory, defeat, and new run reset.
 
-### Milestone 4: Polish, Juice & Mobile Packaging
-- [ ] Balance tuning pass using centralized config files in `src/data/`.
-- [ ] Add mobile feel/juice (animations, sound effects, haptics via `src/mobile/`).
-- [ ] Set up Capacitor for Android/iOS builds and test on device/emulator.
+### Milestone 4: Graphics & Juice
+- [x] Pixel-art enemy sprites drawn in code: pixel grids in `src/data/sprites.ts`, rendered crisply as SVG (`src/ui/PixelSprite.tsx`), one per enemy (Puddle Slime, Thorn Sprite, Rust Golem, Ink Blob, The Blot), plus a small hero sprite (idle/cast/hit poses).
+- [ ] Step-by-step event playback: each action's events play as timed beats (HP/block/pool step per beat), input locked meanwhile, tap to skip.
+- [ ] Simple sprite animation: idle bob, hit flash/shake when damaged, attack lunge on the enemy's turn, defeat fade.
+- [ ] Dice roll animation: dice tumble and land on their rolled face at turn start, with rolled colors flying into the pool.
+- [ ] Combat feedback: floating damage/block numbers, status tick visuals (poison/burn), and a mix "splash" when two colors combine.
+- [ ] All animations stay UI-only (`src/ui/`), driven by engine events; the engine is unchanged.
+
+### Milestone 5: Menus & Screen Flow
+- [ ] Main menu: title, New run, Continue (only while a run is in progress this session), Settings.
+- [ ] Settings: enter or show the run seed, restart the run, abandon the run (with confirm).
+- [ ] In-run pause/menu button that reaches Settings and returns to the run.
+- [ ] Screen-flow state in the UI layer, with a back action that works everywhere.
+
+### Milestone 6: Capacitor & Mobile
+- [ ] Add Capacitor and generate the Android project. Generate the iOS project too, but it can only be built on a Mac.
+- [ ] `src/mobile/` adapters: app lifecycle (pause/resume, Android back button → menu/back) and optional haptics on hits/taps, behind a small interface with web no-op fallbacks.
+- [ ] Safe-area and status-bar handling; portrait lock.
+- [ ] Web build stays playable (`npm run dev` / `npm run build`); test on an Android emulator or device.
+
+### Milestone 7: V1 Wrap-up
+- [ ] Balance tuning pass in `src/data/`, checked with the run simulation test. A simple greedy bot currently wins about 193 of 200 seeded runs (all its losses are at the boss), so the run is too easy for skilled play; aim for a meaningfully harder elite and boss.
+- [ ] Store-ready build: app icon, splash screen, app id and versioning, signed Android release build (AAB), and notes for building iOS on a Mac.
+- [ ] Final bug sweep and docs update.
 
 ## Explicitly Out of Scope for V1
 - Accounts, cloud saves, leaderboards, or backend services.
 - Ads, IAP, or complex economy systems (the simple gold dice shop in Milestone 3 is in scope).
 - Multiplayer or heavy custom shaders.
+- Sound effects and music.

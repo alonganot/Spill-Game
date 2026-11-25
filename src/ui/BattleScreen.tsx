@@ -8,7 +8,9 @@ import {
   type BattleEvent,
   type BattleState,
 } from '../engine';
+import { enemySprite, HERO_SPRITE } from '../data/sprites';
 import { Badges, ColorDot, CostDots, HpBar } from './components';
+import { PixelSprite } from './PixelSprite';
 import { COLOR_LABEL, describeEffect, describeIntent, formatEvent } from './format';
 import './battle.css';
 
@@ -30,6 +32,8 @@ export function BattleScreen({ battle: state, config, events, actionCount, isFin
   const [selected, setSelected] = useState<number[]>([]);
 
   const intent = getEnemyIntent(state, config);
+  const enemyArt = enemySprite(config.enemy.id);
+  const playerHit = wasHit(events, 'player');
   const isOver = state.phase !== 'player';
   const log = events.map((e) => formatEvent(e, config)).filter((line): line is string => line !== null);
 
@@ -51,8 +55,13 @@ export function BattleScreen({ battle: state, config, events, actionCount, isFin
 
   return (
     <>
-      <section key={`enemy-${actionCount}`} className={`card enemy${wasHit(events, 'enemy') ? ' hit' : ''}`}>
-        <div className="card-row">
+      <section key={`enemy-${actionCount}`} className={`card enemy with-sprite${wasHit(events, 'enemy') ? ' hit' : ''}`}>
+        {enemyArt && (
+          <div className="sprite-stage">
+            <PixelSprite sprite={enemyArt} frame="idle" size={88} label={config.enemy.name} />
+          </div>
+        )}
+        <div className="card-body">
           <div className="card-title">
             <h2>{config.enemy.name}</h2>
             <Badges combatant={state.enemy} />
@@ -62,8 +71,8 @@ export function BattleScreen({ battle: state, config, events, actionCount, isFin
               {intent.type === 'attack' ? '⚔' : '🛡'} {describeIntent(intent)}
             </span>
           )}
+          <HpBar combatant={state.enemy} />
         </div>
-        <HpBar combatant={state.enemy} />
       </section>
 
       <section className="log" aria-live="polite">
@@ -72,15 +81,18 @@ export function BattleScreen({ battle: state, config, events, actionCount, isFin
         ))}
       </section>
 
-      <section key={`player-${actionCount}`} className={`card player${wasHit(events, 'player') ? ' hit' : ''}`}>
-        <div className="card-row">
-          <div className="card-title">
-            <h2>You</h2>
-            <Badges combatant={state.player} />
+      <section key={`player-${actionCount}`} className={`card player with-sprite${playerHit ? ' hit' : ''}`}>
+        <PixelSprite sprite={HERO_SPRITE} frame={playerHit ? 'hit' : 'idle'} size={48} label="You" className="hero" />
+        <div className="card-body">
+          <div className="card-row">
+            <div className="card-title">
+              <h2>You</h2>
+              <Badges combatant={state.player} />
+            </div>
+            <span className="muted">Turn {state.turn}</span>
           </div>
-          <span className="muted">Turn {state.turn}</span>
+          <HpBar combatant={state.player} />
         </div>
-        <HpBar combatant={state.player} />
       </section>
 
       <section className="pool-section">
