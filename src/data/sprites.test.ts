@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { ENEMIES } from './enemies';
-import { ENEMY_SPRITES, enemySprite, HERO_SPRITE, TRANSPARENT, type SpriteSheet } from './sprites';
+import { ENEMY_SPRITES, enemySprite, HERO_SPRITE, TITLE_SPRITE, TRANSPARENT, type SpriteSheet } from './sprites';
 
 const sheets: [string, SpriteSheet][] = [
   ...Object.entries(ENEMY_SPRITES).map(([id, sheet]): [string, SpriteSheet] => [id, sheet]),
   ['hero', HERO_SPRITE],
+  ['title', TITLE_SPRITE],
 ];
 
 describe('sprites', () => {

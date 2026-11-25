@@ -259,3 +259,61 @@ export const HERO_SPRITE: SpriteSheet<HeroFrame> = {
 export function enemySprite(enemyId: string): SpriteSheet<EnemyFrame> | undefined {
   return Object.hasOwn(ENEMY_SPRITES, enemyId) ? ENEMY_SPRITES[enemyId as EnemyId] : undefined;
 }
+
+// The "Spill" title logo: 7-row letters, one paint color each, with paint
+// dripping off a few of them and a dark outline so it reads on any background.
+
+const GLYPHS: Readonly<Record<string, readonly string[]>> = {
+  S: ['.###.', '#...#', '#....', '.###.', '....#', '#...#', '.###.'],
+  P: ['####.', '#...#', '#...#', '####.', '#....', '#....', '#....'],
+  I: ['###', '.#.', '.#.', '.#.', '.#.', '.#.', '###'],
+  L: ['#...', '#...', '#...', '#...', '#...', '#...', '####'],
+};
+
+/** Letters with their palette chars, plus drips as [column, length] under the letter. */
+const TITLE_LETTERS: readonly { glyph: string; ink: string; drip?: readonly [number, number] }[] = [
+  { glyph: 'S', ink: 'r', drip: [2, 1] },
+  { glyph: 'P', ink: 'p' },
+  { glyph: 'I', ink: 'b', drip: [2, 3] },
+  { glyph: 'L', ink: 'c', drip: [2, 1] },
+  { glyph: 'L', ink: 'g', drip: [3, 2] },
+];
+
+/** Surrounds every inked pixel with a 1px outline of `edge`, growing the frame by 1px each side. */
+function outlined(rows: readonly string[], edge: string): string[] {
+  const width = (rows[0]?.length ?? 0) + 2;
+  const padded = [TRANSPARENT.repeat(width), ...rows.map((r) => `${TRANSPARENT}${r}${TRANSPARENT}`), TRANSPARENT.repeat(width)];
+  const inked = (y: number, x: number) => (padded[y]?.[x] ?? TRANSPARENT) !== TRANSPARENT;
+  return padded.map((row, y) =>
+    [...row]
+      .map((char, x) => {
+        if (char !== TRANSPARENT) return char;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (inked(y + dy, x + dx)) return edge;
+        return char;
+      })
+      .join(''),
+  );
+}
+
+function titleRows(): string[] {
+  const dripRows = Math.max(...TITLE_LETTERS.map((l) => l.drip?.[1] ?? 0));
+  const rows = Array.from({ length: 7 + dripRows }, () => '');
+  TITLE_LETTERS.forEach(({ glyph, ink, drip }, i) => {
+    const shape = GLYPHS[glyph]!;
+    const width = shape[0]!.length;
+    const gap = i === 0 ? '' : TRANSPARENT;
+    rows.forEach((_, y) => {
+      const cells =
+        y < 7
+          ? shape[y]!.replaceAll('#', ink)
+          : [...TRANSPARENT.repeat(width)].map((c, x) => (drip && x === drip[0] && y - 7 < drip[1] ? ink : c)).join('');
+      rows[y] += gap + cells;
+    });
+  });
+  return outlined(rows, 'k');
+}
+
+export const TITLE_SPRITE: SpriteSheet<'logo'> = {
+  palette: { k: '#14121a', r: '#e5484d', p: '#9b5de5', b: '#3e7bfa', c: '#22c3d6', g: '#3fb950' },
+  frames: { logo: titleRows() },
+};

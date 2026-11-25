@@ -1,7 +1,7 @@
 # PLAN.md — Spill Development Roadmap
 
 ## Current Focus
-**Milestone 4 done; Milestone 5 next (Menus & Screen Flow).** A full 5-fight run with rewards, a dice shop, pixel-art sprites, and beat-by-beat combat playback is playable via `npm run dev` (`src/ui/RunScreen.tsx`, driven by `useRun` and `src/engine/run.ts`). Balance tuning is deferred to Milestone 7.
+**Milestone 5 done; Milestone 6 next (Capacitor & Mobile).** A full 5-fight run with rewards, a dice shop, pixel-art sprites, and beat-by-beat combat playback is playable via `npm run dev` (`src/ui/RunScreen.tsx`, driven by `useRun` and `src/engine/run.ts`). Balance tuning is deferred to Milestone 7.
 
 ## Milestones
 
@@ -39,14 +39,15 @@
 - [x] Combat feedback: floating damage/block numbers, status tick visuals (poison/burn), a block glow, and a mix "splash" when two colors combine (`src/ui/fx.ts`, `src/ui/fx.css`).
 - [x] All animations stay UI-only (`src/ui/`), driven by engine events. The only engine addition is the pure `findMixPlan` helper; combat rules are unchanged.
 
-### Milestone 5: Menus & Screen Flow
-- [ ] Main menu: title, New run, Continue (only while a run is in progress this session), Settings.
-- [ ] Settings: enter or show the run seed, restart the run, abandon the run (with confirm).
-- [ ] In-run pause/menu button that reaches Settings and returns to the run.
-- [ ] Screen-flow state in the UI layer, with a back action that works everywhere.
+### Milestone 5: Menus & Screen Flow ✅
+- [x] Main menu: a pixel title scene (`TITLE_SPRITE` logo, the hero facing a slime), New run (asks before abandoning a run in progress), Continue (only while a run is in progress this session), Settings (`src/ui/MainMenu.tsx`).
+- [x] Settings (`src/ui/SettingsScreen.tsx`): the run's seed with a Seeded/Random tag and Copy; Restart run (same seed, fight 1) and Abandon run, each with a confirm; start a seeded run from a typed seed (1–9 digits, `parseSeed` in `src/ui/seed.ts`). The run-end screen also shows the seed, with Replay seed and Main menu.
+- [x] In-run ☰ button opens a pause panel over the run (Resume, Main menu); it works mid-animation.
+- [x] Screen-flow stack in the UI layer (`src/ui/screenFlow.ts`), with one back action (Escape now, the Android back button in M6). Open layers (Spellbook, battle log, dialogs) close first. The run lives in `App` and its screen stays mounted while hidden, so Continue resumes a battle exactly where it was.
 
 ### Milestone 6: Capacitor & Mobile
 - [ ] Add Capacitor and generate the Android project. Generate the iOS project too, but it can only be built on a Mac.
+- [ ] Save the run in progress on the device (seed plus action list, replayed on load) so Continue survives a reload or app kill.
 - [ ] `src/mobile/` adapters: app lifecycle (pause/resume, Android back button → menu/back) and optional haptics on hits/taps, behind a small interface with web no-op fallbacks.
 - [ ] Safe-area and status-bar handling; portrait lock.
 - [ ] Web build stays playable (`npm run dev` / `npm run build`); test on an Android emulator or device.

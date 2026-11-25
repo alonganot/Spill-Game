@@ -330,3 +330,21 @@ button.face.selected {
 .run-end .die-row {
   justify-content: space-between;
 }
+
+/* Above the playback skip layer, so the menu opens even mid-animation. */
+.topbar {
+  position: relative;
+  z-index: 11;
+  align-items: center;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: -10px;
+}
+
+.menu-btn {
+  color: var(--text);
+}

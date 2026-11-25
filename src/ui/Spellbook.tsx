@@ -108,7 +108,11 @@ export function Spellbook({
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     sheetRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') {
+        // Handled here, so the global back action doesn't also leave the battle.
+        e.preventDefault();
+        onClose();
+      }
       if (e.key !== 'Tab' || !sheetRef.current) return;
       const focusable = [...sheetRef.current.querySelectorAll<HTMLElement>('button:not(:disabled)')];
       const first = focusable[0];
