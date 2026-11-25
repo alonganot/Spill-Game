@@ -18,12 +18,25 @@
   font-variant-numeric: tabular-nums;
 }
 
-.error {
+/* Overlays the content so it never shifts the layout. */
+.error-toast {
+  position: fixed;
+  top: max(52px, calc(env(safe-area-inset-top) + 42px));
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 32px);
+  max-width: 448px;
+  z-index: 20;
+  pointer-events: none;
   font-size: 0.85rem;
-  color: #ff8a8d;
-  background: rgb(229 72 77 / 0.12);
+  font-weight: 600;
+  color: #ffd2d3;
+  background: #4a1d21;
+  border: 1px solid #7a2b31;
   border-radius: 10px;
-  padding: 8px 12px;
+  padding: 10px 12px;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.45);
+  animation: fadein 0.2s ease both;
 }
 
 .small {
@@ -81,8 +94,14 @@
   cursor: pointer;
 }
 
-.choice:active {
+.choice:not(:disabled):active {
   transform: scale(0.98);
+}
+
+.choice:disabled {
+  border-color: var(--border);
+  opacity: 0.45;
+  cursor: default;
 }
 
 .choice-icon {
@@ -110,20 +129,27 @@
   width: 32px;
   height: 32px;
   border-radius: 7px;
+}
+
+/* Tappable face: a 44×44 hit area with the color painted only in the inner square. */
+button.face {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  padding: 5px;
   border: 2px solid transparent;
-  padding: 0;
+  border-radius: 10px;
+  background-clip: content-box;
   cursor: pointer;
 }
 
-button.face {
-  /* Visible face is 32px; the tap area is padded out by the row gap. */
-  min-width: 32px;
+button.face.selected {
+  border-color: var(--text);
+  box-shadow: 0 3px 10px rgb(0 0 0 / 0.5);
 }
 
-.face.selected {
-  border-color: var(--text);
-  transform: translateY(-3px);
-  box-shadow: 0 3px 10px rgb(0 0 0 / 0.5);
+.editor .faces {
+  gap: 0;
 }
 
 .face-static {
@@ -157,6 +183,26 @@ button.face {
 .die-name {
   font-weight: 600;
   font-size: 0.9rem;
+}
+
+/* Editable rows: compact name so six 44px faces fit at 375px wide. */
+.editor .die-row {
+  padding: 4px 6px;
+}
+
+.editor .die-name {
+  width: 56px;
+  flex: none;
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* With many dice, scroll the list so the color picks and confirm stay on screen. */
+.editor .dice-list {
+  max-height: calc(3 * 54px + 2 * 6px);
+  overflow-y: auto;
 }
 
 .editor {

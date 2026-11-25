@@ -42,10 +42,16 @@ export function useRun(): {
   view: RunView;
   dispatch: (action: RunAction) => void;
   restart: () => void;
+  clearError: () => void;
 } {
   const [view, setView] = useState(startView);
+  // Seeded from the first committed state; after that only the callbacks below update it.
   const viewRef = useRef(view);
-  viewRef.current = view;
+
+  const commit = useCallback((next: RunView) => {
+    viewRef.current = next;
+    setView(next);
+  }, []);
 
   const dispatch = useCallback((action: RunAction) => {
     const current = viewRef.current;
@@ -53,15 +59,14 @@ export function useRun(): {
     const next: RunView = result.ok
       ? { ...current, run: result.state, events: result.events, error: null, actionCount: current.actionCount + 1 }
       : { ...current, error: result.error };
-    viewRef.current = next;
-    setView(next);
-  }, []);
+    commit(next);
+  }, [commit]);
 
-  const restart = useCallback(() => {
-    const next = startView();
-    viewRef.current = next;
-    setView(next);
-  }, []);
+  const restart = useCallback(() => commit(startView()), [commit]);
 
-  return { config: CONFIG, view, dispatch, restart };
+  const clearError = useCallback(() => {
+    if (viewRef.current.error !== null) commit({ ...viewRef.current, error: null });
+  }, [commit]);
+
+  return { config: CONFIG, view, dispatch, restart, clearError };
 }

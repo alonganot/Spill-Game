@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { battleConfigFor, currentStage, type RunConfig, type RunError, type RunState } from '../engine';
 import { BattleScreen } from './BattleScreen';
 import { RewardScreen } from './RewardScreen';
@@ -16,6 +17,16 @@ const ERROR_TEXT: Partial<Record<RunError, string>> = {
   invalid_target: "That can't be done.",
 };
 
+const ERROR_FALLBACK = "That action isn't available right now.";
+const ERROR_TOAST_MS = 2500;
+
+/** Text for an error toast, or null for errors that need no message. */
+function errorMessage(error: RunError | null): string | null {
+  // `wrong_phase` only comes from stale double taps (e.g. tapping Leave shop twice); ignore it.
+  if (error === null || error === 'wrong_phase') return null;
+  return ERROR_TEXT[error] ?? ERROR_FALLBACK;
+}
+
 function stageLabel(run: RunState, config: RunConfig): string {
   const total = config.stages.length;
   if (run.phase === 'shop') return 'Shop';
@@ -27,9 +38,17 @@ function stageLabel(run: RunState, config: RunConfig): string {
 }
 
 export function RunScreen() {
-  const { config, view, dispatch, restart } = useRun();
+  const { config, view, dispatch, restart, clearError } = useRun();
   const { run } = view;
   const outsideBattle = run.phase !== 'battle';
+  const error = errorMessage(view.error);
+
+  // Auto-hide the error toast; any newer action restarts the timer.
+  useEffect(() => {
+    if (view.error === null) return;
+    const timer = setTimeout(clearError, ERROR_TOAST_MS);
+    return () => clearTimeout(timer);
+  }, [view, clearError]);
 
   return (
     <div className="screen">
@@ -46,9 +65,9 @@ export function RunScreen() {
         </span>
       </header>
 
-      {view.error && ERROR_TEXT[view.error] && (
-        <p className="error" role="alert">
-          {ERROR_TEXT[view.error]}
+      {error && (
+        <p className="error-toast" role="alert">
+          {error}
         </p>
       )}
 

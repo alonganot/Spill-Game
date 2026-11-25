@@ -339,9 +339,11 @@ describe('determinism and simulation', () => {
   it('a simple bot plays full runs with the real data without errors', () => {
     const cfg = defaultRunConfig();
     const outcomes: string[] = [];
+    const furthestStage: number[] = [];
     for (let seed = 1; seed <= 20; seed++) {
       const rng = createSeededRng(seed);
       let { state: run } = createRun(cfg, rng);
+      let furthest = 0;
       for (let guard = 0; guard < 2000 && run.phase !== 'victory' && run.phase !== 'defeat'; guard++) {
         const action = botAction(run, cfg);
         const result = applyRunAction(run, action, cfg, rng);
@@ -350,11 +352,16 @@ describe('determinism and simulation', () => {
         expect(run.dice.length).toBeLessThanOrEqual(run.diceCap);
         expect(run.diceCap).toBeLessThanOrEqual(cfg.maxDiceCap);
         expect(run.gold).toBeGreaterThanOrEqual(0);
+        furthest = Math.max(furthest, run.stageIndex);
       }
       expect(['victory', 'defeat']).toContain(run.phase);
       outcomes.push(run.phase);
+      furthestStage.push(furthest);
     }
-    expect(outcomes).toHaveLength(20);
+    // Catches broken stage order or degenerate data, not exact balance.
+    expect(furthestStage.every((s) => s >= 1), 'every run should get past the first fight').toBe(true);
+    expect(furthestStage).toContain(cfg.stages.length - 1);
+    expect(outcomes).toContain('victory');
   });
 });
 

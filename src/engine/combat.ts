@@ -28,6 +28,7 @@ export function isDefeated(c: Combatant): boolean {
   return c.hp <= 0;
 }
 
+/** Starting HP is clamped to [1, maxHp] so a combatant never starts a battle already defeated. */
 export function createCombatant(maxHp: number, hp: number = maxHp): Combatant {
-  return { hp: Math.min(hp, maxHp), maxHp, block: 0, statuses: { poison: 0, burn: false } };
+  return { hp: Math.max(1, Math.min(hp, maxHp)), maxHp, block: 0, statuses: { poison: 0, burn: false } };
 }

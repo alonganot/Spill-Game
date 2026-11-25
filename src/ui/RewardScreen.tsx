@@ -47,11 +47,13 @@ export function RewardScreen({ run, onChoose }: RewardScreenProps) {
       <div className="choices">
         {run.rewardOffers.map((option, index) => {
           const { icon, title, detail } = describe(option, run);
+          const wasted = option.type === 'heal' && run.hp >= run.maxHp;
           return (
             <button
               key={index}
               type="button"
               className="choice"
+              disabled={wasted}
               onClick={() => (option.type === 'repaint' ? setRepainting(index) : onChoose(index))}
             >
               <span className="choice-icon" aria-hidden="true">

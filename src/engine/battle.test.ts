@@ -32,6 +32,11 @@ describe('createBattle', () => {
   it('never starts the player above max HP', () => {
     expect(start(testConfig({ playerStartHp: 99 })).player.hp).toBe(20);
   });
+
+  it('never starts the player at 0 HP or below', () => {
+    expect(start(testConfig({ playerStartHp: 0 })).player.hp).toBe(1);
+    expect(start(testConfig({ playerStartHp: -5 })).player.hp).toBe(1);
+  });
 });
 
 describe('player actions', () => {
