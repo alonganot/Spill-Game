@@ -4,27 +4,21 @@ import type { SpriteSheet } from '../data/sprites';
 import { DIE_FLICKER_MS, DIE_FLICKER_SLOWDOWN, ROLL_RETURN_MS, dieLandMs, rollReturnMs } from './anim';
 import { ColorDot } from './components';
 import { COLOR_LABEL } from './format';
-import { COLOR_HEX } from './fx';
+import { DROP_ROWS, dropPalette } from './PaintDrop';
 import { PixelSprite } from './PixelSprite';
 
-// A 10×10 die with a paint drop of the face color in the middle.
-// Small enough that six dice and the End turn button share one row at 375px.
+// A 16×16 die: the same paint drop as the pool's colors (DROP_ROWS, 12×13),
+// on a light face with a dark outline and a shaded bottom edge.
 const DIE_ROWS = [
-  '.kkkkkkkk.',
-  'kffffffffk',
-  'kfffccfffk',
-  'kffhcccffk',
-  'kffccccffk',
-  'kffccccffk',
-  'kfffccfffk',
-  'kffffffffk',
-  'ksffffffsk',
-  '.kkkkkkkk.',
+  '.kkkkkkkkkkkkkk.',
+  ...DROP_ROWS.map((row) => `kf${row.replaceAll('.', 'f')}fk`),
+  'ksffffffffffffsk',
+  '.kkkkkkkkkkkkkk.',
 ];
 
 function dieSheet(color: Color): SpriteSheet<'face'> {
   return {
-    palette: { k: '#14121a', f: '#ece7f4', s: '#b3abc4', h: '#ffffff', c: COLOR_HEX[color] },
+    palette: { ...dropPalette(color), f: '#ece7f4', s: '#b3abc4' },
     frames: { face: DIE_ROWS },
   };
 }
@@ -39,7 +33,8 @@ const DIE_SHEETS: Record<Color, SpriteSheet<'face'>> = {
   orange: dieSheet('orange'),
 };
 
-const DIE_SIZE = 30;
+/** 16px art at 2×. Six dice and End turn still share one row at 375px. */
+const DIE_SIZE = 32;
 
 /** A single static pixel die showing one face. */
 export function PixelDie({ color, size = DIE_SIZE }: { color: Color; size?: number }) {
@@ -95,10 +90,12 @@ interface TrayDieProps {
   discarded: boolean;
   /** Hidden while this die is out on the roll stage. */
   away: boolean;
+  /** Die size in CSS px. */
+  size?: number;
 }
 
 /** A die resting in the battle tray, showing its last roll. Hover or tap for its faces. */
-export function TrayDie({ die, result, discarded, away }: TrayDieProps) {
+export function TrayDie({ die, result, discarded, away, size = DIE_SIZE }: TrayDieProps) {
   const label = result ? `${die.name}: ${COLOR_LABEL[result]}${discarded ? ' (pool full)' : ''}` : die.name;
   const tipId = useId();
   return (
@@ -108,7 +105,7 @@ export function TrayDie({ die, result, discarded, away }: TrayDieProps) {
         className={`tray-die${discarded ? ' tray-die-overflow' : ''}${away ? ' tray-die-away' : ''}`}
         aria-hidden="true"
       >
-        {result ? <PixelDie color={result} /> : <span className="tray-die-blank" />}
+        {result ? <PixelDie color={result} size={size} /> : <span className="tray-die-blank" />}
       </span>
       <span className="tray-tip" id={tipId} role="tooltip">
         <span className="tray-tip-name">{die.name} die</span>
@@ -151,6 +148,8 @@ interface RollStageProps {
   kept: number;
   /** The dice tray, whose dice the stage dice fly back to. */
   trayRef: RefObject<HTMLElement | null>;
+  /** Bigger dice for desktop screens. */
+  big?: boolean;
 }
 
 /**
@@ -158,11 +157,11 @@ interface RollStageProps {
  * one by one, hold for a moment, then fly back to their places in the tray.
  * Mount it fresh (with a new key) for every roll.
  */
-export function RollStage({ dice, colors, kept, trayRef }: RollStageProps) {
+export function RollStage({ dice, colors, kept, trayRef, big = false }: RollStageProps) {
   const [returning, setReturning] = useState(false);
   const dieRefs = useRef<(HTMLSpanElement | null)[]>([]);
-  // Big dice, but six still fit across a 375px screen.
-  const size = colors.length > 4 ? 50 : 60;
+  // Big dice, but six still fit across a 375px screen; desktop goes bigger still.
+  const size = big ? 96 : colors.length > 4 ? 48 : 64;
 
   useEffect(() => {
     const timer = setTimeout(() => setReturning(true), rollReturnMs(colors.length));

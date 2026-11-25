@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { defaultRunConfig } from '../data/run';
+import { clearRun, loadRun, replayRun, saveRun } from './runSave';
 import { randomSeed } from './seed';
 import {
   applyRunAction,
@@ -31,6 +32,8 @@ export interface RunView {
   error: RunError | null;
   /** Increments on every successful action; used to replay feedback animations. */
   actionCount: number;
+  /** Every successful action this run, in order: with the seed, enough to rebuild it. */
+  actions: RunAction[];
 }
 
 let nextRunId = 1;
@@ -39,7 +42,52 @@ function startView(chosenSeed?: number): RunView {
   const seed = chosenSeed ?? randomSeed();
   const rng = createSeededRng(seed);
   const { state, events } = createRun(CONFIG, rng);
-  return { runId: nextRunId++, seed, seeded: chosenSeed !== undefined, rng, run: state, events, prevBattle: null, error: null, actionCount: 0 };
+  return {
+    runId: nextRunId++,
+    seed,
+    seeded: chosenSeed !== undefined,
+    rng,
+    run: state,
+    events,
+    prevBattle: null,
+    error: null,
+    actionCount: 0,
+    actions: [],
+  };
+}
+
+/** The run saved from an earlier visit, rebuilt; or null (clearing a save that no longer replays). */
+function restoreView(): RunView | null {
+  const save = loadRun();
+  if (save === null) return null;
+  const replayed = replayRun(save, CONFIG);
+  if (replayed === null || isOver(replayed.run)) {
+    clearRun();
+    return null;
+  }
+  // A restored run shows its current state; nothing plays back.
+  return {
+    runId: nextRunId++,
+    seed: save.seed,
+    seeded: save.seeded,
+    rng: replayed.rng,
+    run: replayed.run,
+    events: [],
+    prevBattle: null,
+    error: null,
+    actionCount: save.actions.length,
+    actions: save.actions,
+  };
+}
+
+function isOver(run: RunState): boolean {
+  return run.phase === 'victory' || run.phase === 'defeat';
+}
+
+/** Keeps the saved run in step with the one on screen. A finished run isn't kept. */
+function persist(view: RunView | null): void {
+  if (view === null || isOver(view.run)) clearRun();
+  else saveRun({ version: 1, seed: view.seed, seeded: view.seeded, actions: view.actions });
 }
 
 export interface RunControls {
@@ -59,11 +107,14 @@ export interface RunControls {
  * StrictMode calls updaters twice and would consume extra random rolls.
  */
 export function useRun(): RunControls {
-  const [view, setView] = useState<RunView | null>(null);
+  // Picks up a run saved before a reload, so the menu can offer Continue.
+  const [view, setView] = useState<RunView | null>(restoreView);
   // Only the callbacks below update it, always together with the state.
   const viewRef = useRef(view);
 
   const commit = useCallback((next: RunView | null) => {
+    // Errors don't change the run, so only real changes touch storage.
+    if (next?.actions !== viewRef.current?.actions || next?.seed !== viewRef.current?.seed) persist(next);
     viewRef.current = next;
     setView(next);
   }, []);
@@ -81,6 +132,7 @@ export function useRun(): RunControls {
           prevBattle: action.type === 'battle' ? current.run.battle : null,
           error: null,
           actionCount: current.actionCount + 1,
+          actions: [...current.actions, action],
         }
       : { ...current, error: result.error };
     commit(next);

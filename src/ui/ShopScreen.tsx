@@ -17,12 +17,15 @@ export function ShopScreen({ run, config, onAction }: ShopScreenProps) {
 
   return (
     <>
-      <section className="panel">
-        <div className="section-head">
+      <section className="panel shop">
+        <div className="section-head shop-head">
           <h2>Shop</h2>
           <span className="muted">Next: fight {run.stageIndex + 2}</span>
         </div>
 
+        {/* On desktop: what's for sale on the left, your dice on the right. On phones the columns vanish. */}
+        <div className="shop-columns">
+        <div className="shop-col">
         <h3 className="subhead">Dice for sale</h3>
         <ul className="shop-list">
           {run.shopStock.map((offer, i) => {
@@ -79,6 +82,9 @@ export function ShopScreen({ run, config, onAction }: ShopScreenProps) {
           </li>
         </ul>
 
+        </div>
+
+        <div className="shop-col">
         <div className="section-head subhead-row">
           <h3 className="subhead">
             Your dice ({run.dice.length}/{run.diceCap})
@@ -91,6 +97,8 @@ export function ShopScreen({ run, config, onAction }: ShopScreenProps) {
           blockedReason={run.gold < repaint ? `Repainting costs ${repaint}g.` : undefined}
           onRepaint={(target) => onAction({ type: 'repaint', target })}
         />
+        </div>
+        </div>
       </section>
 
       <footer className="footer">

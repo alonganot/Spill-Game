@@ -217,3 +217,19 @@
   flex-direction: column;
   gap: 10px;
 }
+
+/* Desktop: a roomier Settings panel, a little lower on the screen. */
+@media (min-width: 900px) {
+  .settings-overlay {
+    padding-top: 8vh;
+  }
+
+  .settings {
+    width: min(100%, 520px);
+    padding: 16px 22px 24px;
+  }
+
+  .menu-buttons {
+    width: min(100%, 360px);
+  }
+}

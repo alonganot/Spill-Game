@@ -50,17 +50,19 @@ interface StageProps {
   /** Changes every beat, so an effect replays even if the previous beat had the same one. */
   beatKey: string;
   defeated: boolean;
+  /** Sprite size in CSS px; the sprite scales by whole pixels to fit. */
+  size: number;
 }
 
 export const EnemyStage = forwardRef<HTMLDivElement, StageProps & { sprite: SpriteSheet<EnemyFrame>; name: string }>(
-  function EnemyStage({ sprite, name, fx, floats, beatKey, defeated }, ref) {
+  function EnemyStage({ sprite, name, fx, floats, beatKey, defeated, size }, ref) {
     const blinking = useBlink();
     return (
-      <div className="sprite-stage" ref={ref}>
+      <div className="sprite-stage" ref={ref} style={{ width: size, height: size }}>
         {/* The bob and defeat fade sit outside the per-beat key, so a new beat never restarts them. */}
         <div className={defeated ? 'defeated' : 'bob'}>
           <div key={fx ? `fx-${beatKey}` : 'still'} className={`fighter${fx ? ` fx-${fx}` : ''}`}>
-            <PixelSprite sprite={sprite} frame={blinking && !defeated ? 'blink' : 'idle'} size={88} label={name} />
+            <PixelSprite sprite={sprite} frame={blinking && !defeated ? 'blink' : 'idle'} size={size} label={name} />
           </div>
         </div>
         <Floats key={`floats-${beatKey}`} floats={floats} />
@@ -76,14 +78,14 @@ function heroFrame(fx: StageFx | null): HeroFrame {
 }
 
 export const HeroStage = forwardRef<HTMLDivElement, StageProps>(function HeroStage(
-  { fx, floats, beatKey, defeated },
+  { fx, floats, beatKey, defeated, size },
   ref,
 ) {
   return (
     <div className="hero-stage" ref={ref}>
       <div className={defeated ? 'defeated' : 'bob bob-slow'}>
         <div key={fx ? `fx-${beatKey}` : 'still'} className={`fighter${fx ? ` fx-${fx}` : ''}`}>
-          <PixelSprite sprite={HERO_SPRITE} frame={heroFrame(fx)} size={48} label="You" />
+          <PixelSprite sprite={HERO_SPRITE} frame={heroFrame(fx)} size={size} label="You" />
         </div>
       </div>
       <Floats key={`floats-${beatKey}`} floats={floats} />

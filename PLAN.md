@@ -1,7 +1,7 @@
 # PLAN.md — Spill Development Roadmap
 
 ## Current Focus
-**Milestone 5 done; Milestone 6 next (Capacitor & Mobile).** A full 5-fight run with rewards, a dice shop, pixel-art sprites, and beat-by-beat combat playback is playable via `npm run dev` (`src/ui/RunScreen.tsx`, driven by `useRun` and `src/engine/run.ts`). Balance tuning is deferred to Milestone 7.
+**Milestone 6 done; Milestone 7 next (V1 Wrap-up: balance, Windows app).** V1 is a PC game: it should fill a desktop screen and stay playable on a phone-sized window; mobile app builds are out of V1. A full 5-fight run with a main menu, seeded runs, rewards, a dice shop, pixel-art sprites, and beat-by-beat combat playback is playable via `npm run dev` (`src/ui/RunScreen.tsx`, driven by `useRun` and `src/engine/run.ts`). Balance tuning is deferred to Milestone 7.
 
 ## Milestones
 
@@ -43,18 +43,18 @@
 - [x] Main menu: a pixel title scene (`TITLE_SPRITE` logo, the hero facing a slime), New run (asks before abandoning a run in progress), Continue (only while a run is in progress this session), Settings (`src/ui/MainMenu.tsx`).
 - [x] Settings (`src/ui/SettingsScreen.tsx`): the run's seed with a Seeded/Random tag and Copy; Restart run (same seed, fight 1) and Abandon run, each with a confirm; start a seeded run from a typed seed (1–9 digits, `parseSeed` in `src/ui/seed.ts`). The run-end screen also shows the seed, with Replay seed and Main menu.
 - [x] In-run ☰ button opens a pause panel over the run (Resume, Main menu); it works mid-animation.
-- [x] Screen-flow stack in the UI layer (`src/ui/screenFlow.ts`), with one back action (Escape now, the Android back button in M6). Open layers (Spellbook, battle log, dialogs) close first. The run lives in `App` and its screen stays mounted while hidden, so Continue resumes a battle exactly where it was.
+- [x] Screen-flow stack in the UI layer (`src/ui/screenFlow.ts`), with one back action (Escape, or the ← Back button). Open layers (Spellbook, battle log, dialogs) close first. The run lives in `App` and its screen stays mounted while hidden, so Continue resumes a battle exactly where it was.
 
-### Milestone 6: Capacitor & Mobile
-- [ ] Add Capacitor and generate the Android project. Generate the iOS project too, but it can only be built on a Mac.
-- [ ] Save the run in progress on the device (seed plus action list, replayed on load) so Continue survives a reload or app kill.
-- [ ] `src/mobile/` adapters: app lifecycle (pause/resume, Android back button → menu/back) and optional haptics on hits/taps, behind a small interface with web no-op fallbacks.
-- [ ] Safe-area and status-bar handling; portrait lock.
-- [ ] Web build stays playable (`npm run dev` / `npm run build`); test on an Android emulator or device.
+### Milestone 6: Desktop & Responsive ✅
+- [x] Desktop battle layout (900px and wider): a wide arena with the hero and enemy facing each other at one pixel scale (10×, or 13× on 1080p and up), a side panel with the color pool and spells, and the dice tray and End turn along the bottom, filling the window with no scrolling. The enemy lunges sideways at the hero; the log opens upward and the Spellbook is a wide panel. Phones keep the single column (`useDesktop` in `src/ui/useMediaQuery.ts`).
+- [x] Drag-and-drop workbench (phones and PC): colors are pixel paint drops; drag two into a mixing bowl, then drag the new color out to the pool or straight onto a spell (or tap it to keep it), and drag colors onto a spell's cost slots, then Cast; tap or Enter to lift a color and place it, or tap an empty slot to fill it from the pool. Craftable spells (payable now, or after mixing with ⚗) are listed; the rest stay in the Spellbook. On PC the side panel is the workbench: your dice (rolled face big, all six faces small), the bowl, craftable spells, a 5×2 pool, and End turn (`src/ui/staging.ts`, `useDrag.ts`, `workbench.tsx`, `DiceRack.tsx`, `PaintDrop.tsx`).
+- [x] Responsive main menu, reward, shop, dice editor, Settings, and run-end screens on PC: full-width top bar, content centered (rewards as three cards, the shop in two columns, short screens centered vertically), a doubled title scene, and paint-drop dice faces everywhere.
+- [x] Tooltips (hover, keyboard focus, or tap on touch screens) for spell names, poison/burn/block badges, the enemy intent, and PC dice, using the battle's real numbers (`Tip` in `src/ui/Tooltip.tsx`, texts in `src/ui/format.ts`).
+- [x] Save the run in progress in the browser (`src/ui/runSave.ts`): the seed plus every successful action, written after each action to localStorage key `spill.run.v1` and replayed on load, so Continue survives a reload. Abandoning or finishing a run clears it; a corrupt or outdated save is ignored.
 
 ### Milestone 7: V1 Wrap-up
 - [ ] Balance tuning pass in `src/data/`, checked with the run simulation test. A simple greedy bot currently wins about 193 of 200 seeded runs (all its losses are at the boss), so the run is too easy for skilled play; aim for a meaningfully harder elite and boss.
-- [ ] Store-ready build: app icon, splash screen, app id and versioning, signed Android release build (AAB), and notes for building iOS on a Mac.
+- [ ] Windows desktop app with Electron: the web build in a window with an app icon, title, and minimum size, plus a versioned installer (electron-builder, NSIS).
 - [ ] Final bug sweep and docs update.
 
 ## Explicitly Out of Scope for V1
@@ -62,3 +62,4 @@
 - Ads, IAP, or complex economy systems (the simple gold dice shop in Milestone 3 is in scope).
 - Multiplayer or heavy custom shaders.
 - Sound effects and music.
+- Mobile app builds (Capacitor, Android/iOS). The web build stays mobile-friendly.

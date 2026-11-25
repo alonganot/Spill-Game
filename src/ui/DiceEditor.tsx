@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { BASE_COLORS } from '../data/colors';
 import type { BaseColor, DieDefinition, RepaintTarget } from '../engine';
 import { COLOR_LABEL } from './format';
+import { PaintDrop } from './PaintDrop';
 
-/** A die drawn as a row of colored face squares. Faces are tappable when `onSelectFace` is given. */
+/** A die drawn as a row of paint drops, one per face. Faces are tappable when `onSelectFace` is given. */
 export function DieFaces({
   die,
   selectedFace,
@@ -20,13 +21,17 @@ export function DieFaces({
           <button
             key={i}
             type="button"
-            className={`face dot-${color}${selectedFace === i ? ' selected' : ''}`}
+            className={`face face-drop${selectedFace === i ? ' selected' : ''}`}
             aria-label={`${die.name} face ${i + 1}: ${COLOR_LABEL[color]}`}
             aria-pressed={selectedFace === i}
             onClick={() => onSelectFace(i)}
-          />
+          >
+            <PaintDrop color={color} size={26} />
+          </button>
         ) : (
-          <span key={i} className={`face face-static dot-${color}`} role="img" aria-label={COLOR_LABEL[color]} />
+          <span key={i} className="face face-static face-drop" role="img" aria-label={COLOR_LABEL[color]}>
+            <PaintDrop color={color} size={26} />
+          </span>
         ),
       )}
     </span>
@@ -82,12 +87,13 @@ export function DiceEditor({ dice, confirmLabel, blockedReason, onRepaint }: Dic
             <button
               key={c}
               type="button"
-              className={`chip chip-${c}${color === c ? ' selected' : ''}`}
+              className={`chip chip-drop${color === c ? ' selected' : ''}`}
               aria-pressed={color === c}
+              aria-label={COLOR_LABEL[c]}
               disabled={!face}
               onClick={() => setColor(c)}
             >
-              {COLOR_LABEL[c]}
+              <PaintDrop color={c} size={26} />
             </button>
           ))}
         </div>

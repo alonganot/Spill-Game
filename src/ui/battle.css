@@ -139,13 +139,13 @@
   position: relative;
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
 }
 
 .tray-die-blank {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border-radius: 6px;
   border: 2px dashed var(--border);
 }
@@ -785,4 +785,658 @@
   .log-panel {
     animation: none;
   }
+}
+
+/* ---------- Battle layout ---------- */
+
+/* Phones: the wrappers vanish and the battle is one column, as designed. */
+.battle-layout,
+.arena,
+.side-panel {
+  display: contents;
+}
+
+/*
+ * Desktop: the arena (hero facing the enemy) beside a side panel (pool and
+ * spells), the dice tray and End turn along the bottom, all in one screen.
+ */
+@media (min-width: 900px) {
+  .run-screen.in-battle {
+    max-width: 2400px;
+    height: 100dvh;
+    padding: 14px 24px 0;
+    gap: 14px;
+  }
+
+  .battle-layout {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(340px, 30vw, 460px);
+    gap: 20px;
+  }
+
+  .arena {
+    position: relative;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr auto;
+    grid-template-areas:
+      'hero enemy'
+      'log log';
+    align-items: end;
+    gap: 16px 24px;
+    padding: 24px 32px 18px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    /* A floor for the fighters to stand on, fading into the night. */
+    background:
+      linear-gradient(to top, color-mix(in srgb, var(--surface-2) 85%, transparent) 0 26%, transparent 26%),
+      radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--purple) 10%, transparent), transparent 70%),
+      var(--surface);
+  }
+
+  .arena .player { grid-area: hero; }
+  .arena .enemy { grid-area: enemy; }
+
+  .arena .battle-log {
+    grid-area: log;
+    justify-self: center;
+  }
+
+  /* The log opens upward, over the arena, instead of down over the footer. */
+  .arena .log-panel {
+    top: auto;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    translate: -50% 0;
+    width: min(420px, 40vw);
+    max-height: 300px;
+  }
+
+  /* Each fighter: sprite on top, then name, intent, and HP, centered. */
+  .arena .card.with-sprite {
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 14px;
+    padding: 0;
+    border: none;
+    background: none;
+  }
+
+  .arena .card-body {
+    flex: none;
+    width: min(100%, 300px);
+    align-items: center;
+  }
+
+  .arena .card-body .hp { align-self: stretch; }
+  .arena .card-row { width: 100%; }
+  .arena .card h2 { font-size: 1.2rem; }
+  .arena .hp { height: 26px; }
+  .arena .hp-text { font-size: 0.9rem; }
+
+  .arena .sprite-stage {
+    background: radial-gradient(ellipse at 50% 92%, rgb(0 0 0 / 0.35) 0 30%, transparent 31%);
+  }
+
+  /* The enemy lunges left, at the hero. */
+  .arena .enemy {
+    --lunge-x: -32px;
+    --lunge-y: 0px;
+  }
+
+  .arena .floats { font-size: 1.4rem; }
+
+  .side-panel {
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .side-panel > section {
+    padding: 14px 16px;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .side-panel .chip {
+    min-width: 64px;
+    min-height: 50px;
+    font-size: 0.95rem;
+  }
+
+  .side-panel .attack { min-height: 76px; }
+  .side-panel .attack-name { font-size: 0.95rem; }
+  .side-panel .attack-fx { font-size: 0.78rem; }
+
+  /* Footer: the tray on the left, a normal-sized End turn on the right. */
+  .in-battle .footer-battle {
+    position: static;
+    background: none;
+    padding: 12px 0 18px;
+  }
+
+  .in-battle .footer-battle .btn-primary {
+    flex: none;
+    width: 260px;
+    margin-left: auto;
+  }
+
+  .in-battle .tray-die-btn {
+    width: 46px;
+    height: 54px;
+  }
+
+  .in-battle .tray-die {
+    width: 40px;
+    height: 40px;
+  }
+
+  .in-battle .tray-die-blank {
+    width: 36px;
+    height: 36px;
+  }
+
+  .roll-stage-dice { gap: 14px; }
+
+  /* The Spellbook becomes a wide panel; four spells per row. */
+  .spellbook {
+    width: min(760px, calc(100% - 48px));
+    border-bottom: 1px solid var(--border);
+    bottom: 24px;
+    border-radius: 18px;
+  }
+
+  .spellbook-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* ---------- Workbench: drag colors into the bowl or onto spells ---------- */
+
+.attack {
+  cursor: default;
+}
+
+.attack.attack-ready {
+  border-color: var(--accent);
+}
+
+.attack.attack-locked {
+  opacity: 0.45;
+}
+
+/* Every slot filled: ready to Cast. */
+.attack.attack-charged {
+  box-shadow: 0 0 0 2px var(--accent), 0 0 18px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.attack-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.attack-foot {
+  width: 100%;
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+button.attack-mix-tag {
+  flex: none;
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--purple);
+  background: color-mix(in srgb, var(--purple) 18%, transparent);
+  cursor: pointer;
+}
+
+.cost-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* An empty place for a color, outlined in the color it wants. */
+.slot {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 8px;
+  border: 2px dashed var(--border);
+  background: transparent;
+  cursor: pointer;
+}
+
+.slot:disabled {
+  cursor: default;
+}
+
+.slot-red { border-color: var(--red); }
+.slot-blue { border-color: var(--blue); }
+.slot-green { border-color: var(--green); }
+.slot-purple { border-color: var(--purple); }
+.slot-cyan { border-color: var(--cyan); }
+.slot-orange { border-color: var(--orange); }
+
+/* A staged chip sitting in a slot: small, no label (the color says it). */
+.chip.slot-chip {
+  flex: none;
+  min-width: 0;
+  min-height: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 8px;
+  font-size: 0;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+}
+
+.btn.attack-cast {
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  background: var(--accent);
+  color: #1a1600;
+}
+
+.btn.attack-cast:disabled {
+  background: var(--surface-2);
+  color: var(--muted);
+  opacity: 1;
+}
+
+/* The mixing bowl: [slot] + [slot] = (result) [Mix] */
+.bowl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 14px;
+  border: 2px dashed var(--border);
+  background: radial-gradient(ellipse at 50% 120%, color-mix(in srgb, var(--purple) 14%, transparent), transparent 70%);
+}
+
+.bowl-slot-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bowl-op {
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.bowl .slot,
+.bowl .chip.slot-chip,
+.bowl-result {
+  width: 64px;
+  height: 44px;
+  border-radius: 12px;
+}
+
+.bowl .chip.slot-chip {
+  font-size: 0.8rem;
+}
+
+.bowl-result {
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 2px dashed var(--border);
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.bowl-result.chip {
+  min-width: 0;
+  padding: 0;
+  border: 2px solid rgb(255 255 255 / 0.5);
+  color: var(--text);
+  animation: chip-pop 0.25s ease-out both;
+}
+
+.btn.bowl-mix {
+  width: auto;
+  margin-left: auto;
+  min-height: 44px;
+  padding: 0 16px;
+}
+
+.bowl-note {
+  margin-top: 6px;
+  font-size: 0.72rem;
+}
+
+/* Drop targets: green when the dragged color fits, red when it doesn't. */
+.drop-ok {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+.drop-bad {
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
+}
+
+.drop-reject-0 { animation: reject-a 0.32s ease; }
+.drop-reject-1 { animation: reject-b 0.32s ease; }
+
+@keyframes reject-a {
+  0%, 100% { translate: 0 0; }
+  25% { translate: -5px 0; }
+  50% { translate: 5px 0; }
+  75% { translate: -3px 0; }
+}
+
+@keyframes reject-b {
+  0%, 100% { translate: 0 0; }
+  25% { translate: -5px 0; }
+  50% { translate: 5px 0; }
+  75% { translate: -3px 0; }
+}
+
+/* Pool chips can be dragged; touch drags shouldn't scroll the page. */
+.chip.chip-draggable {
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+}
+
+.chip.chip-dragging {
+  opacity: 0.35;
+}
+
+/* Where a staged chip was, and the pool's free room. */
+.chip.chip-ghost,
+.chip.chip-free {
+  background: transparent;
+  cursor: default;
+  box-shadow: none;
+}
+
+.chip.chip-ghost {
+  border: 2px dashed var(--border);
+}
+
+.chip.chip-free {
+  border: 1px dashed color-mix(in srgb, var(--border) 55%, transparent);
+}
+
+/* The chip under your finger or cursor while dragging. */
+.drag-ghost {
+  position: fixed;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(1.1) rotate(-4deg);
+  box-shadow: 0 12px 26px rgb(0 0 0 / 0.55);
+}
+
+/* Desktop dice rack: the rolled face big, all six faces small beside it. */
+.dice-rack {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 8px;
+}
+
+.rack-die {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.tray-die.rack-big {
+  width: 48px;
+  height: 48px;
+}
+
+.rack-big .tray-die-blank {
+  width: 42px;
+  height: 42px;
+}
+
+.rack-faces {
+  display: grid;
+  grid-template-columns: repeat(3, 16px);
+  gap: 3px;
+}
+
+.rack-face {
+  display: block;
+  line-height: 0;
+}
+
+.rack-face-dim {
+  opacity: 0.3;
+}
+
+/* Phones: spell cards two to a row, wrapping onto new rows. */
+@media (max-width: 899px) {
+  .spells-section .attacks {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bowl {
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .bowl .slot,
+  .bowl .chip.slot-chip,
+  .bowl-result {
+    width: 56px;
+    height: 40px;
+  }
+}
+
+/* Desktop workbench: a wider panel, the pool as a 5 by 2 grid, End turn at the bottom. */
+@media (min-width: 900px) {
+  .battle-layout {
+    grid-template-columns: minmax(0, 1fr) clamp(380px, 32vw, 520px);
+  }
+
+  .run-screen.in-battle {
+    padding-bottom: 18px;
+  }
+
+  .side-panel .attacks {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .side-panel .pool {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .side-panel .pool .chip {
+    min-width: 0;
+    padding: 0 4px;
+  }
+
+  .end-turn-panel {
+    flex: none;
+    min-height: 54px;
+  }
+}
+
+/* ---------- Colors as pixel paint drops ---------- */
+
+/* A chip that shows a paint drop instead of a colored box with text. */
+.chip.chip-drop {
+  display: grid;
+  place-items: center;
+  min-width: 48px;
+  padding: 0;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  text-shadow: none;
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+
+.chip.chip-drop .paint-drop {
+  filter: drop-shadow(0 3px 0 rgb(0 0 0 / 0.35));
+}
+
+.chip.chip-drop.chip-draggable:hover {
+  background: color-mix(in srgb, var(--surface-2) 70%, transparent);
+}
+
+/* Lifted by a tap: raised, with a light ring. */
+.chip.chip-drop.selected {
+  border: none;
+  background: var(--surface-2);
+  box-shadow: 0 0 0 2px var(--text);
+  transform: translateY(-4px);
+}
+
+/* Chips a hovered craftable spell would mix. */
+.chip.chip-drop.chip-hint {
+  border: none;
+  background: color-mix(in srgb, var(--purple) 22%, transparent);
+  animation: hint-pulse 0.9s ease-in-out infinite;
+}
+
+/* Where a staged drop was: a faint, colorless copy. */
+.chip.chip-drop.chip-ghost {
+  border: none;
+  opacity: 0.2;
+  filter: grayscale(1);
+}
+
+.chip.chip-free {
+  border-radius: 50% 50% 46% 46%;
+}
+
+/* Drops sitting in slots. */
+.chip.chip-drop.slot-chip {
+  background: var(--surface-2);
+}
+
+.bowl .chip.chip-drop.slot-chip {
+  background: color-mix(in srgb, var(--surface-2) 60%, transparent);
+}
+
+/* The bowl's new color: grab it and drag it to the pool or a spell. */
+.bowl-result.bowl-result-ready {
+  width: 72px;
+  height: 64px;
+  border: 2px solid color-mix(in srgb, var(--accent) 70%, transparent);
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 18%, transparent), transparent 70%);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  animation: chip-pop 0.25s ease-out both, result-glow 1.4s ease-in-out 0.25s infinite;
+}
+
+@keyframes result-glow {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); }
+  50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 12%, transparent); }
+}
+
+.drag-ghost.chip-drop {
+  background: transparent;
+  box-shadow: none;
+  filter: drop-shadow(0 12px 14px rgb(0 0 0 / 0.55));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bowl-result.bowl-result-ready {
+    animation: none;
+  }
+}
+
+/* PC: only the spell list scrolls, so the dice, bowl, pool, and End turn stay put. */
+@media (min-width: 900px) {
+  .side-panel {
+    overflow: hidden;
+  }
+
+  .side-panel > section,
+  .side-panel > .end-turn-panel {
+    flex: none;
+  }
+
+  .side-panel > .spells-section {
+    flex: 1 1 auto;
+    min-height: 140px;
+    overflow-y: auto;
+  }
+}
+
+/* ---------- Tooltips ---------- */
+
+.tip-anchor {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.tip-anchor[tabindex] {
+  cursor: help;
+  border-radius: 8px;
+}
+
+.tip-anchor[tabindex]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* A dotted underline hints that a spell's name explains it. */
+.attack-name-tip .attack-name {
+  text-decoration: underline dotted color-mix(in srgb, var(--muted) 70%, transparent);
+  text-underline-offset: 3px;
+}
+
+.dice-rack .tip-anchor {
+  display: block;
+}
+
+/* The bubble: fixed to the window, placed by the Tip component. */
+.tip {
+  position: fixed;
+  z-index: 60;
+  max-width: min(280px, calc(100vw - 16px));
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1.4;
+  box-shadow: 0 10px 24px rgb(0 0 0 / 0.5);
+  pointer-events: none;
+  animation: tip-in 0.12s ease-out both;
+}
+
+@keyframes tip-in {
+  from { opacity: 0; translate: 0 3px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tip { animation: none; }
 }
