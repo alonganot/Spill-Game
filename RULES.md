@@ -36,6 +36,19 @@
      - The enemy's own Block resets right before it acts, so Block it gains lasts through the player's next turn.
    - Check victory/defeat conditions after each resolution step. If the enemy is defeated, the battle ends at once (it doesn't act). If the player is defeated, no new turn starts.
 
-## 4. Balancing & Configuration Rule
+## 4. Run Loop
+- A run is **5 fights**: `Fight 1 → Reward → Fight 2 → Shop → Elite → Reward → Fight 4 → Shop → Boss`. Beating the boss wins the run; losing any fight ends it.
+- **HP carries over** between fights. Block, statuses, and the Color Pool reset at the start of each fight.
+- Each won fight pays **gold** (elites pay more). Unspent gold carries over.
+- **Dice:** a run starts with 2 Standard dice and a **dice cap** of 3. Dice faces are base colors only.
+- **Reward stops:** pick 1 of 3 offers drawn from Gold, Heal (can't go above max HP), and Free repaint. Elite rewards are bigger.
+- **Shop stops** (leave whenever you like):
+  - **Repaint a face:** set any face of any owned die to Red, Blue, or Green. Repeatable; the price rises after each purchase.
+  - **Heal:** restore a fixed amount of HP for gold (not allowed at full HP).
+  - **+1 dice cap:** price rises after each purchase; the cap can't go above 6.
+  - **Dice for sale:** 2 random themed dice per visit; each can be bought once and needs a free slot under the cap.
+- Prices, rewards, and gold amounts live in `src/data/economy.ts`.
+
+## 5. Balancing & Configuration Rule
 - Numerical values (damage, block, status values, pool limits, dice faces) live in `src/data/` configs rather than hardcoded inside `src/engine/`.
 - When gameplay rules change, update `RULES.md` alongside `src/data/` and `src/engine/` unit tests.

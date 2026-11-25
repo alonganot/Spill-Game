@@ -20,7 +20,7 @@ export function createBattle(config: BattleConfig, rng: Rng): { state: BattleSta
     turn: 0,
     phase: 'player',
     pool: [],
-    player: createCombatant(config.playerMaxHp),
+    player: createCombatant(config.playerMaxHp, config.playerStartHp),
     enemy: createCombatant(config.enemy.maxHp),
     enemyIntentIndex: 0,
   };

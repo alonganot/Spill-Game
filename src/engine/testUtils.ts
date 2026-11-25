@@ -9,7 +9,7 @@ export function sequenceRng(values: readonly number[]): Rng {
 
 /** A die that always rolls the given color. */
 export function fixedDie(color: BaseColor): DieDefinition {
-  return { id: `fixed-${color}`, faces: [color] };
+  return { id: `fixed-${color}`, name: `Fixed ${color}`, faces: [color] };
 }
 
 export const noopRng: Rng = () => 0;

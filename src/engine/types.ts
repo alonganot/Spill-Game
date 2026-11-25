@@ -9,6 +9,7 @@ export type Rng = () => number;
 
 export interface DieDefinition {
   id: string;
+  name: string;
   faces: readonly BaseColor[];
 }
 
@@ -55,6 +56,8 @@ export interface StatusConfig {
 export interface BattleConfig {
   maxPoolSize: number;
   playerMaxHp: number;
+  /** HP the player starts the battle with (defaults to max). Used to carry HP between fights. */
+  playerStartHp?: number;
   dice: readonly DieDefinition[];
   recipes: readonly MixRecipe[];
   /** Attacks the player can trigger this battle. */
@@ -113,3 +116,111 @@ export type ActionError =
 export type ActionResult =
   | { ok: true; state: BattleState; events: BattleEvent[] }
   | { ok: false; state: BattleState; error: ActionError };
+
+// ---------- Run loop ----------
+
+export type StageKind = 'normal' | 'elite' | 'boss';
+/** What happens after a stage's fight is won. */
+export type StageStop = 'reward' | 'shop' | 'end';
+
+export interface StageDefinition {
+  enemy: EnemyDefinition;
+  kind: StageKind;
+  after: StageStop;
+}
+
+export interface DieForSale {
+  die: DieDefinition;
+  price: number;
+}
+
+export interface RewardAmounts {
+  gold: number;
+  heal: number;
+}
+
+export interface EconomyConfig {
+  goldPerWin: Record<StageKind, number>;
+  /** Reward pick amounts after normal fights vs. elite fights. */
+  rewards: { normal: RewardAmounts; elite: RewardAmounts };
+  shop: {
+    repaintPrice: number;
+    repaintPriceStep: number;
+    healPrice: number;
+    healAmount: number;
+    capPrice: number;
+    capPriceStep: number;
+    diceForSale: number;
+  };
+}
+
+export interface RunConfig {
+  /** Battle settings shared by every fight; dice, enemy, and HP come from the run. */
+  battle: Omit<BattleConfig, 'dice' | 'enemy' | 'playerStartHp'>;
+  stages: readonly StageDefinition[];
+  startingDice: readonly DieDefinition[];
+  startingGold: number;
+  startingDiceCap: number;
+  maxDiceCap: number;
+  shopDice: readonly DieForSale[];
+  economy: EconomyConfig;
+}
+
+export type RewardOption =
+  | { type: 'gold'; amount: number }
+  | { type: 'heal'; amount: number }
+  | { type: 'repaint' };
+
+export interface ShopDieOffer extends DieForSale {
+  sold: boolean;
+}
+
+export type RunPhase = 'battle' | 'reward' | 'shop' | 'victory' | 'defeat';
+
+export interface RunState {
+  stageIndex: number;
+  phase: RunPhase;
+  hp: number;
+  maxHp: number;
+  gold: number;
+  dice: DieDefinition[];
+  diceCap: number;
+  /** How many times each repeatable shop service was bought (drives price increases). */
+  purchases: { repaint: number; cap: number };
+  /** The current fight; null outside the battle phase. */
+  battle: BattleState | null;
+  rewardOffers: RewardOption[];
+  shopStock: ShopDieOffer[];
+}
+
+export interface RepaintTarget {
+  dieIndex: number;
+  faceIndex: number;
+  color: BaseColor;
+}
+
+export type RunAction =
+  | { type: 'battle'; action: BattleAction }
+  /** Leaves a finished fight: collects gold and moves to the next stop (or ends the run). */
+  | { type: 'continue' }
+  | { type: 'chooseReward'; index: number; repaint?: RepaintTarget }
+  | { type: 'buyDie'; offerIndex: number }
+  | { type: 'repaint'; target: RepaintTarget }
+  | { type: 'buyHeal' }
+  | { type: 'buyCapUpgrade' }
+  | { type: 'leaveShop' };
+
+export type RunError =
+  | ActionError
+  | 'wrong_phase'
+  | 'battle_not_over'
+  | 'not_enough_gold'
+  | 'dice_cap_reached'
+  | 'cap_max_reached'
+  | 'invalid_target'
+  | 'already_full_hp'
+  | 'sold_out';
+
+export type RunActionResult =
+  | { ok: true; state: RunState; events: BattleEvent[] }
+  | { ok: false; state: RunState; error: RunError };

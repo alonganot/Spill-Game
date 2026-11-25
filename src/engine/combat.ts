@@ -28,6 +28,6 @@ export function isDefeated(c: Combatant): boolean {
   return c.hp <= 0;
 }
 
-export function createCombatant(maxHp: number): Combatant {
-  return { hp: maxHp, maxHp, block: 0, statuses: { poison: 0, burn: false } };
+export function createCombatant(maxHp: number, hp: number = maxHp): Combatant {
+  return { hp: Math.min(hp, maxHp), maxHp, block: 0, statuses: { poison: 0, burn: false } };
 }

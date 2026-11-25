@@ -1,4 +1,4 @@
-.battle {
+.screen {
   max-width: 480px;
   margin: 0 auto;
   min-height: 100dvh;
@@ -299,7 +299,7 @@
   width: 100%;
 }
 
-.btn-end {
+.btn-primary {
   background: var(--accent);
   color: #1a1600;
   width: 100%;
