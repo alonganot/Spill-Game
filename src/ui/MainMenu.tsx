@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { enemySprite, HERO_SPRITE, TITLE_SPRITE } from '../data/sprites';
 import { ConfirmDialog } from './ConfirmDialog';
 import { PixelSprite } from './PixelSprite';
+import { useDesktop } from './useMediaQuery';
 
 interface MainMenuProps {
   /** A run is in progress and hasn't ended, so it can be continued. */
@@ -16,21 +17,23 @@ const SLIME = enemySprite('puddleSlime');
 /** The title scene: the pixel logo, the hero facing a slime, and the main buttons. */
 export function MainMenu({ canContinue, onNewRun, onContinue, onSettings }: MainMenuProps) {
   const [confirmingNewRun, setConfirmingNewRun] = useState(false);
+  // Twice as big on desktop, still in whole pixels (27px logo, 16px hero, 22px slime).
+  const scale = useDesktop() ? 2 : 1;
 
   return (
     <main className="screen main-menu">
       <h1 className="title-logo">
-        <PixelSprite sprite={TITLE_SPRITE} frame="logo" size={270} label="Spill" />
+        <PixelSprite sprite={TITLE_SPRITE} frame="logo" size={270 * scale} label="Spill" />
       </h1>
       <p className="title-tagline muted">Roll paint. Mix colors. Spill it on monsters.</p>
 
       <div className="title-scene" aria-hidden="true">
         <div className="bob bob-slow">
-          <PixelSprite sprite={HERO_SPRITE} frame="idle" size={64} label="" />
+          <PixelSprite sprite={HERO_SPRITE} frame="idle" size={64 * scale} label="" />
         </div>
         {SLIME && (
           <div className="bob">
-            <PixelSprite sprite={SLIME} frame="idle" size={88} label="" />
+            <PixelSprite sprite={SLIME} frame="idle" size={88 * scale} label="" />
           </div>
         )}
       </div>

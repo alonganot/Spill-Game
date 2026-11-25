@@ -79,7 +79,7 @@ export function RunScreen({
   }, [view, clearError]);
 
   return (
-    <div className="screen" hidden={hidden}>
+    <div className={`screen run-screen${run.phase === 'battle' ? ' in-battle' : ''}`} hidden={hidden}>
       <header className="topbar">
         <span className="topbar-left">
           <button type="button" className="icon-btn menu-btn" aria-label="Menu" onClick={onMenu}>

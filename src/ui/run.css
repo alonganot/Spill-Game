@@ -348,3 +348,149 @@ button.face.selected {
 .menu-btn {
   color: var(--text);
 }
+
+/* Dice faces as paint drops (shop, rewards, run end). */
+.face.face-drop {
+  display: grid;
+  place-items: center;
+  background: none;
+  line-height: 0;
+}
+
+.face.face-static.face-drop {
+  width: 26px;
+  height: 26px;
+}
+
+button.face.face-drop {
+  background: none;
+  padding: 0;
+}
+
+button.face.face-drop:hover {
+  background: var(--surface-2);
+}
+
+button.face.face-drop.selected {
+  background: var(--surface-2);
+}
+
+.color-picks .chip.chip-drop {
+  min-height: 44px;
+}
+
+/* Shop columns are only real on desktop; on phones they're one column. */
+.shop-columns,
+.shop-col {
+  display: contents;
+}
+
+/* ---------- Desktop: run screens use the whole window ---------- */
+@media (min-width: 900px) {
+  .run-screen {
+    max-width: 2400px;
+    padding: 14px 24px 0;
+  }
+
+  /* Content sits in a centered column wide enough for two-up layouts. */
+  .run-screen > .panel,
+  .run-screen > .footer {
+    width: min(100%, 960px);
+    align-self: center;
+  }
+
+  .run-screen > .panel {
+    margin-top: 16px;
+    gap: 14px;
+  }
+
+  .panel h2 {
+    font-size: 1.5rem;
+  }
+
+  /* Rewards: three cards side by side. */
+  .choices {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .choice {
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    gap: 10px;
+    min-height: 200px;
+    padding: 24px 18px;
+  }
+
+  .choice:not(:disabled):hover {
+    background: var(--surface-2);
+    transform: translateY(-3px);
+  }
+
+  .choice-icon {
+    font-size: 2.6rem;
+  }
+
+  .choice-title {
+    font-size: 1.15rem;
+  }
+
+  .choice-detail {
+    font-size: 0.9rem;
+    margin-top: 4px;
+  }
+
+  /* Shop: for sale and services on the left, your dice on the right. */
+  .shop-columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+  }
+
+  .shop-col {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .shop-item {
+    padding: 10px 14px;
+  }
+
+  .editor .dice-list {
+    max-height: none;
+  }
+
+  .editor .die-name {
+    width: 80px;
+  }
+
+  /* Run end: a centered card. */
+  .run-screen > .run-end {
+    width: min(100%, 560px);
+  }
+}
+
+/* Desktop: short screens (rewards, repaint, run end) sit in the middle of the window. */
+@media (min-width: 900px) {
+  .run-screen > .panel:not(.shop) {
+    margin-top: auto;
+    margin-bottom: auto;
+    padding-bottom: 8vh;
+  }
+
+  .title-tagline {
+    font-size: 1.05rem;
+  }
+}
+
+@media (min-width: 900px) {
+  .run-screen > .footer .btn-primary {
+    display: flex;
+    max-width: 360px;
+    margin: 0 auto;
+  }
+}

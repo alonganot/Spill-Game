@@ -1,5 +1,6 @@
-import type { Color, ColorCost, Combatant } from '../engine';
-import { COLOR_LABEL } from './format';
+import type { Color, ColorCost, Combatant, StatusConfig } from '../engine';
+import { blockTip, burnTip, COLOR_LABEL, poisonTip, type Owner } from './format';
+import { Tip } from './Tooltip';
 
 export function HpBar({ combatant }: { combatant: Combatant }) {
   const pct = combatant.maxHp > 0 ? (combatant.hp / combatant.maxHp) * 100 : 0;
@@ -13,14 +14,27 @@ export function HpBar({ combatant }: { combatant: Combatant }) {
   );
 }
 
-export function Badges({ combatant }: { combatant: Combatant }) {
+/** Block and status badges; hover, focus, or tap one to see what it does. */
+export function Badges({ combatant, owner, status }: { combatant: Combatant; owner: Owner; status: StatusConfig }) {
   const { block, statuses } = combatant;
   if (block === 0 && statuses.poison === 0 && !statuses.burn) return null;
   return (
     <div className="badges">
-      {block > 0 && <span className="badge badge-block">🛡 {block}</span>}
-      {statuses.poison > 0 && <span className="badge badge-poison">☠ {statuses.poison}</span>}
-      {statuses.burn && <span className="badge badge-burn">🔥 Burn</span>}
+      {block > 0 && (
+        <Tip text={blockTip(block, owner)} focusable>
+          <span className="badge badge-block">🛡 {block}</span>
+        </Tip>
+      )}
+      {statuses.poison > 0 && (
+        <Tip text={poisonTip(statuses.poison, owner, status)} focusable>
+          <span className="badge badge-poison">☠ {statuses.poison}</span>
+        </Tip>
+      )}
+      {statuses.burn && (
+        <Tip text={burnTip(owner, status)} focusable>
+          <span className="badge badge-burn">🔥 Burn</span>
+        </Tip>
+      )}
     </div>
   );
 }

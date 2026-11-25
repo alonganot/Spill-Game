@@ -1,7 +1,9 @@
 import { useEffect, useId, useLayoutEffect, useRef, type RefObject } from 'react';
-import type { AttackDefinition, MixRecipe } from '../engine';
-import { CostDots } from './components';
-import { describeEffect } from './format';
+import type { AttackDefinition, Color, MixRecipe } from '../engine';
+import { COLOR_LABEL, describeEffect, spellTip } from './format';
+import { Tip } from './Tooltip';
+import { costSlots } from './staging';
+import { SlotChip, useWorkbench } from './workbench';
 
 /** Whether a spell can be cast now, after some mixes, or not with this pool. */
 export type SpellStatus = 'ready' | 'craftable' | 'locked';
@@ -15,58 +17,115 @@ export interface Spell {
 
 interface SpellCardProps {
   spell: Spell;
-  disabled: boolean;
-  onCast: () => void;
-  onPrepareMix: (plan: MixRecipe[]) => void;
-  /** Hovering a craftable spell highlights the chips it would mix. */
-  onHint: (attackId: string | null) => void;
 }
 
-export function SpellCard({ spell, disabled, onCast, onPrepareMix, onHint }: SpellCardProps) {
+/**
+ * A spell with one slot per color it costs. Drag colors onto it (or tap an
+ * empty slot to fill it from the pool), then Cast once every slot is full.
+ */
+export function SpellCard({ spell }: SpellCardProps) {
+  const wb = useWorkbench();
   const { attack, status, plan } = spell;
   const effects = attack.effects.map(describeEffect).join(' · ');
   const mixes = plan ? `${plan.length} mix${plan.length > 1 ? 'es' : ''}` : '';
-  const hint = () => status === 'craftable' && onHint(attack.id);
-  const label =
-    status === 'craftable'
-      ? `${attack.name}: ${effects}. Needs ${mixes} first; tap to pick the colors`
-      : status === 'locked'
-        ? `${attack.name}: ${effects}. Not enough colors`
-        : `${attack.name}: ${effects}`;
+  const target = `spell:${attack.id}`;
+  const staged = wb.staging.spells[attack.id] ?? [];
+  const slots = fillSlots(costSlots(attack.cost), staged, wb.pool);
+  const ready = staged.length > 0 && slots.every((slot) => slot.chip !== undefined);
+  const locked = status === 'locked';
+  const hint = () => status === 'craftable' && wb.hint(attack.id);
+
   return (
-    <button
-      type="button"
-      className={`attack attack-${status}`}
-      aria-label={label}
-      disabled={disabled || status === 'locked'}
-      onClick={() => (plan && status === 'craftable' ? onPrepareMix(plan) : onCast())}
+    <div
+      className={`attack attack-${status}${ready ? ' attack-charged' : ''}${wb.dropClass(target)}`}
+      data-drop={locked ? undefined : target}
       onPointerEnter={hint}
-      onPointerLeave={() => onHint(null)}
-      onFocus={hint}
-      onBlur={() => onHint(null)}
+      onPointerLeave={() => wb.hint(null)}
+      onClick={() => {
+        // Tapping the card with a lifted chip drops it here.
+        if (wb.selectedChip !== null && !locked) wb.placeSelected({ kind: 'spell', attackId: attack.id });
+      }}
     >
-      {status === 'craftable' && (
-        <span className="attack-mix-tag" aria-hidden="true">
-          ⚗ {mixes}
-        </span>
-      )}
-      <span className="attack-name">{attack.name}</span>
-      <CostDots cost={attack.cost} />
+      <div className="attack-head">
+        <Tip text={spellTip(attack, status, wb.status, plan)} className="attack-name-tip" focusable>
+          <span className="attack-name">{attack.name}</span>
+        </Tip>
+        {status === 'craftable' && plan && (
+          <button
+            type="button"
+            className="attack-mix-tag"
+            disabled={wb.locked}
+            onClick={(e) => {
+              e.stopPropagation();
+              wb.prepareMix(plan);
+            }}
+            onFocus={hint}
+            onBlur={() => wb.hint(null)}
+            aria-label={`${attack.name} needs ${mixes} first. Put the colors to mix in the bowl`}
+          >
+            ⚗ {mixes}
+          </button>
+        )}
+      </div>
       <span className="attack-fx">{effects}</span>
-    </button>
+      <div className="attack-foot">
+        <span className="cost-slots" role="group" aria-label={`${attack.name} cost`}>
+          {slots.map((slot, i) =>
+            slot.chip !== undefined ? (
+              <SlotChip key={i} chip={slot.chip} where={attack.name} />
+            ) : (
+              <button
+                key={i}
+                type="button"
+                className={`slot slot-empty slot-${slot.color}`}
+                disabled={wb.locked || locked}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  wb.fillSlot(attack.id, slot.color);
+                }}
+                aria-label={
+                  wb.pool.includes(slot.color)
+                    ? `Empty ${COLOR_LABEL[slot.color]} slot. Tap to fill it`
+                    : `Empty ${COLOR_LABEL[slot.color]} slot. Mix ${COLOR_LABEL[slot.color]} first`
+                }
+                title={wb.pool.includes(slot.color) ? undefined : `Mix ${COLOR_LABEL[slot.color]} first`}
+              />
+            ),
+          )}
+        </span>
+        <button
+          type="button"
+          className="btn attack-cast"
+          disabled={wb.locked || !ready}
+          onClick={(e) => {
+            e.stopPropagation();
+            wb.cast(attack.id);
+          }}
+        >
+          Cast
+        </button>
+      </div>
+    </div>
   );
 }
 
+/** Matches staged chips to a spell's slots by color, in slot order. */
+function fillSlots(colors: readonly Color[], staged: readonly number[], pool: readonly Color[]) {
+  const slots: { color: Color; chip?: number }[] = colors.map((color) => ({ color }));
+  for (const chip of staged) {
+    const slot = slots.find((s) => s.chip === undefined && s.color === pool[chip]);
+    if (slot) slot.chip = chip;
+  }
+  return slots;
+}
+
+
 interface SpellbookProps {
   spells: readonly Spell[];
-  locked: boolean;
   unavailableOnly: boolean;
   onToggleUnavailableOnly: () => void;
-  onCast: (attackId: string) => void;
-  onPrepareMix: (plan: MixRecipe[]) => void;
-  onHint: (attackId: string | null) => void;
   onClose: () => void;
-  /** The sheet stops below this element (the color pool). */
+  /** The sheet sits just above this element (the color pool). */
   keepVisibleRef: RefObject<HTMLElement | null>;
 }
 
@@ -77,12 +136,8 @@ const SHEET_GAP_PX = 8;
 /** Every spell, ready or not, in a sheet that slides up over the spell area. */
 export function Spellbook({
   spells,
-  locked,
   unavailableOnly,
   onToggleUnavailableOnly,
-  onCast,
-  onPrepareMix,
-  onHint,
   onClose,
   keepVisibleRef,
 }: SpellbookProps) {
@@ -90,13 +145,16 @@ export function Spellbook({
   const sheetRef = useRef<HTMLElement>(null);
   const shown = unavailableOnly ? spells.filter((s) => s.status !== 'ready') : spells;
 
-  // Stop the sheet just below the pool, so the chips a hint highlights stay visible.
+  // Sit just above the pool, so the colors you have (and the chips a hint
+  // highlights) stay in view while the book is open.
   useLayoutEffect(() => {
     const fit = () => {
-      const bottom = keepVisibleRef.current?.getBoundingClientRect().bottom;
-      if (bottom === undefined) return;
-      const room = Math.max(MIN_SHEET_PX, window.innerHeight - bottom - SHEET_GAP_PX);
-      sheetRef.current?.style.setProperty('--sheet-max', `${room}px`);
+      const top = keepVisibleRef.current?.getBoundingClientRect().top;
+      const sheet = sheetRef.current;
+      if (top === undefined || !sheet) return;
+      const bottom = Math.max(0, window.innerHeight - top + SHEET_GAP_PX);
+      sheet.style.bottom = `${bottom}px`;
+      sheet.style.setProperty('--sheet-max', `${Math.max(MIN_SHEET_PX, top - SHEET_GAP_PX * 2)}px`);
     };
     fit();
     window.addEventListener('resize', fit);
@@ -166,19 +224,12 @@ export function Spellbook({
         ) : (
           <div className="attacks spellbook-grid">
             {shown.map((spell) => (
-              <SpellCard
-                key={spell.attack.id}
-                spell={spell}
-                disabled={locked}
-                onCast={() => onCast(spell.attack.id)}
-                onPrepareMix={onPrepareMix}
-                onHint={onHint}
-              />
+              <SpellCard key={spell.attack.id} spell={spell} />
             ))}
           </div>
         )}
         <p className="spellbook-legend muted">
-          <span className="legend-craftable">⚗ Mix first</span> · tap to pick the colors. Dim spells need colors you don't have.
+          Tap an empty slot to fill it from your pool, then Cast. <span className="legend-craftable">⚗ Mix first</span> puts the colors to mix in the bowl. Dim spells need colors you don't have.
         </p>
       </section>
     </>

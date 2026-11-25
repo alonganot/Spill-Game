@@ -1,7 +1,7 @@
 # PLAN.md — Spill Development Roadmap
 
 ## Current Focus
-**Milestone 6 in progress (Desktop & Responsive).** V1 is a PC game: it should fill a desktop screen and stay playable on a phone-sized window; mobile app builds are out of V1. A full 5-fight run with a main menu, seeded runs, rewards, a dice shop, pixel-art sprites, and beat-by-beat combat playback is playable via `npm run dev` (`src/ui/RunScreen.tsx`, driven by `useRun` and `src/engine/run.ts`). Balance tuning is deferred to Milestone 7.
+**Milestone 6 done; Milestone 7 next (V1 Wrap-up: balance, Windows app).** V1 is a PC game: it should fill a desktop screen and stay playable on a phone-sized window; mobile app builds are out of V1. A full 5-fight run with a main menu, seeded runs, rewards, a dice shop, pixel-art sprites, and beat-by-beat combat playback is playable via `npm run dev` (`src/ui/RunScreen.tsx`, driven by `useRun` and `src/engine/run.ts`). Balance tuning is deferred to Milestone 7.
 
 ## Milestones
 
@@ -45,10 +45,11 @@
 - [x] In-run ☰ button opens a pause panel over the run (Resume, Main menu); it works mid-animation.
 - [x] Screen-flow stack in the UI layer (`src/ui/screenFlow.ts`), with one back action (Escape, or the ← Back button). Open layers (Spellbook, battle log, dialogs) close first. The run lives in `App` and its screen stays mounted while hidden, so Continue resumes a battle exactly where it was.
 
-### Milestone 6: Desktop & Responsive
-- [ ] Desktop battle layout (900px and wider): a wide arena with the hero and enemy facing each other at large pixel sizes, a side panel with the color pool and spells, and the dice tray and End turn along the bottom. Phones keep the single column.
-- [ ] Responsive main menu, reward, shop, dice editor, Settings, and run-end screens that use the width on a PC.
-- [ ] Hover tooltips for spells, status badges, block, enemy intent, and dice (tap on touch screens).
+### Milestone 6: Desktop & Responsive ✅
+- [x] Desktop battle layout (900px and wider): a wide arena with the hero and enemy facing each other at one pixel scale (10×, or 13× on 1080p and up), a side panel with the color pool and spells, and the dice tray and End turn along the bottom, filling the window with no scrolling. The enemy lunges sideways at the hero; the log opens upward and the Spellbook is a wide panel. Phones keep the single column (`useDesktop` in `src/ui/useMediaQuery.ts`).
+- [x] Drag-and-drop workbench (phones and PC): colors are pixel paint drops; drag two into a mixing bowl, then drag the new color out to the pool or straight onto a spell (or tap it to keep it), and drag colors onto a spell's cost slots, then Cast; tap or Enter to lift a color and place it, or tap an empty slot to fill it from the pool. Craftable spells (payable now, or after mixing with ⚗) are listed; the rest stay in the Spellbook. On PC the side panel is the workbench: your dice (rolled face big, all six faces small), the bowl, craftable spells, a 5×2 pool, and End turn (`src/ui/staging.ts`, `useDrag.ts`, `workbench.tsx`, `DiceRack.tsx`, `PaintDrop.tsx`).
+- [x] Responsive main menu, reward, shop, dice editor, Settings, and run-end screens on PC: full-width top bar, content centered (rewards as three cards, the shop in two columns, short screens centered vertically), a doubled title scene, and paint-drop dice faces everywhere.
+- [x] Tooltips (hover, keyboard focus, or tap on touch screens) for spell names, poison/burn/block badges, the enemy intent, and PC dice, using the battle's real numbers (`Tip` in `src/ui/Tooltip.tsx`, texts in `src/ui/format.ts`).
 - [x] Save the run in progress in the browser (`src/ui/runSave.ts`): the seed plus every successful action, written after each action to localStorage key `spill.run.v1` and replayed on load, so Continue survives a reload. Abandoning or finishing a run clears it; a corrupt or outdated save is ignored.
 
 ### Milestone 7: V1 Wrap-up

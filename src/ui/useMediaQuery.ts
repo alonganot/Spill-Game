@@ -1,0 +1,34 @@
+import { useCallback, useSyncExternalStore } from 'react';
+
+/** Wide enough for the desktop layouts: the battle arena with a side panel, and so on. */
+export const DESKTOP_QUERY = '(min-width: 900px)';
+
+/**
+ * Whether a CSS media query matches, kept current as the window resizes. For
+ * the few things CSS can't do itself, like the pixel size of a sprite.
+ */
+export function useMediaQuery(query: string): boolean {
+  const subscribe = useCallback(
+    (onChange: () => void) => {
+      const list = typeof window !== 'undefined' ? window.matchMedia?.(query) : undefined;
+      list?.addEventListener('change', onChange);
+      return () => list?.removeEventListener('change', onChange);
+    },
+    [query],
+  );
+  const matches = () => typeof window !== 'undefined' && window.matchMedia?.(query).matches === true;
+  return useSyncExternalStore(subscribe, matches, () => false);
+}
+
+/** Big desktop windows (about 1080p and up), where the fighters scale up another step. */
+export const LARGE_QUERY = '(min-width: 1500px) and (min-height: 960px)';
+
+/** True on desktop-sized windows. */
+export function useDesktop(): boolean {
+  return useMediaQuery(DESKTOP_QUERY);
+}
+
+/** True on large desktop windows. */
+export function useLargeDesktop(): boolean {
+  return useMediaQuery(LARGE_QUERY);
+}
