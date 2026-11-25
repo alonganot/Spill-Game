@@ -11,12 +11,13 @@ import {
   type Color,
   type MixRecipe,
 } from '../engine';
+import { MIX_HINT_MAX_MIXES } from '../data/balance';
 import { enemySprite } from '../data/sprites';
 import { Badges, ColorDot, HpBar } from './components';
 import { BattleLog } from './BattleLog';
 import { SpellCard, Spellbook, type Spell } from './Spellbook';
-import { dieLandMs } from './anim';
-import { TrayDie } from './PixelDie';
+import { chipPopMs, useReducedMotion } from './anim';
+import { RollStage, TrayDie } from './PixelDie';
 import { EnemyStage, HeroStage, Projectile } from './Fighters';
 import { COLOR_HEX, floatsFor, stageFxFor } from './fx';
 import { COLOR_LABEL, describeIntent, formatEvent } from './format';
@@ -53,7 +54,7 @@ export function BattleScreen({
   const [selected, setSelected] = useState<number[]>([]);
 
   const before = useMemo(() => prevBattle ?? beforeOpeningRoll(state, events), [prevBattle, state, events]);
-  const steps = useMemo(() => buildTimeline(before, events, state), [before, events, state]);
+  const steps = useMemo(() => buildTimeline(before, events, state, config.status), [before, events, state, config.status]);
   const { step, index, playing, skip } = usePlayback(steps, actionCount);
 
   // The tray shows the last roll through mixes and attacks, and keeps the
@@ -65,6 +66,10 @@ export function BattleScreen({
   const beforeRollBeat = playing && rollEvent !== undefined && index < rollIndex;
   const shownRoll = beforeRollBeat ? rolls.previous : (rollEvent ?? rolls.current);
   const rolling = playing && step.event?.type === 'rolled';
+  // The roll plays big in the middle of the screen, unless motion is reduced.
+  const reducedMotion = useReducedMotion();
+  const onStage = rolling && !reducedMotion && rollEvent !== undefined;
+  const trayRef = useRef<HTMLDivElement>(null);
   const keptCount = shownRoll ? shownRoll.colors.length - shownRoll.discarded.length : 0;
 
   // While the beats play, show the numbers of the current beat, not the final ones.
@@ -79,6 +84,7 @@ export function BattleScreen({
   const beatKey = `${actionCount}-${index}`;
   const enemyStageRef = useRef<HTMLDivElement>(null);
   const heroStageRef = useRef<HTMLDivElement>(null);
+  const poolRef = useRef<HTMLElement>(null);
   // A spell that harms the enemy sends a bolt of its first cost color.
   const castAttack =
     beatEvent?.type === 'triggered' ? config.attacks.find((x) => x.id === beatEvent.attackId) : undefined;
@@ -103,7 +109,7 @@ export function BattleScreen({
     () =>
       config.attacks.map((attack) => {
         if (canAfford(pool, attack.cost)) return { attack, status: 'ready' };
-        const plan = findMixPlan(pool, attack.cost, config.recipes);
+        const plan = findMixPlan(pool, attack.cost, config.recipes, MIX_HINT_MAX_MIXES);
         return plan && plan.length > 0 ? { attack, status: 'craftable', plan } : { attack, status: 'locked' };
       }),
     [pool, config],
@@ -199,7 +205,7 @@ export function BattleScreen({
         </div>
       </section>
 
-      <section className="pool-section">
+      <section className="pool-section" ref={poolRef}>
         <div className="section-head">
           <h3>Color pool</h3>
           <span className="muted">
@@ -219,7 +225,7 @@ export function BattleScreen({
             if (hintedChips.includes(i)) classes.push('chip-hint');
             if (splash) classes.push('chip-splash');
             const style: CSSProperties | undefined = landing
-              ? { animationDelay: `${dieLandMs(fromDie)}ms` }
+              ? { animationDelay: `${chipPopMs(rollEvent?.colors.length ?? 0, fromDie)}ms` }
               : splash
                 ? ({ '--splash': splashColor } as CSSProperties)
                 : undefined;
@@ -308,20 +314,19 @@ export function BattleScreen({
           onPrepareMix={prepareMix}
           onHint={setHintedAttack}
           onClose={closeBook}
+          keepVisibleRef={poolRef}
         />
       )}
 
       <footer className="footer footer-battle">
-        <div className="dice-tray" role="group" aria-label="Your dice">
+        <div className="dice-tray" role="group" aria-label="Your dice" ref={trayRef}>
           {config.dice.map((die, i) => (
             <TrayDie
               key={i}
               die={die}
               result={shownRoll?.colors[i]}
-              rolling={rolling}
-              rollKey={actionCount}
-              landMs={dieLandMs(i)}
               discarded={shownRoll !== undefined && i >= keptCount}
+              away={onStage}
             />
           ))}
         </div>
@@ -329,6 +334,16 @@ export function BattleScreen({
           End turn
         </button>
       </footer>
+
+      {onStage && rollEvent && (
+        <RollStage
+          key={beatKey}
+          dice={config.dice}
+          colors={rollEvent.colors}
+          kept={rollEvent.colors.length - rollEvent.discarded.length}
+          trayRef={trayRef}
+        />
+      )}
 
       {boltColor && <Projectile key={beatKey} from={heroStageRef} to={enemyStageRef} color={boltColor} />}
 

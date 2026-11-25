@@ -1,4 +1,4 @@
-import { useEffect, useId } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, type RefObject } from 'react';
 import type { AttackDefinition, MixRecipe } from '../engine';
 import { CostDots } from './components';
 import { describeEffect } from './format';
@@ -66,7 +66,13 @@ interface SpellbookProps {
   onPrepareMix: (plan: MixRecipe[]) => void;
   onHint: (attackId: string | null) => void;
   onClose: () => void;
+  /** The sheet stops below this element (the color pool). */
+  keepVisibleRef: RefObject<HTMLElement | null>;
 }
+
+/** Never shrink the sheet below this, even when the pool is very tall. */
+const MIN_SHEET_PX = 200;
+const SHEET_GAP_PX = 8;
 
 /** Every spell, ready or not, in a sheet that slides up over the spell area. */
 export function Spellbook({
@@ -78,20 +84,63 @@ export function Spellbook({
   onPrepareMix,
   onHint,
   onClose,
+  keepVisibleRef,
 }: SpellbookProps) {
   const titleId = useId();
+  const sheetRef = useRef<HTMLElement>(null);
   const shown = unavailableOnly ? spells.filter((s) => s.status !== 'ready') : spells;
 
+  // Stop the sheet just below the pool, so the chips a hint highlights stay visible.
+  useLayoutEffect(() => {
+    const fit = () => {
+      const bottom = keepVisibleRef.current?.getBoundingClientRect().bottom;
+      if (bottom === undefined) return;
+      const room = Math.max(MIN_SHEET_PX, window.innerHeight - bottom - SHEET_GAP_PX);
+      sheetRef.current?.style.setProperty('--sheet-max', `${room}px`);
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
+  }, [keepVisibleRef]);
+
+  // Move focus into the sheet, keep Tab inside it, and hand focus back on close.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    sheetRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key !== 'Tab' || !sheetRef.current) return;
+      const focusable = [...sheetRef.current.querySelectorAll<HTMLElement>('button:not(:disabled)')];
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (!first || !last) return;
+      const inside = sheetRef.current.contains(document.activeElement);
+      if (e.shiftKey && (document.activeElement === first || !inside)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (document.activeElement === last || !inside)) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      if (opener?.isConnected) opener.focus();
+    };
   }, [onClose]);
 
   return (
     <>
       <div className="sheet-backdrop" onClick={onClose} aria-hidden="true" />
-      <section className="spellbook" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+      <section
+        className="spellbook"
+        ref={sheetRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
         <div className="spellbook-head">
           <h3 id={titleId}>
             <span aria-hidden="true">📖</span> Spellbook

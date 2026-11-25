@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import { HERO_SPRITE, type EnemyFrame, type HeroFrame, type SpriteSheet } from '../data/sprites';
-import { prefersReducedMotion } from './anim';
+import { useReducedMotion } from './anim';
 import type { FloatText, StageFx } from './fx';
 import { PixelSprite } from './PixelSprite';
 
@@ -10,8 +10,12 @@ const BLINK_FOR_MS = 140;
 /** Alternates an enemy between its idle and blink frames every few seconds. */
 function useBlink(): boolean {
   const [blinking, setBlinking] = useState(false);
+  const reduced = useReducedMotion();
   useEffect(() => {
-    if (prefersReducedMotion()) return;
+    if (reduced) {
+      setBlinking(false);
+      return;
+    }
     let closeTimer: ReturnType<typeof setTimeout> | undefined;
     // A little jitter so the blink doesn't feel mechanical; UI-only randomness.
     const openTimer = setInterval(() => {
@@ -22,7 +26,7 @@ function useBlink(): boolean {
       clearInterval(openTimer);
       clearTimeout(closeTimer);
     };
-  }, []);
+  }, [reduced]);
   return blinking;
 }
 
@@ -53,8 +57,9 @@ export const EnemyStage = forwardRef<HTMLDivElement, StageProps & { sprite: Spri
     const blinking = useBlink();
     return (
       <div className="sprite-stage" ref={ref}>
-        <div key={fx ? `fx-${beatKey}` : 'still'} className={`fighter${fx ? ` fx-${fx}` : ''}`}>
-          <div className={defeated ? 'defeated' : 'bob'}>
+        {/* The bob and defeat fade sit outside the per-beat key, so a new beat never restarts them. */}
+        <div className={defeated ? 'defeated' : 'bob'}>
+          <div key={fx ? `fx-${beatKey}` : 'still'} className={`fighter${fx ? ` fx-${fx}` : ''}`}>
             <PixelSprite sprite={sprite} frame={blinking && !defeated ? 'blink' : 'idle'} size={88} label={name} />
           </div>
         </div>
@@ -76,8 +81,8 @@ export const HeroStage = forwardRef<HTMLDivElement, StageProps>(function HeroSta
 ) {
   return (
     <div className="hero-stage" ref={ref}>
-      <div key={fx ? `fx-${beatKey}` : 'still'} className={`fighter${fx ? ` fx-${fx}` : ''}`}>
-        <div className={defeated ? 'defeated' : 'bob bob-slow'}>
+      <div className={defeated ? 'defeated' : 'bob bob-slow'}>
+        <div key={fx ? `fx-${beatKey}` : 'still'} className={`fighter${fx ? ` fx-${fx}` : ''}`}>
           <PixelSprite sprite={HERO_SPRITE} frame={heroFrame(fx)} size={48} label="You" />
         </div>
       </div>

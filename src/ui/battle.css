@@ -185,12 +185,58 @@
   gap: 4px;
 }
 
-.tray-die-tumbling {
-  animation: tumble 0.28s linear infinite;
+/* Out on the roll stage; the stage die flies back into this spot. */
+.tray-die-away {
+  visibility: hidden;
 }
 
-.tray-die-landed {
-  animation: land 0.25s ease-out;
+/* The roll, played big in the middle of the screen. Taps fall through to the skip layer. */
+.roll-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  display: grid;
+  place-items: center;
+  padding: 0 16px;
+  pointer-events: none;
+  background: rgb(10 8 14 / 0.55);
+  animation: fadein 0.2s ease both;
+  transition: background-color 0.35s ease;
+}
+
+.roll-stage-returning {
+  background: rgb(10 8 14 / 0);
+}
+
+.roll-stage-dice {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.roll-stage-slot {
+  display: grid;
+  place-items: center;
+}
+
+.stage-die {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.stage-die-tumbling {
+  animation: stage-tumble 0.32s linear infinite;
+}
+
+.stage-die-landed {
+  animation: stage-land 0.3s ease-out;
+  filter: drop-shadow(0 0 8px rgb(255 255 255 / 0.35));
+}
+
+.stage-die-landed.tray-die-overflow {
+  filter: grayscale(1);
 }
 
 .tray-die-overflow {
@@ -208,17 +254,17 @@
   animation: puff 0.4s ease-out both;
 }
 
-@keyframes tumble {
+@keyframes stage-tumble {
   0% { transform: translateY(0) rotate(0deg); }
-  25% { transform: translateY(-6px) rotate(-12deg); }
+  25% { transform: translateY(-14px) rotate(-18deg); }
   50% { transform: translateY(0) rotate(0deg); }
-  75% { transform: translateY(-4px) rotate(12deg); }
+  75% { transform: translateY(-9px) rotate(18deg); }
   100% { transform: translateY(0) rotate(0deg); }
 }
 
-@keyframes land {
-  0% { transform: translateY(-5px) scale(1.12); }
-  60% { transform: translateY(1px) scale(0.94); }
+@keyframes stage-land {
+  0% { transform: translateY(-10px) scale(1.2); }
+  60% { transform: translateY(2px) scale(0.92); }
   100% { transform: none; }
 }
 
@@ -477,20 +523,14 @@
 
 /* Not payable yet, but the pool can mix into it: tap to pick the colors. */
 .attack.attack-craftable {
-  position: relative;
   border-style: dashed;
   border-color: var(--purple);
   background: color-mix(in srgb, var(--purple) 10%, var(--surface));
 }
 
-.attack-craftable .attack-name {
-  max-width: calc(100% - 22px);
-}
-
+/* Its own line above the name, so long spell names never run under it. */
 .attack-mix-tag {
-  position: absolute;
-  top: 6px;
-  right: 6px;
+  line-height: 1;
   font-size: 0.6rem;
   font-weight: 700;
   color: #cbb2f5;
@@ -575,6 +615,8 @@
 .overlay {
   position: fixed;
   inset: 0;
+  /* Above the battle log, dice tips, and the Spellbook. */
+  z-index: 13;
   background: rgb(10 8 14 / 0.75);
   display: grid;
   place-items: center;
@@ -662,7 +704,8 @@
   bottom: 0;
   z-index: 12;
   width: min(480px, 100%);
-  max-height: 55dvh;
+  /* Set from the pool's position so the sheet stops below the chips it highlights. */
+  max-height: var(--sheet-max, 55dvh);
   overflow-y: auto;
   transform: translateX(-50%);
   display: flex;
@@ -675,6 +718,11 @@
   background: var(--surface);
   box-shadow: 0 -10px 30px rgb(0 0 0 / 0.5);
   animation: sheet-up 0.22s ease-out both;
+}
+
+/* The sheet takes focus on open; its buttons show the focus ring instead. */
+.spellbook:focus {
+  outline: none;
 }
 
 @keyframes sheet-up {

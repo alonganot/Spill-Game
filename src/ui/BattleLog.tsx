@@ -40,12 +40,24 @@ export function BattleLog({ lines }: { lines: readonly string[] }) {
         className="log-toggle"
         aria-expanded={open}
         aria-controls={panelId}
-        onClick={() => setPinned((p) => !p)}
+        onClick={() => {
+          // A click closes the log even when hovering is what opened it.
+          if (open) {
+            setPinned(false);
+            setHovered(false);
+          } else {
+            setPinned(true);
+          }
+        }}
       >
         <span aria-hidden="true">📜</span> Battle log <span className="muted">({lines.length})</span>
       </button>
+      {/* Always rendered, so screen readers hear each new line even while the panel is closed. */}
+      <div className="sr-only" aria-live="polite">
+        {lines.length > 0 && <p key={lines.length}>{lines.at(-1)}</p>}
+      </div>
       {open && (
-        <div className="log-panel" id={panelId} ref={listRef} role="log" aria-label="Battle log">
+        <div className="log-panel" id={panelId} ref={listRef} role="region" aria-label="Battle log">
           {lines.length === 0 ? (
             <p className="muted">Nothing has happened yet.</p>
           ) : (

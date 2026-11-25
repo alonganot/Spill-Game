@@ -1,9 +1,10 @@
-import type { BattleEvent, BattleState, Color, Combatant } from '../engine';
+import type { BattleEvent, BattleState, Color, Combatant, StatusConfig, Statuses } from '../engine';
 
 /** The parts of a combatant that change beat by beat during playback. */
 export interface Vitals {
   hp: number;
   block: number;
+  statuses: Statuses;
 }
 
 /** One beat of playback: an event and what the screen shows while it plays. */
@@ -16,14 +17,20 @@ export interface Step {
 }
 
 function vitals(c: Combatant): Vitals {
-  return { hp: c.hp, block: c.block };
+  return { hp: c.hp, block: c.block, statuses: c.statuses };
 }
 
 /**
- * Splits one action's events into beats, replaying HP, block, and pool changes
- * forward from `before`. The last beat always matches `after` exactly.
+ * Splits one action's events into beats, replaying HP, block, status, and pool
+ * changes forward from `before`. The last beat always matches `after` exactly.
+ * `status` is the battle's status config, so poison decays as the engine does.
  */
-export function buildTimeline(before: BattleState, events: readonly BattleEvent[], after: BattleState): Step[] {
+export function buildTimeline(
+  before: BattleState,
+  events: readonly BattleEvent[],
+  after: BattleState,
+  status: StatusConfig,
+): Step[] {
   let player = vitals(before.player);
   let enemy = vitals(before.enemy);
   let pool: readonly Color[] = before.pool;
@@ -32,9 +39,17 @@ export function buildTimeline(before: BattleState, events: readonly BattleEvent[
   for (const event of events) {
     switch (event.type) {
       case 'damaged': {
+        const { source } = event;
         const hit = (v: Vitals): Vitals => ({
           hp: Math.max(0, v.hp - event.amount),
           block: Math.max(0, v.block - event.blocked),
+          // A tick uses up its status the way the engine resolves it.
+          statuses:
+            source === 'poison'
+              ? { ...v.statuses, poison: Math.max(0, v.statuses.poison - status.poisonDecay) }
+              : source === 'burn'
+                ? { ...v.statuses, burn: false }
+                : v.statuses,
         });
         if (event.target === 'player') player = hit(player);
         else enemy = hit(enemy);
@@ -44,6 +59,18 @@ export function buildTimeline(before: BattleState, events: readonly BattleEvent[
         if (event.target === 'player') player = { ...player, block: player.block + event.amount };
         else enemy = { ...enemy, block: enemy.block + event.amount };
         break;
+      case 'statusApplied': {
+        const apply = (v: Vitals): Vitals => ({
+          ...v,
+          statuses:
+            event.status === 'poison'
+              ? { ...v.statuses, poison: v.statuses.poison + event.stacks }
+              : { ...v.statuses, burn: true },
+        });
+        if (event.target === 'player') player = apply(player);
+        else enemy = apply(enemy);
+        break;
+      }
       case 'enemyIntent':
         // The enemy's old block expires right before it acts.
         enemy = { ...enemy, block: 0 };
@@ -58,7 +85,6 @@ export function buildTimeline(before: BattleState, events: readonly BattleEvent[
         // Mixing and attacking change the pool once, at the start of the action.
         pool = after.pool;
         break;
-      case 'statusApplied':
       case 'victory':
       case 'defeat':
         break;

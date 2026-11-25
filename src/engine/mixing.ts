@@ -35,7 +35,7 @@ export function findMixPlan(
   pool: readonly Color[],
   cost: ColorCost,
   recipes: readonly MixRecipe[],
-  maxMixes = 3,
+  maxMixes: number,
 ): MixRecipe[] | null {
   let frontier: { pool: readonly Color[]; plan: MixRecipe[] }[] = [{ pool, plan: [] }];
   for (let depth = 0; depth <= maxMixes; depth++) {
