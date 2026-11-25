@@ -7,3 +7,6 @@ export const STATUS_CONFIG: StatusConfig = {
   burnDamage: 4,
   poisonDecay: 1,
 };
+
+/** How many mixes ahead the Spellbook looks when marking a spell craftable. */
+export const MIX_HINT_MAX_MIXES = 3;

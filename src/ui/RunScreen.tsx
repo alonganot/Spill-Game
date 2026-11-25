@@ -75,6 +75,7 @@ export function RunScreen() {
         <BattleScreen
           key={run.stageIndex}
           battle={run.battle}
+          prevBattle={view.prevBattle}
           config={battleConfigFor(run, config)}
           events={view.events}
           actionCount={view.actionCount}

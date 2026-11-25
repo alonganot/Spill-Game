@@ -1,8 +1,7 @@
 # PLAN.md — Spill Development Roadmap
 
 ## Current Focus
-**Milestone 3 done; Milestone 4 next (Polish, Juice & Mobile Packaging).** A full 5-fight run with rewards and a dice shop is playable via `npm run dev` (`src/ui/RunScreen.tsx`, driven by `useRun` and `src/engine/run.ts`).
-Balance notes for M4: a simple greedy bot wins about 193 of 200 seeded runs (all its losses are at the boss), so the run is too easy for skilled play, though a manual playthrough finished the boss on 1 HP. With 5–6 dice the shop screen will need scrolling on small phones.
+**Milestone 4 done; Milestone 5 next (Menus & Screen Flow).** A full 5-fight run with rewards, a dice shop, pixel-art sprites, and beat-by-beat combat playback is playable via `npm run dev` (`src/ui/RunScreen.tsx`, driven by `useRun` and `src/engine/run.ts`). Balance tuning is deferred to Milestone 7.
 
 ## Milestones
 
@@ -30,12 +29,35 @@ Balance notes for M4: a simple greedy bot wins about 193 of 200 seeded runs (all
 - [x] Start runs with 2 Standard dice and a dice cap of 3.
 - [x] Handle full run victory, defeat, and new run reset.
 
-### Milestone 4: Polish, Juice & Mobile Packaging
-- [ ] Balance tuning pass using centralized config files in `src/data/`.
-- [ ] Add mobile feel/juice (animations, sound effects, haptics via `src/mobile/`).
-- [ ] Set up Capacitor for Android/iOS builds and test on device/emulator.
+### Milestone 4: Graphics & Juice ✅
+- [x] Pixel-art enemy sprites drawn in code: pixel grids in `src/data/sprites.ts`, rendered crisply as SVG (`src/ui/PixelSprite.tsx`), one per enemy (Puddle Slime, Thorn Sprite, Rust Golem, Ink Blob, The Blot), plus a small hero sprite (idle/cast/hit poses).
+- [x] Step-by-step event playback: each action's events play as timed beats (HP/block/pool step per beat), input locked meanwhile, tap to skip (`src/ui/timeline.ts`, `src/ui/usePlayback.ts`).
+- [x] Simple sprite animation: idle bob and enemy blinks, hit flash/shake when damaged, attack lunge on the enemy's turn, hero cast pose with a paint bolt to the enemy, defeat fade (`src/ui/Fighters.tsx`).
+- [x] Dice roll animation: a pixel dice tray (`src/ui/PixelDie.tsx`) beside End turn; dice tumble through their own faces and land on the rolled face, new pool chips pop in as each die lands, and overflow dice grey out. Hover or tap a die to see all its faces.
+- [x] Spellbook and craftable-spell hints: the battle screen lists only ready spells; a 📖 Spellbook sheet lists every spell (with an "Unavailable only" toggle). Spells payable after mixing are marked (⚗ N mixes); hovering one highlights the chips to mix, tapping it selects them for the Mix button (`src/ui/Spellbook.tsx`, `findMixPlan` in `src/engine/mixing.ts`).
+- [x] Battle log behind a "📜 Battle log" button (hover or tap) with the whole fight's history, so the layout never shifts (`src/ui/BattleLog.tsx`).
+- [x] Combat feedback: floating damage/block numbers, status tick visuals (poison/burn), a block glow, and a mix "splash" when two colors combine (`src/ui/fx.ts`, `src/ui/fx.css`).
+- [x] All animations stay UI-only (`src/ui/`), driven by engine events. The only engine addition is the pure `findMixPlan` helper; combat rules are unchanged.
+
+### Milestone 5: Menus & Screen Flow
+- [ ] Main menu: title, New run, Continue (only while a run is in progress this session), Settings.
+- [ ] Settings: enter or show the run seed, restart the run, abandon the run (with confirm).
+- [ ] In-run pause/menu button that reaches Settings and returns to the run.
+- [ ] Screen-flow state in the UI layer, with a back action that works everywhere.
+
+### Milestone 6: Capacitor & Mobile
+- [ ] Add Capacitor and generate the Android project. Generate the iOS project too, but it can only be built on a Mac.
+- [ ] `src/mobile/` adapters: app lifecycle (pause/resume, Android back button → menu/back) and optional haptics on hits/taps, behind a small interface with web no-op fallbacks.
+- [ ] Safe-area and status-bar handling; portrait lock.
+- [ ] Web build stays playable (`npm run dev` / `npm run build`); test on an Android emulator or device.
+
+### Milestone 7: V1 Wrap-up
+- [ ] Balance tuning pass in `src/data/`, checked with the run simulation test. A simple greedy bot currently wins about 193 of 200 seeded runs (all its losses are at the boss), so the run is too easy for skilled play; aim for a meaningfully harder elite and boss.
+- [ ] Store-ready build: app icon, splash screen, app id and versioning, signed Android release build (AAB), and notes for building iOS on a Mac.
+- [ ] Final bug sweep and docs update.
 
 ## Explicitly Out of Scope for V1
 - Accounts, cloud saves, leaderboards, or backend services.
 - Ads, IAP, or complex economy systems (the simple gold dice shop in Milestone 3 is in scope).
 - Multiplayer or heavy custom shaders.
+- Sound effects and music.

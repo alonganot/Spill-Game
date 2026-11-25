@@ -59,8 +59,249 @@
   gap: 8px;
 }
 
-.card.hit {
-  animation: shake 0.35s ease;
+/* Cards with a sprite: art on the left, name/intent/HP on the right. */
+.card.with-sprite {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
+.card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.enemy .card-body {
+  align-items: flex-start;
+}
+
+.enemy .card-body .hp {
+  align-self: stretch;
+}
+
+.sprite-stage {
+  position: relative;
+  flex: none;
+  width: 88px;
+  height: 88px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: radial-gradient(circle at 50% 85%, var(--surface-2) 0 45%, transparent 46%);
+}
+
+.sprite {
+  display: block;
+  flex: none;
+}
+
+.hero-stage {
+  position: relative;
+  flex: none;
+}
+
+/* Battle footer: the dice that roll each turn, beside End turn. */
+.footer-battle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.footer-battle .btn-primary {
+  flex: 1;
+  min-width: 100px;
+  padding: 0 12px;
+}
+
+.dice-tray {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.tray-die-btn {
+  position: relative;
+  width: 34px;
+  height: 44px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  cursor: help;
+  display: grid;
+  place-items: center;
+}
+
+.tray-die {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+}
+
+.tray-die-blank {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 2px dashed var(--border);
+}
+
+/* Every face of a die, shown above it on hover or tap. */
+.tray-tip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  z-index: 5;
+  display: none;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: max-content;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  box-shadow: 0 6px 16px rgb(0 0 0 / 0.45);
+  pointer-events: none;
+}
+
+.tray-die-btn:hover .tray-tip,
+.tray-die-btn:focus-visible .tray-tip,
+.tray-die-btn:focus .tray-tip {
+  display: flex;
+}
+
+.tray-tip-name {
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.tray-tip-faces {
+  display: flex;
+  gap: 4px;
+}
+
+/* Out on the roll stage; the stage die flies back into this spot. */
+.tray-die-away {
+  visibility: hidden;
+}
+
+/* The roll, played big in the middle of the screen. Taps fall through to the skip layer. */
+.roll-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  display: grid;
+  place-items: center;
+  padding: 0 16px;
+  pointer-events: none;
+  background: rgb(10 8 14 / 0.55);
+  animation: fadein 0.2s ease both;
+  transition: background-color 0.35s ease;
+}
+
+.roll-stage-returning {
+  background: rgb(10 8 14 / 0);
+}
+
+.roll-stage-dice {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.roll-stage-slot {
+  display: grid;
+  place-items: center;
+}
+
+.stage-die {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.stage-die-tumbling {
+  animation: stage-tumble 0.32s linear infinite;
+}
+
+.stage-die-landed {
+  animation: stage-land 0.3s ease-out;
+  filter: drop-shadow(0 0 8px rgb(255 255 255 / 0.35));
+}
+
+.stage-die-landed.tray-die-overflow {
+  filter: grayscale(1);
+}
+
+.tray-die-overflow {
+  opacity: 0.35;
+  filter: grayscale(1);
+}
+
+/* A small puff when a rolled color has no room in the pool. */
+.tray-die-overflow::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid var(--muted);
+  animation: puff 0.4s ease-out both;
+}
+
+@keyframes stage-tumble {
+  0% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-14px) rotate(-18deg); }
+  50% { transform: translateY(0) rotate(0deg); }
+  75% { transform: translateY(-9px) rotate(18deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+
+@keyframes stage-land {
+  0% { transform: translateY(-10px) scale(1.2); }
+  60% { transform: translateY(2px) scale(0.92); }
+  100% { transform: none; }
+}
+
+@keyframes puff {
+  from { transform: scale(0.6); opacity: 0.9; }
+  to { transform: scale(1.3); opacity: 0; }
+}
+
+/* New pool chips stay hidden until their die lands (delay set inline). */
+.chip-landing {
+  animation: chip-pop 0.25s ease-out both;
+}
+
+@keyframes chip-pop {
+  0% { transform: scale(0); opacity: 0; }
+  70% { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+/* Catches taps while a playback runs, so one tap skips to the end. */
+.skip-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tray-die,
+  .tray-die-overflow::after,
+  .chip-landing,
+  .chip.chip-hint {
+    animation: none;
+  }
 }
 
 @keyframes shake {
@@ -128,21 +369,51 @@
 .intent-attack { color: #ff8a8d; }
 .intent-block { color: #9cc0ff; }
 
-/* Log */
-.log {
-  height: 76px;
-  overflow-y: auto;
+/* Battle log: a fixed-height button; the history opens over the screen. */
+.battle-log {
+  position: relative;
+  align-self: flex-start;
+  z-index: 6;
+}
+
+.log-toggle {
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
   font-size: 0.8rem;
-  line-height: 1.3;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.log-toggle[aria-expanded='true'] {
+  border-color: var(--accent);
+}
+
+.log-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: min(320px, calc(100vw - 32px));
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  box-shadow: 0 10px 24px rgb(0 0 0 / 0.5);
+  font-size: 0.8rem;
+  line-height: 1.35;
   color: var(--muted);
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 0 4px;
+  animation: fadein 0.15s ease both;
 }
 
-.log p {
-  animation: fadein 0.25s ease both;
+.log-panel p:last-child {
+  color: var(--text);
 }
 
 @keyframes fadein {
@@ -250,6 +521,32 @@
   border-color: var(--accent);
 }
 
+/* Not payable yet, but the pool can mix into it: tap to pick the colors. */
+.attack.attack-craftable {
+  border-style: dashed;
+  border-color: var(--purple);
+  background: color-mix(in srgb, var(--purple) 10%, var(--surface));
+}
+
+/* Its own line above the name, so long spell names never run under it. */
+.attack-mix-tag {
+  line-height: 1;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #cbb2f5;
+}
+
+/* Chips a hovered craftable spell would mix. */
+.chip.chip-hint {
+  border-color: #cbb2f5;
+  animation: hint-pulse 0.9s ease-in-out infinite;
+}
+
+@keyframes hint-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(155 93 229 / 0.7); }
+  50% { box-shadow: 0 0 0 4px rgb(155 93 229 / 0.35); }
+}
+
 .attack:disabled {
   opacity: 0.4;
   cursor: default;
@@ -318,6 +615,8 @@
 .overlay {
   position: fixed;
   inset: 0;
+  /* Above the battle log, dice tips, and the Spellbook. */
+  z-index: 13;
   background: rgb(10 8 14 / 0.75);
   display: grid;
   place-items: center;
@@ -348,4 +647,147 @@
 .seed {
   font-size: 0.7rem;
   color: var(--muted);
+}
+
+/* Ready spells + Spellbook */
+.spells-section .section-head {
+  align-items: center;
+}
+
+.book-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  background: var(--surface-2);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.book-badge {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #cbb2f5;
+  background: color-mix(in srgb, var(--purple) 25%, transparent);
+  border-radius: 999px;
+  padding: 1px 6px;
+}
+
+.no-spells {
+  min-height: 64px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  font-size: 0.8rem;
+  padding: 0 12px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+}
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 11;
+  background: rgb(10 8 14 / 0.35);
+  animation: fadein 0.2s ease both;
+}
+
+/* Slides up over the spell area, leaving the pool visible for mix hints. */
+.spellbook {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  z-index: 12;
+  width: min(480px, 100%);
+  /* Set from the pool's position so the sheet stops below the chips it highlights. */
+  max-height: var(--sheet-max, 55dvh);
+  overflow-y: auto;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px max(14px, env(safe-area-inset-bottom));
+  border-radius: 18px 18px 0 0;
+  border: 1px solid var(--border);
+  border-bottom: none;
+  background: var(--surface);
+  box-shadow: 0 -10px 30px rgb(0 0 0 / 0.5);
+  animation: sheet-up 0.22s ease-out both;
+}
+
+/* The sheet takes focus on open; its buttons show the focus ring instead. */
+.spellbook:focus {
+  outline: none;
+}
+
+@keyframes sheet-up {
+  from { transform: translate(-50%, 40px); opacity: 0; }
+}
+
+.spellbook-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.spellbook-head h3 {
+  flex: 1;
+  font-size: 1rem;
+}
+
+.toggle {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.toggle.on {
+  border-color: var(--purple);
+  background: color-mix(in srgb, var(--purple) 25%, var(--surface-2));
+}
+
+.toggle.on::before {
+  content: '✓ ';
+}
+
+.icon-btn {
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.spellbook-empty {
+  text-align: center;
+  padding: 16px 0;
+}
+
+.spellbook-legend {
+  font-size: 0.72rem;
+}
+
+.legend-craftable {
+  color: #cbb2f5;
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spellbook,
+  .sheet-backdrop,
+  .log-panel {
+    animation: none;
+  }
 }
