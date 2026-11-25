@@ -1,7 +1,8 @@
 # PLAN.md — Spill Development Roadmap
 
 ## Current Focus
-**Milestone 2 done; Milestone 3 next (Roguelite Run Loop).** The single-battle prototype is playable via `npm run dev` (battle screen in `src/ui/BattleScreen.tsx`, driven by `useBattle`). Early playtest note: the starter fight against Ink Blob is easy (a simple bot wins by turn 4 with most HP left), so expect tuning in Milestone 4.
+**Milestone 3 done; Milestone 4 next (Polish, Juice & Mobile Packaging).** A full 5-fight run with rewards and a dice shop is playable via `npm run dev` (`src/ui/RunScreen.tsx`, driven by `useRun` and `src/engine/run.ts`).
+Balance notes for M4: a simple greedy bot wins about 193 of 200 seeded runs (all its losses are at the boss), so the run is too easy for skilled play, though a manual playthrough finished the boss on 1 HP. With 5–6 dice the shop screen will need scrolling on small phones.
 
 ## Milestones
 
@@ -22,10 +23,12 @@
 - [x] Wire dice rolling, color selection, mixing, attack activation, enemy intent/HP/block/status display, and end turn.
 - [x] Add quick battle restart / victory / defeat feedback to test game feel and clarity.
 
-### Milestone 3: Roguelite Run Loop
-- [ ] Support multi-encounter progression across stages (including a boss/elite encounter).
-- [ ] Add post-battle reward choices (e.g., new die, upgraded die face, or new power/color option).
-- [ ] Handle full run victory, defeat, and new run reset.
+### Milestone 3: Roguelite Run Loop ✅
+- [x] Support multi-encounter progression across 5 stages (normal fights, an elite, and a boss), with HP carrying over between fights.
+- [x] Earn gold from won fights; after non-shop fights, pick 1 of 3 free rewards (gold, heal, free face repaint).
+- [x] Add a simple dice shop at set stops: repaint a die face, heal, +1 dice cap (max 6), and 2 random themed dice for sale.
+- [x] Start runs with 2 Standard dice and a dice cap of 3.
+- [x] Handle full run victory, defeat, and new run reset.
 
 ### Milestone 4: Polish, Juice & Mobile Packaging
 - [ ] Balance tuning pass using centralized config files in `src/data/`.
@@ -34,5 +37,5 @@
 
 ## Explicitly Out of Scope for V1
 - Accounts, cloud saves, leaderboards, or backend services.
-- Ads, IAP, or complex economy/shop systems.
+- Ads, IAP, or complex economy systems (the simple gold dice shop in Milestone 3 is in scope).
 - Multiplayer or heavy custom shaders.

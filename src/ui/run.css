@@ -1,0 +1,332 @@
+/* Run-level screens: top bar stats, reward, shop, dice editor, run end. */
+
+.topbar {
+  gap: 8px;
+}
+
+.stage {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.stats {
+  display: flex;
+  gap: 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Overlays the content so it never shifts the layout. */
+.error-toast {
+  position: fixed;
+  top: max(52px, calc(env(safe-area-inset-top) + 42px));
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 32px);
+  max-width: 448px;
+  z-index: 20;
+  pointer-events: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #ffd2d3;
+  background: #4a1d21;
+  border: 1px solid #7a2b31;
+  border-radius: 10px;
+  padding: 10px 12px;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.45);
+  animation: fadein 0.2s ease both;
+}
+
+.small {
+  font-size: 0.75rem;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.panel h2 {
+  font-size: 1.15rem;
+}
+
+.subhead {
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 4px;
+}
+
+.subhead-row {
+  margin-bottom: 0;
+}
+
+.link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-weight: 600;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+/* Reward choices */
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 72px;
+  padding: 12px 14px;
+  text-align: left;
+  border-radius: 14px;
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.choice:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.choice:disabled {
+  border-color: var(--border);
+  opacity: 0.45;
+  cursor: default;
+}
+
+.choice-icon {
+  font-size: 1.6rem;
+}
+
+.choice-title {
+  display: block;
+  font-weight: 700;
+}
+
+.choice-detail {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* Dice faces */
+.faces {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.face {
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+}
+
+/* Tappable face: a 44×44 hit area with the color painted only in the inner square. */
+button.face {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  padding: 5px;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background-clip: content-box;
+  cursor: pointer;
+}
+
+button.face.selected {
+  border-color: var(--text);
+  box-shadow: 0 3px 10px rgb(0 0 0 / 0.5);
+}
+
+.editor .faces {
+  gap: 0;
+}
+
+.face-static {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  cursor: default;
+}
+
+.dice-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.die-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 6px 10px;
+  min-height: 48px;
+}
+
+.die-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* Editable rows: compact name so six 44px faces fit at 375px wide. */
+.editor .die-row {
+  padding: 4px 6px;
+}
+
+.editor .die-name {
+  width: 56px;
+  flex: none;
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* With many dice, scroll the list so the color picks and confirm stay on screen. */
+.editor .dice-list {
+  max-height: calc(3 * 54px + 2 * 6px);
+  overflow-y: auto;
+}
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.editor-controls {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 6px;
+  align-items: center;
+}
+
+.color-picks {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.color-picks .chip {
+  min-width: 0;
+  padding: 0 4px;
+  font-size: 0.75rem;
+}
+
+.editor-controls .hint {
+  grid-column: 1 / -1;
+}
+
+.color-picks .chip:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.hint {
+  font-size: 0.8rem;
+  min-height: 1.2em;
+}
+
+.btn-secondary {
+  background: var(--surface-2);
+  border: 1px solid var(--accent);
+  width: 100%;
+  min-height: 44px;
+  padding: 0 8px;
+  font-size: 0.85rem;
+}
+
+/* Shop */
+.shop-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.shop-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px 10px;
+}
+
+.item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.item-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.btn-buy {
+  min-height: 44px;
+  min-width: 84px;
+  padding: 0 10px;
+  flex-direction: column;
+  gap: 0;
+  background: var(--accent);
+  color: #1a1600;
+  line-height: 1.15;
+}
+
+.btn-buy:disabled {
+  background: var(--surface-2);
+  color: var(--text);
+  opacity: 0.6;
+}
+
+.buy-reason {
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+/* Run end */
+.run-end {
+  margin-top: 24px;
+  text-align: center;
+  gap: 16px;
+}
+
+.run-end h2 {
+  font-size: 2rem;
+}
+
+.run-end h2.victory {
+  color: var(--accent);
+}
+
+.run-end h2.defeat {
+  color: var(--red);
+}
+
+.run-end .die-row {
+  justify-content: space-between;
+}

@@ -23,6 +23,20 @@ describe('createBattle', () => {
     expect(state.enemy).toMatchObject({ hp: 30, block: 0 });
     expect(events).toEqual([{ type: 'rolled', colors: ['red', 'blue', 'green'], discarded: [] }]);
   });
+
+  it('can start the player below max HP (HP carried from earlier fights)', () => {
+    const state = start(testConfig({ playerStartHp: 12 }));
+    expect(state.player).toMatchObject({ hp: 12, maxHp: 20 });
+  });
+
+  it('never starts the player above max HP', () => {
+    expect(start(testConfig({ playerStartHp: 99 })).player.hp).toBe(20);
+  });
+
+  it('never starts the player at 0 HP or below', () => {
+    expect(start(testConfig({ playerStartHp: 0 })).player.hp).toBe(1);
+    expect(start(testConfig({ playerStartHp: -5 })).player.hp).toBe(1);
+  });
 });
 
 describe('player actions', () => {

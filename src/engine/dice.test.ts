@@ -16,7 +16,7 @@ describe('rollDie', () => {
   });
 
   it('throws for a die with no faces', () => {
-    expect(() => rollDie({ id: 'empty', faces: [] }, () => 0)).toThrow();
+    expect(() => rollDie({ id: 'empty', name: 'Empty', faces: [] }, () => 0)).toThrow();
   });
 });
 

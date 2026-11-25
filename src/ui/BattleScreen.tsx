@@ -1,17 +1,32 @@
 import { useState } from 'react';
-import { canAfford, findRecipe, getEnemyIntent, type BattleEvent } from '../engine';
+import {
+  canAfford,
+  findRecipe,
+  getEnemyIntent,
+  type BattleAction,
+  type BattleConfig,
+  type BattleEvent,
+  type BattleState,
+} from '../engine';
 import { Badges, ColorDot, CostDots, HpBar } from './components';
 import { COLOR_LABEL, describeEffect, describeIntent, formatEvent } from './format';
-import { useBattle } from './useBattle';
 import './battle.css';
 
 function wasHit(events: BattleEvent[], target: 'player' | 'enemy'): boolean {
   return events.some((e) => e.type === 'damaged' && e.target === target && e.amount > 0);
 }
 
-export function BattleScreen() {
-  const { config, view, dispatch, restart } = useBattle();
-  const { state, events, actionCount } = view;
+interface BattleScreenProps {
+  battle: BattleState;
+  config: BattleConfig;
+  events: BattleEvent[];
+  actionCount: number;
+  isFinalFight: boolean;
+  onAction: (action: BattleAction) => void;
+  onContinue: () => void;
+}
+
+export function BattleScreen({ battle: state, config, events, actionCount, isFinalFight, onAction, onContinue }: BattleScreenProps) {
   const [selected, setSelected] = useState<number[]>([]);
 
   const intent = getEnemyIntent(state, config);
@@ -29,23 +44,13 @@ export function BattleScreen() {
     });
   }
 
-  function act(action: Parameters<typeof dispatch>[0]) {
+  function act(action: BattleAction) {
     setSelected([]);
-    dispatch(action);
-  }
-
-  function playAgain() {
-    setSelected([]);
-    restart();
+    onAction(action);
   }
 
   return (
-    <div className="battle">
-      <header className="topbar">
-        <span className="brand">Spill</span>
-        <span className="turn">Turn {state.turn}</span>
-      </header>
-
+    <>
       <section key={`enemy-${actionCount}`} className={`card enemy${wasHit(events, 'enemy') ? ' hit' : ''}`}>
         <div className="card-row">
           <div className="card-title">
@@ -73,6 +78,7 @@ export function BattleScreen() {
             <h2>You</h2>
             <Badges combatant={state.player} />
           </div>
+          <span className="muted">Turn {state.turn}</span>
         </div>
         <HpBar combatant={state.player} />
       </section>
@@ -137,7 +143,7 @@ export function BattleScreen() {
       </section>
 
       <footer className="footer">
-        <button type="button" className="btn btn-end" onClick={() => act({ type: 'endTurn' })} disabled={isOver}>
+        <button type="button" className="btn btn-primary" onClick={() => act({ type: 'endTurn' })} disabled={isOver}>
           End turn
         </button>
       </footer>
@@ -153,13 +159,12 @@ export function BattleScreen() {
                 ? `You beat ${config.enemy.name} on turn ${state.turn} with ${state.player.hp} HP left.`
                 : `${config.enemy.name} had ${state.enemy.hp} HP left.`}
             </p>
-            <button type="button" className="btn btn-end" onClick={playAgain}>
-              Play again
+            <button type="button" className="btn btn-primary" onClick={onContinue}>
+              {state.phase === 'defeat' ? 'See results' : isFinalFight ? 'Finish run' : 'Continue'}
             </button>
-            <p className="seed">Seed {view.seed}</p>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

@@ -1,5 +1,5 @@
-import { BattleScreen } from './BattleScreen';
+import { RunScreen } from './RunScreen';
 
 export function App() {
-  return <BattleScreen />;
+  return <RunScreen />;
 }
