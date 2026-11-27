@@ -35,10 +35,14 @@
   margin-top: 8px;
 }
 
-/* The game's version, small under the menu buttons. */
+/* The game's version, small in the bottom-left corner, out of the way. */
 .app-version {
+  position: fixed;
+  left: max(12px, env(safe-area-inset-left));
+  bottom: max(8px, env(safe-area-inset-bottom));
   margin: 0;
   font-size: 0.8rem;
+  pointer-events: none;
 }
 
 /* The Windows app's "update available" notice, above the menu buttons. */

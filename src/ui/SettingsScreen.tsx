@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { ConfirmDialog } from './ConfirmDialog';
 import { SeedLine } from './SeedLine';
 import { parseSeed } from './seed';
+import { useFullScreen } from './useFullScreen';
 
 /** The run Settings can act on: one that's in progress (not ended). */
 export interface ActiveRun {
@@ -40,6 +41,7 @@ export function SettingsScreen({
   const [seedText, setSeedText] = useState('');
   const [pending, setPending] = useState<Pending | null>(null);
   const typedSeed = parseSeed(seedText);
+  const display = useFullScreen();
 
   // Move focus into the panel so keyboard users start here.
   useEffect(() => {
@@ -94,6 +96,26 @@ export function SettingsScreen({
                 Abandon run
               </button>
             </div>
+          </div>
+        )}
+
+        {display && (
+          <div className="settings-group">
+            <h3 className="subhead">Display</h3>
+            <div className="settings-row" role="group" aria-label="Display mode">
+              {([false, true] as const).map((full) => (
+                <button
+                  key={String(full)}
+                  type="button"
+                  className={`btn ${display.fullscreen === full ? 'btn-primary' : 'btn-menu'}`}
+                  aria-pressed={display.fullscreen === full}
+                  onClick={() => display.setFullScreen(full)}
+                >
+                  {full ? 'Fullscreen' : 'Windowed'}
+                </button>
+              ))}
+            </div>
+            <p className="muted settings-hint">F11 also switches.</p>
           </div>
         )}
 

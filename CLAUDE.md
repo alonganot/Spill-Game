@@ -21,8 +21,8 @@ Players roll colored dice each turn, mix colors to create new colors, and combin
   - `src/data/` — Balance configs, color recipes, attack/skill definitions, enemy definitions, and stage/reward tables. Avoid hardcoded gameplay numbers inside `src/engine/`.
   - `src/ui/` — React views, touch controls, visual feedback, and screen flow. Consumes engine state and dispatches actions.
   - `src/mobile/` — Capacitor adapters (haptics, app lifecycle/pause, device capabilities). Empty in V1.
-  - `src/desktop/` — The game's side of the Electron bridge (`window.spillDesktop`, update status types). No Electron imports; returns null in the browser.
-  - `electron/` — Electron main process (`main.cjs`, incl. auto-updates), preload bridge (`preload.cjs`), dev launcher (`dev.mjs`), and app icon. No game rules here.
+  - `src/desktop/` — The game's side of the Electron bridge (`bridge.ts`: `window.spillDesktop`; `updates.ts`; `display.ts`: fullscreen via Electron or the browser Fullscreen API). No Electron imports; works without the bridge in a browser.
+  - `electron/` — Electron main process (`main.cjs`, incl. auto-updates and remembered fullscreen), preload bridge (`preload.cjs`), dev launcher (`dev.mjs`), and app icon. No game rules here.
 
 ## Commands
 - `npm run dev` — play in the browser (Vite dev server).
