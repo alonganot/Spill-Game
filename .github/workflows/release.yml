@@ -70,6 +70,17 @@ jobs:
           git tag -a "v$VERSION" -m "Spill v$VERSION" -m "$REASON"
           git push origin "v$VERSION"
 
+      # Create the release before electron-builder uploads to it. Otherwise its parallel
+      # uploads can each create a release for the same tag (v1.0.1 ended up as two).
+      - name: Create the GitHub Release
+        if: steps.version.outputs.release == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+          REASON: ${{ steps.version.outputs.reason }}
+        run: gh release create "v$VERSION" --verify-tag --title "Spill v$VERSION" --notes "Download Spill-Setup-$VERSION.exe below to install. Installed games update from the main menu. ($REASON)"
+
       - name: Build and publish the installer
         if: steps.version.outputs.release == 'true'
         env:
