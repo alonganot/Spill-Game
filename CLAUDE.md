@@ -35,7 +35,7 @@ Players roll colored dice each turn, mix colors to create new colors, and combin
 
 ## Releases (automatic)
 Every push to `main` (a merged PR) runs `.github/workflows/release.yml`: it picks the next version, runs the tests, builds, tags `vX.Y.Z`, and publishes the Windows installer to GitHub Releases. Installed games see it on their next launch (update notice on the main menu, `src/ui/UpdateNotice.tsx`); the menu also shows the running version (`APP_VERSION`, injected from `package.json` by `vite.config.ts`).
-- **Version source of truth: the `v*` git tags.** `package.json`'s `version` is set only inside the release job and isn't committed back, so in the repo it may lag behind the latest release. Don't bump it by hand.
+- **Version source of truth: the `v*` git tags.** In the repo, `package.json`'s `version` stays `0.0.0-dev` on purpose, so local builds (`npm run dev`, a local `npm run dist:win`) show `v0.0.0-dev` and can't be mistaken for a release. Only the release job sets the real version, inside its own build, and it never commits it back. Don't bump it by hand.
 - **Bump rules** (`scripts/release-version.mjs`, tested in `scripts/release-version.test.ts`), compared with the last tag:
   - No game files changed (only docs, CI, tests): no release.
   - **major**: the run save format changed (`SAVE_KEY` in `src/ui/runSave.ts`, old saves are dropped), or a commit says `BREAKING CHANGE`.
