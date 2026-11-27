@@ -16,6 +16,18 @@
   --purple: #9b5de5;
   --cyan: #22c3d6;
   --orange: #f08a24;
+  --white: #f4f0e6;
+  --black: #2b2238;
+  --black-rim: #8f86a8;
+  --pink: #ff7eb6;
+  --grey: #9a96a8;
+  --crimson: #b5173f;
+  --blight: #8e9c1e;
+  --frost: #a6ecff;
+  --curse: #b58cff;
+  --silence: #c9c3d8;
+  --chill: #a6ecff;
+  --heal: #7dea9a;
   background: var(--bg);
   color: var(--text);
   -webkit-tap-highlight-color: transparent;

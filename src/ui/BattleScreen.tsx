@@ -6,12 +6,15 @@ import {
   mixColors,
   findMixPlan,
   getEnemyIntent,
+  attackHitDamage,
   type BattleAction,
   type BattleConfig,
   type BattleEvent,
   type BattleState,
   type Color,
   type EnemyIntent,
+  type EnemyState,
+  type Effect,
   type MixRecipe,
 } from '../engine';
 import { MIX_HINT_MAX_MIXES } from '../data/balance';
@@ -23,7 +26,7 @@ import { chipPopMs, useReducedMotion } from './anim';
 import { RollStage, TrayDie } from './PixelDie';
 import { EnemyStage, HeroStage, Projectile } from './Fighters';
 import { COLOR_HEX, floatsFor, stageFxFor } from './fx';
-import { COLOR_LABEL, describeIntent, enemyLabels, formatEvent, intentTip } from './format';
+import { COLOR_LABEL, describeIntent, enemyLabels, formatEvent, intentTip, type IntentMark } from './format';
 import { Tip } from './Tooltip';
 import { beforeOpeningRoll, buildTimeline } from './timeline';
 import { chipsForPlan } from './mixHint';
@@ -118,12 +121,13 @@ export function BattleScreen({
   const enemyStageRefs = useMemo(() => config.enemies.map(() => createRef<HTMLDivElement>()), [config.enemies]);
   const heroStageRef = useRef<HTMLDivElement>(null);
   const poolRef = useRef<HTMLElement>(null);
-  // A spell that harms enemies sends a bolt of its first cost color: to its target, or to every living enemy.
+  // A spell that reaches enemies sends a bolt of its first cost color: to its target, or to every living enemy.
+  // Spells that only touch the player (Block, Heal, Cleanse) send none.
   const castAttack =
     beatEvent?.type === 'triggered' ? config.attacks.find((x) => x.id === beatEvent.attackId) : undefined;
   const castColor = castAttack && (Object.keys(castAttack.cost)[0] as Color | undefined);
   const boltColor =
-    castAttack && castColor && castAttack.effects.some((e) => e.type !== 'block') ? COLOR_HEX[castColor] : null;
+    castAttack && castColor && castAttack.effects.some((e) => !PLAYER_EFFECTS.has(e.type)) ? COLOR_HEX[castColor] : null;
   const boltTargets =
     beatEvent?.type !== 'triggered' || !castAttack
       ? []
@@ -383,7 +387,9 @@ export function BattleScreen({
           const label = labels[i]!;
           const art = enemySprite(def.id);
           const down = enemy.hp === 0;
-          const intent = down ? undefined : getEnemyIntent(playing ? before : state, config, i);
+          const shown = playing ? before : state;
+          const intent = down ? undefined : getEnemyIntent(shown, config, i);
+          const plan = intent && intentPlan(intent, shown.enemies[i]!, config);
           const targeted = choosing && i === target && !down;
           const stage = art ? (
             <EnemyStage
@@ -425,10 +431,14 @@ export function BattleScreen({
                   {/* A defeated enemy's leftover statuses never tick, so they aren't shown. */}
                   {!down && <Badges combatant={enemy} owner={{ kind: 'enemy', name: label }} status={config.status} />}
                 </div>
-                {intent && !isOver && (
-                  <Tip text={intentTip(intent, label, config.status)} focusable>
-                    <span className={`intent intent-${intent.type}`} aria-label={`${label} intent`}>
-                      {INTENT_ICON[intent.type]} {describeIntent(intent)}
+                {intent && plan && !isOver && (
+                  <Tip text={intentTip(plan.intent, label, config.status, plan.mark)} focusable>
+                    <span
+                      className={`intent intent-${intent.type}${plan.mark ? ` intent-${plan.mark}` : ''}`}
+                      aria-label={`${label} intent${plan.mark === 'skipped' ? ' (skipped: Silenced)' : plan.mark === 'chilled' ? ' (Chilled)' : ''}`}
+                    >
+                      {plan.mark === 'skipped' ? '🤐 ' : plan.mark === 'chilled' ? '❄ ' : ''}
+                      {INTENT_ICON[intent.type]} {describeIntent(plan.intent)}
                     </span>
                   </Tip>
                 )}
@@ -516,6 +526,7 @@ export function BattleScreen({
       {bookOpen && (
         <Spellbook
           spells={spells}
+          recipes={config.recipes}
           unavailableOnly={unavailableOnly}
           onToggleUnavailableOnly={() => setUnavailableOnly((v) => !v)}
           onClose={closeBook}
@@ -587,7 +598,25 @@ export function BattleScreen({
   );
 }
 
+const PLAYER_EFFECTS = new Set<Effect['type']>(['block', 'heal', 'cleanse']);
+
 const INTENT_ICON: Record<EnemyIntent['type'], string> = { attack: '⚔', block: '🛡', poison: '☠', burn: '🔥' };
+
+/**
+ * What an enemy will really do: a Silenced enemy skips its intent, and a Chilled
+ * one's attack shows its reduced per-hit damage.
+ */
+function intentPlan(
+  intent: EnemyIntent,
+  enemy: EnemyState,
+  config: BattleConfig,
+): { intent: EnemyIntent; mark: IntentMark | null } {
+  if (enemy.silenced) return { intent, mark: 'skipped' };
+  if (enemy.chilled && intent.type === 'attack') {
+    return { intent: { ...intent, amount: attackHitDamage(intent.amount, enemy, config) }, mark: 'chilled' };
+  }
+  return { intent, mark: null };
+}
 
 /** Who was still standing when the player fell. */
 function defeatLine(state: BattleState, labels: readonly string[]): string {

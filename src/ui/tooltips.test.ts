@@ -2,7 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { defaultBattleConfig } from '../data/battles';
 import { MIX_RECIPES } from '../data/colors';
 import type { AttackDefinition, StatusConfig } from '../engine';
-import { blockTip, burnTip, dieTip, effectSentence, intentTip, poisonTip, spellTip } from './format';
+import {
+  blockTip,
+  burnTip,
+  chillTip,
+  curseTip,
+  dieTip,
+  effectSentence,
+  intentTip,
+  poisonTip,
+  silenceImmuneTip,
+  silenceTip,
+  spellTip,
+} from './format';
 
 const status: StatusConfig = { burnDamage: 4, poisonDecay: 1, curseBonus: 3, chillMultiplier: 0.5 };
 const enemy = { kind: 'enemy', name: 'Ink Blob' } as const;
@@ -78,5 +90,30 @@ describe('die tooltip', () => {
     expect(dieTip('Standard', ['red', 'red', 'blue', 'blue', 'green', 'green'])).toBe(
       'Standard die: Red, Red, Blue, Blue, Green, Green.',
     );
+  });
+});
+
+describe('White, Pink, and Black tooltips', () => {
+  it('enemy condition badges explain themselves with real numbers', () => {
+    expect(curseTip('Ink Blob', status)).toContain('takes 3 more from every hit');
+    expect(silenceTip('Ink Blob')).toContain('skips its next action');
+    expect(silenceImmuneTip('Ink Blob')).toContain('Silence has no effect');
+    expect(chillTip('Ink Blob', status)).toContain('50% damage per hit');
+  });
+
+  it('marks a skipped or chilled intent', () => {
+    expect(intentTip({ type: 'attack', amount: 6 }, 'Ink Blob', status, 'skipped')).toBe(
+      'Ink Blob is Silenced: it skips Attack 6 when you end your turn.',
+    );
+    expect(intentTip({ type: 'attack', amount: 3 }, 'Ink Blob', status, 'chilled')).toContain('attacks for 3');
+    expect(intentTip({ type: 'attack', amount: 3 }, 'Ink Blob', status, 'chilled')).toContain('Chilled: 50% damage per hit');
+  });
+
+  it('describes the new spell effects', () => {
+    expect(effectSentence({ type: 'heal', amount: 5 }, status)).toBe('Heals you for 5 (up to your max HP)');
+    expect(effectSentence({ type: 'cleanse' }, status)).toBe('Removes all your Poison and Burn');
+    expect(effectSentence({ type: 'block', amount: 12, cleanAmount: 16 }, status)).toContain('or 16 if you have no Poison or Burn');
+    expect(effectSentence({ type: 'curse' }, status)).toContain('+3 damage');
+    expect(effectSentence({ type: 'multiplyPoison', factor: 2 }, status)).toContain('Poison by 2');
   });
 });

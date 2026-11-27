@@ -10,7 +10,7 @@ Spill is played at an **alchemist-painter's workbench floating in a cosmic nebul
 - **Cosmic magic.** Everything sits on deep indigo/space-purple, with subtle nebula clouds and sparse starlight behind it. Frames are **antique bronze and gold pixel-art borders**. Paint is the only saturated thing on screen, and it glows when it is live (draggable, staged, ready to cast).
 
 Rules of thumb:
-- **Paint is the hero.** Surfaces stay dark and low-saturation so the six paint colors always read first.
+- **Paint is the hero.** Surfaces stay dark and low-saturation so the paint colors (five base, eight mixed) always read first.
 - **Glow means "you can act on this".** A glow marks something draggable, a filled socket, a ready Cast, or the current target. Idle, locked, or disabled things don't glow.
 - **Pixel-crisp, never blurry.** Hard edges, stepped corners, whole-pixel sizes. No soft drop shadows on cards, no gradients that look airbrushed (nebula backdrops may use soft gradients, but at low contrast and behind everything).
 - **Calm backdrop, loud foreground.** Backdrops (sky, nebula, floor) never animate faster than a slow twinkle and never compete with fighters, floats, or intents.
@@ -38,8 +38,20 @@ All colors are CSS custom properties on `:root` in `src/ui/global.css`. Componen
 | `--purple` | `#9b5de5` | `#a663f0` | Purple paint. |
 | `--cyan` | `#22c3d6` | `#2ed3e6` | Cyan paint. |
 | `--orange` | `#f08a24` | `#ff9229` | Orange paint. |
+| `--white` | `#f4f0e6` | `#f4f0e6` | White paint (Purity). |
+| `--black` | `#2b2238` | `#2b2238` | Black paint (Shadow). Always drawn with `--black-rim` so it reads on dark surfaces. |
+| `--black-rim` | `#8f86a8` | `#8f86a8` | The light outline of Black paint (drop outline, chip inset ring). |
+| `--pink` | `#ff7eb6` | `#ff7eb6` | Pink paint (Heal). |
+| `--grey` | `#9a96a8` | `#9a96a8` | Grey paint (Balance). |
+| `--crimson` | `#b5173f` | `#b5173f` | Crimson paint (Vampiric). Darker than Red so the two stay apart. |
+| `--blight` | `#8e9c1e` | `#8e9c1e` | Blight paint (Plague). Olive, so it stays apart from Green. |
+| `--frost` | `#a6ecff` | `#a6ecff` | Frost paint (Chill). Paler than Cyan. |
+| `--curse` | `#b58cff` | `#b58cff` | Curse badge, float, and glow. |
+| `--silence` | `#c9c3d8` | `#c9c3d8` | Silence badge, float, and glow. |
+| `--chill` | `#a6ecff` | `#a6ecff` | Chill badge, chilled intent, float, and glow. |
+| `--heal` | `#7dea9a` | `#7dea9a` | Heal float and glow. |
 
-The paint colors get a small boost in brightness and saturation so they still pop against indigo and bronze; hues stay the same so players' color memory carries over.
+The six original paint colors get a small boost in brightness and saturation so they still pop against indigo and bronze; hues stay the same so players' color memory carries over. The White/Black paints and their mixes (Milestone 8) were picked for the new palette already and keep their values.
 
 ### 2.2 New tokens
 
@@ -86,7 +98,8 @@ Use glows for: draggable paint drops (on hover/focus), the drag ghost, filled co
 ### 2.4 Sprite palettes
 
 Sprite colors live in `src/data/sprites.ts` and `src/ui/PaintDrop.tsx`/`PixelDie.tsx` palettes, not CSS. Keep them aligned with the tokens:
-- `COLOR_HEX` in `src/ui/fx.ts` must use the same six paint values as the CSS color tokens (update both together).
+- `COLOR_HEX` in `src/ui/fx.ts` must use the same paint values as the CSS color tokens (update both together).
+- Black paint's drop uses `--black-rim` as its outline instead of `--bg` (`dropPalette` in `PaintDrop.tsx`).
 - Sprite outlines (`k` in `dropPalette`) use `--bg`'s value (`#0f0d1a`).
 - New UI sprites (cauldron, vial, icons, frames) draw from §2.1–2.2 values only.
 
@@ -162,7 +175,8 @@ Variants:
 - **Fighters:** the hero on the left facing right; **1–3 enemies in a row** on the right (`.enemy-row`). Enemy cards lose their opaque card background in the arena: each enemy is the sprite on the floor plus a small gold-framed plate under or above it holding name, intent, badges, and HP.
 - **HP bars:** golden pixel frames (`.px-frame-gold`, stepped), a recessed `--recess` track, a flat `--hp` fill with a 1px lighter top line, and `--hp-low` under 30%. HP text (`12 / 30`) in the pixel font, centered, with a 1px `--ink` text shadow for legibility.
 - **Intents** (`.intent-attack`, `-block`, `-poison`, `-burn`): a pixel speech-bubble/banner above the enemy, framed in the intent's color (`--danger`, `--block`, `--poison`, `--burn`) on `--surface`, with the icon and number in the pixel font. They must pop: the brightest thing on the enemy plate after the sprite. A gentle 1-step bob is allowed (off with reduced motion). Multi-hit attacks show `6×2` style text.
-- **Status badges** (`.badge-block`, `-poison`, `-burn`): small square pixel gems with a colored frame, icon, and number. **Burn shows its stack count** (`🔥 2`) and gets brighter/hotter as stacks grow. Badges sit next to the HP bar and never cover the sprite.
+- **Status badges** (`.badge-block`, `-poison`, `-burn`, and the enemy-only `-curse`, `-silence`, `-immune`, `-chill`): small square pixel gems with a colored frame, icon, and number. **Burn shows its stack count** (`🔥 2`) and gets brighter/hotter as stacks grow. Badges sit next to the HP bar, wrap onto a second row when there are many, and never cover the sprite.
+- **Changed intents:** a Silenced enemy's intent is struck through and dimmed with `🤐` (`.intent-skipped`); a Chilled enemy's attack shows its reduced numbers in `--chill` with `❄` (`.intent-chilled`).
 - **Targeting:** the selected enemy has a **gold pixel ring** on the floor under its feet (or around the sprite) with a soft gold glow, and a parchment **"Target" tag** (`.target-tag`) with `--ink` text. Hovering/focusing another living enemy shows a fainter ring. Defeated enemies are dimmed and can't be targeted; their ring and badges are hidden.
 - **Feedback** (`fx.css`): floats use the pixel font with a 2px `--ink` outline; damage in `--danger`/white, block in `--block`, poison/burn in their colors. Paint bolts keep the paint color with a glow trail.
 - **Battle log and Spellbook buttons** in the arena use the icon-button style (§4.2).
@@ -179,7 +193,7 @@ The workbench is one `.px-frame-gold` panel. Sections keep their `section-head` 
 ### 6.2 Mixing bowl (`MixingBowl` in `workbench.tsx`)
 - A **pixel cauldron** sprite (new, in `sprites.ts`) holds the **two liquid slots** (`.bowl-slot-wrap`). Empty slots are dark recessed pools; a filled slot shows the paint as glowing liquid (the paint drop sits in a glowing pool of its color).
 - The `=` leads to a **potion vial** (new sprite) as the output. Empty vial: clear glass. `?`: waiting. `✕` (no recipe): a cracked/smoky vial. A valid mix fills the vial with the new color and it **glows and gently pulses** (pulse off with reduced motion); it stays draggable and tappable exactly as today.
-- The bowl note stays below in the body font.
+- The bowl note stays below in the body font. It never lists the recipes (those live in the Spellbook); when the bowl is empty it points there.
 
 ### 6.3 Craftable spells (`SpellCard` in `Spellbook.tsx`, `.attacks`)
 - **Dark parchment cards** (`--parchment-dark` fill with a faint paper-grain texture, stepped corners) with an **element-tinted border**: the border takes the color of the spell's main cost color (set as a `--spell-color` custom property on the card).
@@ -205,7 +219,7 @@ Every screen shares the same backdrop (nebula + stars, without the floor), frame
 - **Reward cards** (`RewardScreen.tsx`, `run.css` `.choice`): three `.px-frame-gold` parchment cards; the icon sits in a recessed socket; hover/focus glows gold.
 - **Dice Shop** (`ShopScreen.tsx`): shop items are dark parchment rows/cards in bronze frames; prices in the pixel font with a gold coin glyph; Buy is primary; unaffordable items are flat and dim with their reason visible.
 - **Dice editor** (`DiceEditor.tsx`): faces sit in recessed stone sockets like the dice tray; color picks are glowing drops.
-- **Spellbook** (`Spellbook.tsx`): a large parchment-and-bronze sheet over the workbench, using the same spell cards.
+- **Spellbook** (`Spellbook.tsx`): a large parchment-and-bronze sheet over the workbench, using the same spell cards, with every mix recipe listed under them as paint drops (`.recipe-list`).
 - **Battle Log** (`BattleLog.tsx`): an aged scroll panel (`--parchment-dark`, bronze frame), body-font lines.
 - **Settings** (`SettingsScreen.tsx`): grouped `.px-frame` panels; the seed in the pixel font in a recessed field; danger actions use `.btn-danger`.
 - **Run End** (`RunEndScreen.tsx`): a large gold-framed panel, Victory in gold / Defeat in `--danger`, stats in the pixel font.

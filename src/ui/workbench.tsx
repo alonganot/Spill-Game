@@ -135,9 +135,7 @@ export function MixingBowl() {
           ? "These two colors don't mix."
           : result.kind === 'mix'
             ? `${COLOR_LABEL[result.inputs[0]]} + ${COLOR_LABEL[result.inputs[1]]} makes ${COLOR_LABEL[result.recipe.output]}. Drag it to your pool or a spell.`
-            : wb.recipes
-                .map((r) => `${COLOR_LABEL[r.inputs[0]]} + ${COLOR_LABEL[r.inputs[1]]} → ${COLOR_LABEL[r.output]}`)
-                .join(' · ')}
+            : 'Drop two colors in to mix them. Every recipe is in the 📖 Spellbook.'}
       </p>
     </section>
   );

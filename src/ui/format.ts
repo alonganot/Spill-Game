@@ -172,13 +172,41 @@ export function burnTip(stacks: number, owner: Owner, status: StatusConfig): str
   return `Burn ${stacks}: ${who} ${status.burnDamage * stacks} damage${each} at the end of the turn, then it goes out. Ignores Block. Burning again adds a stack.`;
 }
 
+export function curseTip(name: string, status: StatusConfig): string {
+  return `Cursed: ${name} takes ${status.curseBonus} more from every hit and every Poison or Burn tick until this turn's statuses resolve.`;
+}
+
+export function silenceTip(name: string): string {
+  return `Silenced: ${name} skips its next action. Afterwards it can't be Silenced again until it really acts.`;
+}
+
+export function silenceImmuneTip(name: string): string {
+  return `Silence Immunity: ${name} was just Silenced, so Silence has no effect on it until it acts again.`;
+}
+
+export function chillTip(name: string, status: StatusConfig): string {
+  return `Chilled: ${name}'s next attack deals ${Math.round(status.chillMultiplier * 100)}% damage per hit (rounded down). Clears after it acts.`;
+}
+
 export function blockTip(amount: number, owner: Owner): string {
   return owner.kind === 'player'
     ? `Block ${amount}: absorbs the next ${amount} attack damage. It lasts until your next turn starts.`
     : `Block ${amount}: absorbs the next ${amount} damage from your spells. It lasts until ${owner.name} acts again.`;
 }
 
-export function intentTip(intent: EnemyIntent, enemyName: string, status: StatusConfig): string {
+/** How an enemy's intent is changed: skipped (Silenced) or softened (Chilled). */
+export type IntentMark = 'skipped' | 'chilled';
+
+/** `intent` is what the enemy will really do (a Chilled attack already reduced). */
+export function intentTip(intent: EnemyIntent, enemyName: string, status: StatusConfig, mark: IntentMark | null = null): string {
+  if (mark === 'skipped') {
+    return `${enemyName} is Silenced: it skips ${describeIntent(intent)} when you end your turn.`;
+  }
+  const base = intentText(intent, enemyName, status);
+  return mark === 'chilled' ? `${base} (Chilled: ${Math.round(status.chillMultiplier * 100)}% damage per hit.)` : base;
+}
+
+function intentText(intent: EnemyIntent, enemyName: string, status: StatusConfig): string {
   const when = `When you end your turn, ${enemyName}`;
   switch (intent.type) {
     case 'attack': {

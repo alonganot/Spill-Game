@@ -37,6 +37,8 @@ function shade(hex: string, amount: number): string {
 /** The drop's colors: outline (k), paint (c), highlight (h), and shade (d). Shared with the dice faces. */
 export function dropPalette(color: Color): Record<'k' | 'c' | 'h' | 'd', string> {
   const base = COLOR_HEX[color];
+  // Black paint gets a light rim (and a stronger highlight) so it reads on the dark background.
+  if (color === 'black') return { k: '#8f86a8', c: base, h: shade(base, 0.35), d: '#120e1a' };
   return { k: '#14121a', c: base, h: shade(base, 0.45), d: shade(base, -0.3) };
 }
 

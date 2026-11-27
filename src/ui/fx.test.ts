@@ -80,3 +80,36 @@ describe('stageFxFor', () => {
     expect(floatsFor(hit(3, 0, 'attack', 1), 1)).toEqual([{ text: '-3', kind: 'damage' }]);
   });
 });
+
+describe('White, Pink, and Black effects', () => {
+  it('heal and cleanse float over the player only', () => {
+    const healed: BattleEvent = { type: 'healed', target: 'player', amount: 5 };
+    const cleansed: BattleEvent = { type: 'cleansed', target: 'player', poison: 2, burn: 1 };
+    expect(floatsFor(healed, 'player')).toEqual([{ text: '+5', kind: 'heal' }]);
+    expect(floatsFor(healed, 0)).toEqual([]);
+    expect(stageFxFor(healed, 'player')).toBe('heal');
+    expect(floatsFor(cleansed, 'player')).toEqual([{ text: '✨−3', kind: 'cleanse' }]);
+    expect(stageFxFor(cleansed, 'player')).toBe('cleanse');
+  });
+
+  it('Curse, Silence, and Chill float and glow on the enemy they hit', () => {
+    for (const [status, text] of [
+      ['curse', '🌑 Cursed'],
+      ['silence', '🤐 Silenced'],
+      ['chill', '❄ Chilled'],
+    ] as const) {
+      const event: BattleEvent = { type: 'statusApplied', target: 'enemy', enemy: 1, status, stacks: 1 };
+      expect(floatsFor(event, 1)).toEqual([{ text, kind: status }]);
+      expect(floatsFor(event, 0)).toEqual([]);
+      expect(stageFxFor(event, 1)).toBe(status);
+    }
+  });
+
+  it('a resisted Silence and a skipped turn show on that enemy', () => {
+    expect(floatsFor({ type: 'silenceResisted', enemy: 0 }, 0)).toEqual([{ text: 'Immune', kind: 'resist' }]);
+    const skipped: BattleEvent = { type: 'enemySkipped', enemy: 0, intent: { type: 'attack', amount: 6 } };
+    expect(floatsFor(skipped, 0)).toEqual([{ text: '🤐 Skips', kind: 'silence' }]);
+    expect(stageFxFor(skipped, 0)).toBe('silence');
+    expect(stageFxFor(skipped, 'player')).toBeNull();
+  });
+});

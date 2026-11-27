@@ -343,6 +343,7 @@
 
 .badges {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
@@ -357,6 +358,10 @@
 .badge-block { color: #9cc0ff; }
 .badge-poison { color: #7ee08a; }
 .badge-burn { color: #ffae6b; }
+.badge-curse { color: var(--curse); }
+.badge-silence { color: var(--silence); }
+.badge-immune { color: var(--muted); }
+.badge-chill { color: var(--chill); }
 
 .intent {
   font-size: 0.85rem;
@@ -370,6 +375,16 @@
 .intent-block { color: #9cc0ff; }
 .intent-poison { color: #8fe39b; }
 .intent-burn { color: #ffb066; }
+/* Silenced: the intent is shown but won't happen. */
+.intent.intent-skipped {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+/* Chilled: the attack shows its reduced numbers. */
+.intent.intent-chilled {
+  color: var(--chill);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chill) 50%, transparent);
+}
 
 /* ---------- Several enemies ---------- */
 
@@ -561,6 +576,13 @@
 .chip-purple, .dot-purple { background: var(--purple); }
 .chip-cyan, .dot-cyan { background: var(--cyan); }
 .chip-orange, .dot-orange { background: var(--orange); }
+.chip-white, .dot-white { background: var(--white); }
+.chip-black, .dot-black { background: var(--black); box-shadow: inset 0 0 0 2px var(--black-rim); }
+.chip-pink, .dot-pink { background: var(--pink); }
+.chip-grey, .dot-grey { background: var(--grey); }
+.chip-crimson, .dot-crimson { background: var(--crimson); }
+.chip-blight, .dot-blight { background: var(--blight); }
+.chip-frost, .dot-frost { background: var(--frost); }
 
 .mixbar {
   min-height: 44px;
@@ -866,6 +888,39 @@
 
 .spellbook-legend {
   font-size: 0.72rem;
+}
+
+.recipe-head {
+  margin: 12px 0 6px;
+  font-size: 0.85rem;
+}
+
+.recipe-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 6px 12px;
+}
+
+.recipe {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+}
+
+.recipe-drops {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--muted);
+}
+
+.recipe-text {
+  margin-left: 6px;
+  color: var(--muted);
 }
 
 .legend-craftable {

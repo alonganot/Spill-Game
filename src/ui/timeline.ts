@@ -1,7 +1,10 @@
-import type { BattleEvent, BattleState, Color, Combatant, StatusConfig, Statuses } from '../engine';
+import type { BattleEvent, BattleState, Color, Combatant, EnemyState, StatusConfig, Statuses } from '../engine';
 
-/** The parts of a combatant that change beat by beat during playback. */
-export interface Vitals {
+/** Curse, Silence, Silence Immunity, and Chill: flags only enemies carry. */
+export type Conditions = Pick<EnemyState, 'cursed' | 'silenced' | 'silenceImmune' | 'chilled'>;
+
+/** The parts of a combatant that change beat by beat during playback. Enemies also carry their Conditions. */
+export interface Vitals extends Partial<Conditions> {
   hp: number;
   block: number;
   statuses: Statuses;
@@ -17,8 +20,10 @@ export interface Step {
   pool: readonly Color[];
 }
 
-function vitals(c: Combatant): Vitals {
-  return { hp: c.hp, block: c.block, statuses: c.statuses };
+function vitals(c: Combatant | EnemyState): Vitals {
+  const base = { hp: c.hp, block: c.block, statuses: c.statuses };
+  if (!('cursed' in c)) return base;
+  return { ...base, cursed: c.cursed, silenced: c.silenced, silenceImmune: c.silenceImmune, chilled: c.chilled };
 }
 
 /**
@@ -47,6 +52,7 @@ export function buildTimeline(
       case 'damaged': {
         const { source } = event;
         const hit = (v: Vitals): Vitals => ({
+          ...v,
           hp: Math.max(0, v.hp - event.amount),
           block: Math.max(0, v.block - event.blocked),
           // A tick uses up its status the way the engine resolves it.
@@ -65,12 +71,15 @@ export function buildTimeline(
         break;
       case 'statusApplied': {
         const { status: applied, stacks } = event;
-        // Curse, Silence, and Chill aren't part of Vitals yet (Milestone 8, Task 3).
-        if (applied !== 'poison' && applied !== 'burn') break;
-        update(event.target, event.enemy, (v) => ({
-          ...v,
-          statuses: { ...v.statuses, [applied]: v.statuses[applied] + stacks },
-        }));
+        if (applied === 'poison' || applied === 'burn') {
+          update(event.target, event.enemy, (v) => ({
+            ...v,
+            statuses: { ...v.statuses, [applied]: v.statuses[applied] + stacks },
+          }));
+        } else {
+          const flag = { curse: 'cursed', silence: 'silenced', chill: 'chilled' } as const;
+          update(event.target, event.enemy, (v) => ({ ...v, [flag[applied]]: true }));
+        }
         break;
       }
       case 'healed':
@@ -86,12 +95,19 @@ export function buildTimeline(
         break;
       case 'enemySkipped':
       case 'enemyIntent':
-        // The enemy's old block expires right before it acts.
-        update('enemy', event.enemy, (v) => ({ ...v, block: 0 }));
+        // The status step is over once enemies act, so every Curse has cleared.
+        enemies = enemies.map((v) => (v.cursed ? { ...v, cursed: false } : v));
+        // The enemy's old block expires right before it acts (or skips).
+        update('enemy', event.enemy, (v) =>
+          event.type === 'enemySkipped'
+            ? { ...v, block: 0, silenced: false, silenceImmune: true }
+            : { ...v, block: 0, chilled: false, silenceImmune: false },
+        );
         break;
       case 'rolled':
-        // A new player turn: player block expires and the dice land in the pool.
+        // A new player turn: player block expires and the dice land in the pool. Any Curse is gone by now.
         player = { ...player, block: 0 };
+        enemies = enemies.map((v) => (v.cursed ? { ...v, cursed: false } : v));
         pool = after.pool;
         break;
       case 'mixed':

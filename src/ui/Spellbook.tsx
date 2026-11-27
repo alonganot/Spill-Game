@@ -1,5 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useRef, type RefObject } from 'react';
 import type { AttackDefinition, Color, MixRecipe } from '../engine';
+import { PaintDrop } from './PaintDrop';
 import { COLOR_LABEL, describeEffect, spellTip } from './format';
 import { Tip } from './Tooltip';
 import { costSlots } from './staging';
@@ -122,6 +123,8 @@ function fillSlots(colors: readonly Color[], staged: readonly number[], pool: re
 
 interface SpellbookProps {
   spells: readonly Spell[];
+  /** Every mix recipe, listed under the spells. */
+  recipes: readonly MixRecipe[];
   unavailableOnly: boolean;
   onToggleUnavailableOnly: () => void;
   onClose: () => void;
@@ -136,6 +139,7 @@ const SHEET_GAP_PX = 8;
 /** Every spell, ready or not, in a sheet that slides up over the spell area. */
 export function Spellbook({
   spells,
+  recipes,
   unavailableOnly,
   onToggleUnavailableOnly,
   onClose,
@@ -228,6 +232,19 @@ export function Spellbook({
             ))}
           </div>
         )}
+        <h4 className="recipe-head">Mixes</h4>
+        <ul className="recipe-list">
+          {recipes.map(({ inputs: [a, b], output }) => (
+            <li key={`${a}+${b}`} className="recipe">
+              <span className="recipe-drops" aria-hidden="true">
+                <PaintDrop color={a} size={20} /> + <PaintDrop color={b} size={20} /> → <PaintDrop color={output} size={20} />
+              </span>
+              <span className="recipe-text">
+                {COLOR_LABEL[a]} + {COLOR_LABEL[b]} → {COLOR_LABEL[output]}
+              </span>
+            </li>
+          ))}
+        </ul>
         <p className="spellbook-legend muted">
           Tap an empty slot to fill it from your pool, then Cast. <span className="legend-craftable">⚗ Mix first</span> puts the colors to mix in the bowl. Dim spells need colors you don't have.
         </p>
