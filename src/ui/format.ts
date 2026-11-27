@@ -9,6 +9,7 @@ import {
   type MixRecipe,
   type StatusConfig,
 } from '../engine';
+import type { UpdateStatus } from '../desktop/updates';
 
 export const COLOR_LABEL: Record<Color, string> = {
   red: 'Red',
@@ -191,4 +192,20 @@ export function spellTip(
 /** A die's tooltip: its name and all six faces. */
 export function dieTip(name: string, faces: readonly Color[]): string {
   return `${name} die: ${faces.map((f) => COLOR_LABEL[f]).join(', ')}.`;
+}
+
+/** The main menu's update notice: its text, and its button label if it has one. Null hides it. */
+export function describeUpdate(status: UpdateStatus): { text: string; action?: string } | null {
+  switch (status.state) {
+    case 'none':
+      return null;
+    case 'available':
+      return { text: `Update available: v${status.version}`, action: 'Update' };
+    case 'downloading':
+      return { text: `Downloading v${status.version}… ${Math.max(0, Math.min(100, Math.round(status.percent)))}%` };
+    case 'installing':
+      return { text: `Installing v${status.version}. Spill will restart…` };
+    case 'error':
+      return { text: `Couldn't download v${status.version}.`, action: 'Retry' };
+  }
 }

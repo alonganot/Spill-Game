@@ -1,7 +1,7 @@
 {
   "name": "spill",
   "productName": "Spill",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A turn-based roguelite where you roll paint dice, mix colors, and cast spells.",
   "author": "Alon Ganot",
   "private": true,
@@ -18,9 +18,11 @@
     "electron:dev": "node electron/dev.mjs",
     "electron:start": "npm run build && electron .",
     "dist:win": "npm run build && electron-builder --win nsis",
+    "release:win": "npm run build && electron-builder --win nsis --publish always",
     "icon": "node scripts/make-icon.mjs"
   },
   "dependencies": {
+    "electron-updater": "^6.8.11",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
@@ -45,6 +47,7 @@
     "files": [
       "dist/**/*",
       "electron/main.cjs",
+      "electron/preload.cjs",
       "electron/icon.png",
       "package.json"
     ],
@@ -67,6 +70,14 @@
       "createStartMenuShortcut": true,
       "shortcutName": "Spill",
       "artifactName": "Spill-Setup-${version}.${ext}"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "alonganot",
+        "repo": "Spill-Game",
+        "releaseType": "draft"
+      }
+    ]
   }
 }

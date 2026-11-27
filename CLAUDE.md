@@ -21,7 +21,8 @@ Players roll colored dice each turn, mix colors to create new colors, and combin
   - `src/data/` — Balance configs, color recipes, attack/skill definitions, enemy definitions, and stage/reward tables. Avoid hardcoded gameplay numbers inside `src/engine/`.
   - `src/ui/` — React views, touch controls, visual feedback, and screen flow. Consumes engine state and dispatches actions.
   - `src/mobile/` — Capacitor adapters (haptics, app lifecycle/pause, device capabilities). Empty in V1.
-  - `electron/` — Electron main process (`main.cjs`), dev launcher (`dev.mjs`), and app icon. No game rules here.
+  - `src/desktop/` — The game's side of the Electron bridge (`window.spillDesktop`, update status types). No Electron imports; returns null in the browser.
+  - `electron/` — Electron main process (`main.cjs`, incl. auto-updates), preload bridge (`preload.cjs`), dev launcher (`dev.mjs`), and app icon. No game rules here.
 
 ## Commands
 - `npm run dev` — play in the browser (Vite dev server).
@@ -29,7 +30,14 @@ Players roll colored dice each turn, mix colors to create new colors, and combin
 - `npm run test:balance` — the slow balance simulation (greedy bot over 200 seeded runs).
 - `npm run electron:dev` — the game in an Electron window, against the Vite dev server.
 - `npm run electron:start` — build, then run the production build in Electron.
-- `npm run dist:win` — build the versioned Windows installer (`release/Spill-Setup-<version>.exe`). Bump `version` in `package.json` for a new release.
+- `npm run dist:win` — build the versioned Windows installer (`release/Spill-Setup-<version>.exe`) locally, without publishing.
+- `npm run release:win` — build and upload the installer, `.blockmap`, and `latest.yml` to a draft GitHub Release (needs `GH_TOKEN`).
+
+## Releasing an update (Windows app)
+1. Bump `version` in `package.json` (installed games only update to a higher version).
+2. `$env:GH_TOKEN = "<GitHub token with repo access>"; npm run release:win` — never commit the token.
+3. On GitHub, publish the draft release. Installed games show the update notice on their next launch.
+- Testing without publishing: `npm run dist:win`, serve `release/` over HTTP, and start an installed game with `SPILL_UPDATE_URL=<that URL>`.
 - `npm run icon` — redraw `electron/icon.png` from the hero sprite.
 
 ## Engineering & Collaboration Rules

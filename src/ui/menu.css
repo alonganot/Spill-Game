@@ -35,6 +35,34 @@
   margin-top: 8px;
 }
 
+/* The Windows app's "update available" notice, above the menu buttons. */
+.update-notice {
+  width: min(100%, 320px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  background: var(--surface);
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+.update-notice-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.update-notice .update-notice-btn {
+  flex: none;
+  width: auto;
+  min-height: 36px;
+  padding: 0 16px;
+  font-size: 0.95rem;
+}
+
 .btn-menu {
   width: 100%;
   font-size: 1.05rem;
@@ -229,7 +257,8 @@
     padding: 16px 22px 24px;
   }
 
-  .menu-buttons {
+  .menu-buttons,
+  .update-notice {
     width: min(100%, 360px);
   }
 }

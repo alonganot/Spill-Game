@@ -1,8 +1,9 @@
 // Electron main process: shows the Vite web build in a desktop window.
 // Kept outside src/ so the game code never depends on Electron.
-const { app, BrowserWindow, Menu, net, protocol, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, net, protocol, shell } = require('electron');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
+const { autoUpdater } = require('electron-updater');
 
 /** Set by `npm run electron:dev` to load the Vite dev server instead of the build. */
 const DEV_URL = process.env.SPILL_DEV_URL;
@@ -31,6 +32,56 @@ function serveDist() {
   });
 }
 
+// ---------- Updates ----------
+// The installed game checks GitHub Releases (build.publish in package.json) on
+// launch. The main menu shows what it found (src/ui/UpdateNotice.tsx); the
+// download only starts when the player clicks Update, then it installs and restarts.
+// SPILL_UPDATE_URL points the check at another folder of builds, for testing.
+
+/** The latest update status, also sent to a page that loads (or reloads) later. */
+let updateStatus = { state: 'none' };
+
+function setUpdateStatus(status) {
+  updateStatus = status;
+  for (const win of BrowserWindow.getAllWindows()) win.webContents.send('updates:status', status);
+}
+
+function setUpUpdates() {
+  ipcMain.handle('updates:status', () => updateStatus);
+  ipcMain.handle('updates:download', () => {
+    if (updateStatus.state !== 'available' && updateStatus.state !== 'error') return;
+    setUpdateStatus({ state: 'downloading', version: updateStatus.version, percent: 0 });
+    autoUpdater.downloadUpdate().catch(() => {
+      // Reported through the 'error' event.
+    });
+  });
+  if (!app.isPackaged) return;
+
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = false;
+  if (process.env.SPILL_UPDATE_URL) autoUpdater.setFeedURL({ provider: 'generic', url: process.env.SPILL_UPDATE_URL });
+
+  autoUpdater.on('update-available', (info) => setUpdateStatus({ state: 'available', version: info.version }));
+  autoUpdater.on('download-progress', (progress) => {
+    if (updateStatus.state !== 'downloading') return;
+    setUpdateStatus({ state: 'downloading', version: updateStatus.version, percent: Math.floor(progress.percent) });
+  });
+  autoUpdater.on('update-downloaded', (info) => {
+    setUpdateStatus({ state: 'installing', version: info.version });
+    // Silent install, then the new version starts. The save lives in the user profile, so it stays.
+    setImmediate(() => autoUpdater.quitAndInstall(true, true));
+  });
+  autoUpdater.on('error', (error) => {
+    // A failed check (offline, say) shows nothing; a failed download offers Retry.
+    if (updateStatus.state === 'downloading') {
+      setUpdateStatus({ state: 'error', version: updateStatus.version, message: error?.message ?? String(error) });
+    }
+  });
+  autoUpdater.checkForUpdates().catch(() => {
+    // Offline or no releases yet: play on without an update notice.
+  });
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     title: 'Spill',
@@ -43,6 +94,7 @@ function createWindow() {
     autoHideMenuBar: true,
     show: false,
     webPreferences: {
+      preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
@@ -82,6 +134,7 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady().then(() => {
     if (!DEV_URL) Menu.setApplicationMenu(null);
     serveDist();
+    setUpUpdates();
     createWindow();
   });
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { defaultBattleConfig } from '../data/battles';
 import { ENEMIES } from '../data/enemies';
 import type { BattleEvent } from '../engine';
-import { describeEffect, describeIntent, enemyLabels, formatEvent } from './format';
+import { describeEffect, describeIntent, describeUpdate, enemyLabels, formatEvent } from './format';
 
 const config = defaultBattleConfig();
 
@@ -68,5 +68,18 @@ describe('describe helpers', () => {
     expect(describeIntent({ type: 'block', amount: 5 })).toBe('Block 5');
     expect(describeIntent({ type: 'poison', stacks: 3 })).toBe('Poison 3');
     expect(describeIntent({ type: 'burn' })).toBe('Burn');
+  });
+});
+
+describe('describeUpdate', () => {
+  it.each([
+    [{ state: 'none' }, null],
+    [{ state: 'available', version: '1.0.2' }, { text: 'Update available: v1.0.2', action: 'Update' }],
+    [{ state: 'downloading', version: '1.0.2', percent: 41.6 }, { text: 'Downloading v1.0.2… 42%' }],
+    [{ state: 'downloading', version: '1.0.2', percent: 140 }, { text: 'Downloading v1.0.2… 100%' }],
+    [{ state: 'installing', version: '1.0.2' }, { text: 'Installing v1.0.2. Spill will restart…' }],
+    [{ state: 'error', version: '1.0.2', message: 'net::ERR' }, { text: "Couldn't download v1.0.2.", action: 'Retry' }],
+  ] as const)('%o', (status, expected) => {
+    expect(describeUpdate(status)).toEqual(expected);
   });
 });

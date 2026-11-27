@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { enemySprite, HERO_SPRITE, TITLE_SPRITE } from '../data/sprites';
 import { ConfirmDialog } from './ConfirmDialog';
 import { PixelSprite } from './PixelSprite';
+import { UpdateNotice } from './UpdateNotice';
 import { useDesktop } from './useMediaQuery';
 
 interface MainMenuProps {
@@ -37,6 +38,8 @@ export function MainMenu({ canContinue, onNewRun, onContinue, onSettings }: Main
           </div>
         )}
       </div>
+
+      <UpdateNotice />
 
       <nav className="menu-buttons" aria-label="Main menu">
         {canContinue && (
