@@ -1,8 +1,12 @@
 {
   "name": "spill",
+  "productName": "Spill",
+  "version": "1.0.0",
+  "description": "A turn-based roguelite where you roll paint dice, mix colors, and cast spells.",
+  "author": "Alon Ganot",
   "private": true,
-  "version": "0.0.1",
   "type": "module",
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -10,7 +14,11 @@
     "typecheck": "tsc -b",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:balance": "vitest run --mode balance"
+    "test:balance": "vitest run --mode balance",
+    "electron:dev": "node electron/dev.mjs",
+    "electron:start": "npm run build && electron .",
+    "dist:win": "npm run build && electron-builder --win nsis",
+    "icon": "node scripts/make-icon.mjs"
   },
   "dependencies": {
     "react": "^19.3.1",
@@ -20,8 +28,45 @@
     "@types/react": "^19.3.1",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
+    "electron": "^45.5.0",
+    "electron-builder": "^26.18.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
     "vitest": "^5.1.1"
+  },
+  "build": {
+    "appId": "com.spill.game",
+    "productName": "Spill",
+    "copyright": "Copyright © 2026 Alon Ganot",
+    "directories": {
+      "output": "release",
+      "buildResources": "electron"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/main.cjs",
+      "electron/icon.png",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "electron/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Spill",
+      "artifactName": "Spill-Setup-${version}.${ext}"
+    }
   }
 }

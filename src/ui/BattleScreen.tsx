@@ -43,10 +43,10 @@ import {
   type StageTarget,
   type Staging,
 } from './staging';
+import type { RolledEvent } from './runSave';
 import './battle.css';
 import './fx.css';
 
-type RolledEvent = Extract<BattleEvent, { type: 'rolled' }>;
 
 interface BattleScreenProps {
   battle: BattleState;
@@ -54,6 +54,8 @@ interface BattleScreenProps {
   prevBattle: BattleState | null;
   config: BattleConfig;
   events: BattleEvent[];
+  /** The fight's latest roll, which may be older than `events` (after a reload, for example). */
+  lastRoll: RolledEvent | null;
   actionCount: number;
   isFinalFight: boolean;
   onAction: (action: BattleAction) => void;
@@ -65,6 +67,7 @@ export function BattleScreen({
   prevBattle,
   config,
   events,
+  lastRoll,
   actionCount,
   isFinalFight,
   onAction,
@@ -78,7 +81,7 @@ export function BattleScreen({
   // previous roll on screen until this action's roll beat comes up.
   const rollIndex = events.findIndex((e) => e.type === 'rolled');
   const rollEvent = rollIndex >= 0 ? (events[rollIndex] as RolledEvent) : undefined;
-  const [rolls, setRolls] = useState<{ current?: RolledEvent; previous?: RolledEvent }>({ current: rollEvent });
+  const [rolls, setRolls] = useState<{ current?: RolledEvent; previous?: RolledEvent }>({ current: rollEvent ?? lastRoll ?? undefined });
   if (rollEvent && rollEvent !== rolls.current) setRolls({ current: rollEvent, previous: rolls.current });
   const beforeRollBeat = playing && rollEvent !== undefined && index < rollIndex;
   const shownRoll = beforeRollBeat ? rolls.previous : (rollEvent ?? rolls.current);

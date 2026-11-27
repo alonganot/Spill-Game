@@ -1,7 +1,7 @@
 # CLAUDE.md — Spill
 
 ## Overview
-**Spill** is a turn-based roguelite combat mobile game built with TypeScript, React, Vite, and Capacitor.
+**Spill** is a turn-based roguelite combat game built with TypeScript, React, and Vite. V1 is a PC game (a web build that also ships as a Windows app via Electron) that stays playable on a phone-sized window.
 Players roll colored dice each turn, mix colors to create new colors, and combine/spend colors to trigger elemental attacks and effects across progressive stages/encounters.
 
 ## Source of Truth Docs
@@ -13,13 +13,24 @@ Players roll colored dice each turn, mix colors to create new colors, and combin
 ## Tech Stack & Architecture Rules
 - **Language:** TypeScript (`strict: true`).
 - **UI & Bundler:** React + Vite (mobile-first layout, touch-friendly).
-- **Mobile Wrapper:** Capacitor (wrapped behind clean interfaces, isolated from core game rules).
+- **Desktop App:** Electron + electron-builder (NSIS installer for Windows). The main process lives in `electron/` and only hosts the web build; the game never imports Electron.
+- **Mobile Wrapper (post-V1):** Capacitor, wrapped behind clean interfaces in `src/mobile/` and isolated from core game rules. Mobile app builds are out of scope for V1.
 - **Testing:** Vitest for unit and simulation tests.
 - **Directory Boundaries:**
   - `src/engine/` — Pure TypeScript combat state, dice rolls, color mixing, attack/combo resolution, enemy turns, status effects, and stage/run state. **No React, DOM, or Capacitor imports.**
   - `src/data/` — Balance configs, color recipes, attack/skill definitions, enemy definitions, and stage/reward tables. Avoid hardcoded gameplay numbers inside `src/engine/`.
   - `src/ui/` — React views, touch controls, visual feedback, and screen flow. Consumes engine state and dispatches actions.
-  - `src/mobile/` — Capacitor adapters (haptics, app lifecycle/pause, device capabilities).
+  - `src/mobile/` — Capacitor adapters (haptics, app lifecycle/pause, device capabilities). Empty in V1.
+  - `electron/` — Electron main process (`main.cjs`), dev launcher (`dev.mjs`), and app icon. No game rules here.
+
+## Commands
+- `npm run dev` — play in the browser (Vite dev server).
+- `npm test` / `npm run typecheck` / `npm run build` — Vitest, `tsc -b`, and the production web build (`dist/`).
+- `npm run test:balance` — the slow balance simulation (greedy bot over 200 seeded runs).
+- `npm run electron:dev` — the game in an Electron window, against the Vite dev server.
+- `npm run electron:start` — build, then run the production build in Electron.
+- `npm run dist:win` — build the versioned Windows installer (`release/Spill-Setup-<version>.exe`). Bump `version` in `package.json` for a new release.
+- `npm run icon` — redraw `electron/icon.png` from the hero sprite.
 
 ## Engineering & Collaboration Rules
 - Read `CLAUDE.md`, `PLAN.md`, and `RULES.md` before starting work (and `DESIGN.md` before any UI work).

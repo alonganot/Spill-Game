@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { defaultRunConfig } from '../data/run';
-import { clearRun, loadRun, replayRun, saveRun } from './runSave';
+import { clearRun, findRoll, loadRun, replayRun, saveRun, type RolledEvent } from './runSave';
 import { randomSeed } from './seed';
 import {
   applyRunAction,
@@ -27,6 +27,8 @@ export interface RunView {
   run: RunState;
   /** Battle events from the most recent action, for the battle log and playback. */
   events: BattleEvent[];
+  /** The current fight's latest dice roll, even when it came from an earlier action (or before a reload). */
+  lastRoll: RolledEvent | null;
   /** The battle as it was before the most recent action, when that action was a battle action. */
   prevBattle: BattleState | null;
   error: RunError | null;
@@ -49,6 +51,7 @@ function startView(chosenSeed?: number): RunView {
     rng,
     run: state,
     events,
+    lastRoll: findRoll(events),
     prevBattle: null,
     error: null,
     actionCount: 0,
@@ -73,6 +76,7 @@ function restoreView(): RunView | null {
     rng: replayed.rng,
     run: replayed.run,
     events: [],
+    lastRoll: replayed.lastRoll,
     prevBattle: null,
     error: null,
     actionCount: save.actions.length,
@@ -128,6 +132,7 @@ export function useRun(): RunControls {
           ...current,
           run: result.state,
           events: result.events,
+          lastRoll: result.state.battle ? (findRoll(result.events) ?? current.lastRoll) : null,
           // Only a battle action continues the same fight; anything else starts a new one.
           prevBattle: action.type === 'battle' ? current.run.battle : null,
           error: null,

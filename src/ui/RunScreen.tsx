@@ -112,6 +112,7 @@ export function RunScreen({
           prevBattle={view.prevBattle}
           config={battleConfigFor(run, config)}
           events={view.events}
+          lastRoll={view.lastRoll}
           actionCount={view.actionCount}
           isFinalFight={run.stageIndex === config.stages.length - 1}
           onAction={(action) => dispatch({ type: 'battle', action })}

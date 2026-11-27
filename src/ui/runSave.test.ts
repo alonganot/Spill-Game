@@ -10,6 +10,7 @@ import {
   type RunAction,
   type RunState,
 } from '../engine';
+import { botAction } from '../engine/testBot';
 import { clearRun, loadRun, OLD_SAVE_KEYS, parseSave, replayRun, SAVE_KEY, saveRun, type RunSave } from './runSave';
 
 const config = defaultRunConfig();
@@ -82,6 +83,50 @@ describe('replayRun', () => {
     expect(phasesSeen).toContain('reward');
     expect(phasesSeen).toContain('shop');
     expect(furthestStage).toBeGreaterThanOrEqual(2);
+  });
+
+  it("recovers the current fight's latest roll, so a restored battle shows the dice as rolled", () => {
+    const rng = createSeededRng(5);
+    const started = createRun(config, rng);
+    let run = started.state;
+    let roll = started.events.find((e) => e.type === 'rolled');
+    expect(roll).toBeDefined();
+    const actions: RunAction[] = [];
+    expect(replayRun({ version: 2, seed: 5, seeded: false, actions }, config)?.lastRoll).toEqual(roll);
+
+    // End a turn (a new roll), then cast a spell (no roll): the roll from the end of turn is kept.
+    const endTurn: RunAction = { type: 'battle', action: { type: 'endTurn' } };
+    const ended = applyRunAction(run, endTurn, config, rng);
+    if (!ended.ok) throw new Error(ended.error);
+    run = ended.state;
+    actions.push(endTurn);
+    roll = ended.events.find((e) => e.type === 'rolled');
+    expect(roll).toBeDefined();
+    const spell = config.battle.attacks.find((a) =>
+      Object.entries(a.cost).every(([color, n]) => run.battle!.pool.filter((c) => c === color).length >= (n ?? 0)),
+    );
+    expect(spell).toBeDefined();
+    if (spell) {
+      const cast: RunAction = { type: 'battle', action: { type: 'trigger', attackId: spell.id, target: 0 } };
+      const result = applyRunAction(run, cast, config, rng);
+      if (!result.ok) throw new Error(result.error);
+      expect(result.events.some((e) => e.type === 'rolled')).toBe(false);
+      actions.push(cast);
+    }
+    expect(replayRun({ version: 2, seed: 5, seeded: false, actions }, config)?.lastRoll).toEqual(roll);
+  });
+
+  it('has no roll outside a battle', () => {
+    const rng = createSeededRng(1);
+    let run = createRun(config, rng).state;
+    const actions: RunAction[] = [];
+    while (run.phase === 'battle') {
+      const action = botAction(run, config);
+      run = applyRunAction(run, action, config, rng).state;
+      actions.push(action);
+    }
+    expect(run.phase).toBe('reward');
+    expect(replayRun({ version: 2, seed: 1, seeded: false, actions }, config)?.lastRoll).toBeNull();
   });
 
   it('returns null when a saved action no longer applies', () => {

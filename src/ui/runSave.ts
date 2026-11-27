@@ -1,5 +1,6 @@
 import {
   applyRunAction,
+  type BattleEvent,
   createRun,
   createSeededRng,
   type Rng,
@@ -61,20 +62,37 @@ export function parseSave(text: string | null): RunSave | null {
   return { version, seed, seeded, actions };
 }
 
+export type RolledEvent = Extract<BattleEvent, { type: 'rolled' }>;
+
+export interface ReplayedRun {
+  rng: Rng;
+  run: RunState;
+  /** The current fight's latest dice roll, so a restored battle can show the dice as rolled. */
+  lastRoll: RolledEvent | null;
+}
+
+/** The roll among `events`, if any. */
+export function findRoll(events: readonly BattleEvent[]): RolledEvent | null {
+  return events.find((e): e is RolledEvent => e.type === 'rolled') ?? null;
+}
+
 /**
  * Rebuilds a saved run by replaying its actions on its seed. Returns null if
  * any action no longer applies (for example after a balance change).
  */
-export function replayRun(save: RunSave, config: RunConfig): { rng: Rng; run: RunState } | null {
+export function replayRun(save: RunSave, config: RunConfig): ReplayedRun | null {
   try {
     const rng = createSeededRng(save.seed);
-    let run = createRun(config, rng).state;
+    const started = createRun(config, rng);
+    let run = started.state;
+    let lastRoll = findRoll(started.events);
     for (const action of save.actions) {
       const result = applyRunAction(run, action, config, rng);
       if (!result.ok) return null;
       run = result.state;
+      lastRoll = run.battle ? (findRoll(result.events) ?? lastRoll) : null;
     }
-    return { rng, run };
+    return { rng, run, lastRoll };
   } catch {
     // A malformed action can throw deep in the engine; treat it like a failed replay.
     return null;

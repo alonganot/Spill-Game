@@ -1495,10 +1495,14 @@ button.attack-mix-tag {
   }
 }
 
-/* PC: only the spell list scrolls, so the dice, bowl, pool, and End turn stay put. */
+/*
+ * PC: only the spell list scrolls, so the dice, bowl, pool, and End turn stay put.
+ * On a window too short for even that, the whole panel scrolls, so nothing is cut off.
+ */
 @media (min-width: 900px) {
   .side-panel {
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 
   .side-panel > section,

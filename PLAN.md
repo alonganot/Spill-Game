@@ -1,7 +1,7 @@
 # PLAN.md — Spill Development Roadmap
 
 ## Current Focus
-**Milestone 7 in progress (V1 Wrap-up).** The longer, harder run with multi-enemy fights is in; the Windows app and the final sweep are next. V1 is a PC game: it should fill a desktop screen and stay playable on a phone-sized window; mobile app builds are out of V1. A full 15-fight run (3 acts, multi-enemy fights from fight 4) with a main menu, seeded runs, rewards, a dice shop, pixel-art sprites, and beat-by-beat combat playback is playable via `npm run dev` (`src/ui/RunScreen.tsx`, driven by `useRun` and `src/engine/run.ts`).
+**Milestone 7 done (V1 Wrap-up); Milestone 8 (Cosmic Paint Workshop UI overhaul, `DESIGN.md`) is next.** V1 is a PC game: it fills a desktop screen, stays playable on a phone-sized window, and ships as a Windows app (Electron, `npm run dist:win` builds `release/Spill-Setup-<version>.exe`); mobile app builds are out of V1. A full 15-fight run (3 acts, multi-enemy fights from fight 4) with a main menu, seeded runs, rewards, a dice shop, pixel-art sprites, and beat-by-beat combat playback is playable via `npm run dev` (`src/ui/RunScreen.tsx`, driven by `useRun` and `src/engine/run.ts`).
 
 ## Milestones
 
@@ -52,14 +52,14 @@
 - [x] Tooltips (hover, keyboard focus, or tap on touch screens) for spell names, poison/burn/block badges, the enemy intent, and PC dice, using the battle's real numbers (`Tip` in `src/ui/Tooltip.tsx`, texts in `src/ui/format.ts`).
 - [x] Save the run in progress in the browser (`src/ui/runSave.ts`): the seed plus every successful action, written after each action to localStorage key `spill.run.v1` and replayed on load, so Continue survives a reload. Abandoning or finishing a run clears it; a corrupt or outdated save is ignored.
 
-### Milestone 7: V1 Wrap-up
+### Milestone 7: V1 Wrap-up ✅
 - [x] Multi-enemy fights (engine): `BattleConfig.enemies` / `BattleState.enemies`, each enemy with its own intents; spells take a target, area spells hit every living enemy; new enemy intents (multi-hit attacks, poison and burn on the player); victory once every enemy is down.
 - [x] Run flow: a free reward and then a shop after every fight. Saves moved to `spill.run.v2`.
 - [x] Battle screen with 1–3 enemies: a row of enemy cards, click/tap/Enter to target, per-enemy playback, floats, bolts, log lines, and tooltips.
 - [x] Content: 7 new enemies with their own sprites (Drip, Mold Puff, Cinder Imp, Gnat Swarm, Varnish Shell, Smear Knight, Grand Smudge); 15 stages in 3 acts (`src/data/run.ts`, act 3 via `toughened`); area spells Splash and Miasma.
 - [x] Balance pass: leaner economy for 15 stops. The greedy bot (`src/engine/testBot.ts`: targets the weakest enemy, prefers area spells, mixes, blocks) wins about 11% of 200 seeded runs, with losses spread over fights 9–15 (`src/engine/balance.sim.test.ts`, run with `npm run test:balance`; it asserts a 5–35% band).
-- [ ] Windows desktop app with Electron: the web build in a window with an app icon, title, and minimum size, plus a versioned installer (electron-builder, NSIS).
-- [ ] Final bug sweep and docs update.
+- [x] Windows desktop app with Electron (`electron/`, outside `src/`): the Vite build in a "Spill" window with the hero as the app icon (`electron/icon.png`, drawn by `npm run icon`), a 960×640 minimum size (the desktop layout needs 900px), opened maximized, no menu bar, one instance at a time. The build is served from `app://spill/`, a stable origin, so the run save in localStorage (`spill.run.v2`) survives restarts. `npm run electron:dev` runs it against the Vite dev server; `npm run dist:win` builds a versioned NSIS installer (electron-builder) into `release/`. The package version is 1.0.0.
+- [x] Final bug sweep and docs update: tests, typecheck, and build pass; played on desktop, a phone-sized window, and in Electron. Fixed: after a reload, Continue showed the battle's dice as "not rolled yet" (the save replay now recovers the fight's latest roll, `replayRun` in `src/ui/runSave.ts`, with tests); on a short window (or with many dice) the PC side panel cut off its top and bottom with no way to scroll (it now scrolls when it doesn't fit).
 
 ### Milestone 8: Cosmic Paint Workshop UI Overhaul
 Restyle the whole game to the "Cosmic Paint Workshop" theme in `DESIGN.md`: a pixel-art painter's workbench in a cosmic nebula. Visual only, so no engine or gameplay-data changes. Drag-and-drop, tap-to-place, keyboard support, aria labels, `prefers-reduced-motion`, and the `useDesktop` (900px) / `useLargeDesktop` breakpoints all keep working. Each task ships on its own and the game stays playable after it.
