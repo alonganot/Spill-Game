@@ -8,6 +8,7 @@ Players roll colored dice each turn, mix colors to create new colors, and combin
 - `CLAUDE.md` — Tech stack, architecture boundaries, and engineering workflow.
 - `PLAN.md` — Milestones, scope, and current progress.
 - `RULES.md` — Core combat rules, color pool behavior, turn structure, and status mechanics.
+- `DESIGN.md` — Visual design system ("Cosmic Paint Workshop"): color tokens, typography, borders, screen layouts, and sprite rules for `src/ui/` and UI sprites.
 
 ## Tech Stack & Architecture Rules
 - **Language:** TypeScript (`strict: true`).
@@ -21,7 +22,8 @@ Players roll colored dice each turn, mix colors to create new colors, and combin
   - `src/mobile/` — Capacitor adapters (haptics, app lifecycle/pause, device capabilities).
 
 ## Engineering & Collaboration Rules
-- Read `CLAUDE.md`, `PLAN.md`, and `RULES.md` before starting work.
+- Read `CLAUDE.md`, `PLAN.md`, and `RULES.md` before starting work (and `DESIGN.md` before any UI work).
+- Any UI, CSS, or sprite work must follow `DESIGN.md`. Update `DESIGN.md` when a token, utility, or visual rule changes.
 - Work in small, atomic increments — one clear goal per task.
 - Write/update Vitest unit tests alongside engine rules and bug fixes.
 - Keep functions modular and typed; avoid over-engineering or speculative abstractions.
