@@ -1,4 +1,14 @@
-import type { AttackDefinition, BattleConfig, BattleEvent, Color, Effect, EnemyIntent, MixRecipe, StatusConfig } from '../engine';
+import {
+  isAreaSpell,
+  type AttackDefinition,
+  type BattleConfig,
+  type BattleEvent,
+  type Color,
+  type Effect,
+  type EnemyIntent,
+  type MixRecipe,
+  type StatusConfig,
+} from '../engine';
 
 export const COLOR_LABEL: Record<Color, string> = {
   red: 'Red',
@@ -12,23 +22,54 @@ export const COLOR_LABEL: Record<Color, string> = {
 export function describeEffect(effect: Effect): string {
   switch (effect.type) {
     case 'damage':
-      return `${effect.amount} dmg`;
+      return `${effect.amount} dmg${effect.area ? ' all' : ''}`;
     case 'block':
       return `${effect.amount} block`;
     case 'poison':
-      return `${effect.stacks} poison`;
+      return `${effect.stacks} poison${effect.area ? ' all' : ''}`;
     case 'burn':
-      return 'burn';
+      return effect.area ? 'burn all' : 'burn';
   }
 }
 
 export function describeIntent(intent: EnemyIntent): string {
-  return intent.type === 'attack' ? `Attack ${intent.amount}` : `Block ${intent.amount}`;
+  switch (intent.type) {
+    case 'attack':
+      return (intent.hits ?? 1) > 1 ? `Attack ${intent.amount}×${intent.hits}` : `Attack ${intent.amount}`;
+    case 'block':
+      return `Block ${intent.amount}`;
+    case 'poison':
+      return `Poison ${intent.stacks}`;
+    case 'burn':
+      return 'Burn';
+  }
 }
 
-/** One log line per event, or null for events that don't need a line. */
-export function formatEvent(event: BattleEvent, config: BattleConfig): string | null {
-  const enemy = config.enemy.name;
+/**
+ * Display names for a fight's enemies. Repeated names get a letter
+ * ("Puddle Slime A", "Puddle Slime B") so the log and tooltips can tell them apart.
+ */
+export function enemyLabels(config: Pick<BattleConfig, 'enemies'>): string[] {
+  const names = config.enemies.map((e) => e.name);
+  const seen = new Map<string, number>();
+  return names.map((name) => {
+    if (names.filter((n) => n === name).length === 1) return name;
+    const n = seen.get(name) ?? 0;
+    seen.set(name, n + 1);
+    return `${name} ${String.fromCharCode(65 + n)}`;
+  });
+}
+
+/**
+ * One log line per event, or null for events that don't need a line.
+ * Pass `labels` (from `enemyLabels`) when formatting many events, so they're built once.
+ */
+export function formatEvent(
+  event: BattleEvent,
+  config: BattleConfig,
+  labels: readonly string[] = enemyLabels(config),
+): string | null {
+  const name = (index: number | undefined) => labels[index ?? 0] ?? 'Enemy';
   switch (event.type) {
     case 'rolled': {
       const rolled = `Rolled ${event.colors.map((c) => COLOR_LABEL[c]).join(', ')}`;
@@ -37,29 +78,35 @@ export function formatEvent(event: BattleEvent, config: BattleConfig): string | 
     case 'mixed':
       return `Mixed ${COLOR_LABEL[event.inputs[0]]} + ${COLOR_LABEL[event.inputs[1]]} → ${COLOR_LABEL[event.output]}`;
     case 'triggered': {
-      const name = config.attacks.find((a) => a.id === event.attackId)?.name ?? event.attackId;
-      return `You used ${name}`;
+      const attack = config.attacks.find((a) => a.id === event.attackId);
+      const spell = attack?.name ?? event.attackId;
+      if (attack && isAreaSpell(attack)) return `You used ${spell} on every enemy`;
+      return config.enemies.length > 1 ? `You used ${spell} on ${name(event.target)}` : `You used ${spell}`;
     }
     case 'damaged': {
-      const who = event.target === 'enemy' ? enemy : 'You';
+      const who = event.target === 'enemy' ? name(event.enemy) : 'You';
       if (event.source !== 'attack') {
         const status = event.source === 'poison' ? 'Poison' : 'Burn';
-        return `${status} deals ${event.amount} to ${event.target === 'enemy' ? enemy : 'you'}`;
+        return `${status} deals ${event.amount} to ${event.target === 'enemy' ? who : 'you'}`;
       }
       const verb = event.target === 'enemy' ? 'takes' : 'take';
       const blocked = event.blocked > 0 ? ` (${event.blocked} blocked)` : '';
       return `${who} ${verb} ${event.amount} damage${blocked}`;
     }
     case 'blockGained':
-      return event.target === 'player' ? `You gain ${event.amount} block` : `${enemy} gains ${event.amount} block`;
+      return event.target === 'player' ? `You gain ${event.amount} block` : `${name(event.enemy)} gains ${event.amount} block`;
     case 'statusApplied': {
-      const who = event.target === 'enemy' ? enemy : 'You';
+      const who = event.target === 'enemy' ? name(event.enemy) : 'You are';
       return event.status === 'poison' ? `${who} poisoned (+${event.stacks})` : `${who} set on fire`;
     }
     case 'enemyIntent':
-      return null;
+      // Block already names who gained it. Attacks only need the attacker named when there are several enemies.
+      if (event.intent.type === 'block') return null;
+      return event.intent.type !== 'attack' || config.enemies.length > 1
+        ? `${name(event.enemy)}: ${describeIntent(event.intent)}`
+        : null;
     case 'victory':
-      return `${enemy} is defeated!`;
+      return config.enemies.length > 1 ? 'Every enemy is defeated!' : `${name(0)} is defeated!`;
     case 'defeat':
       return 'You are defeated.';
   }
@@ -77,9 +124,10 @@ export function poisonTip(stacks: number, owner: Owner, status: StatusConfig): s
   return `Poison ${stacks}: ${who} ${stacks} damage at the end of each turn, then it loses ${plural(status.poisonDecay, 'stack')}. Ignores Block.`;
 }
 
-export function burnTip(owner: Owner, status: StatusConfig): string {
+export function burnTip(stacks: number, owner: Owner, status: StatusConfig): string {
   const who = owner.kind === 'player' ? 'You take' : `${owner.name} takes`;
-  return `Burn: ${who} ${status.burnDamage} damage at the end of the turn, then it goes out. Ignores Block. Doesn't stack.`;
+  const each = stacks > 1 ? ` (${status.burnDamage} per stack)` : '';
+  return `Burn ${stacks}: ${who} ${status.burnDamage * stacks} damage${each} at the end of the turn, then it goes out. Ignores Block. Burning again adds a stack.`;
 }
 
 export function blockTip(amount: number, owner: Owner): string {
@@ -88,23 +136,35 @@ export function blockTip(amount: number, owner: Owner): string {
     : `Block ${amount}: absorbs the next ${amount} damage from your spells. It lasts until ${owner.name} acts again.`;
 }
 
-export function intentTip(intent: EnemyIntent, enemyName: string): string {
-  return intent.type === 'attack'
-    ? `When you end your turn, ${enemyName} attacks for ${intent.amount}. Your Block absorbs it first.`
-    : `When you end your turn, ${enemyName} gains ${intent.amount} Block, which lasts through your next turn.`;
+export function intentTip(intent: EnemyIntent, enemyName: string, status: StatusConfig): string {
+  const when = `When you end your turn, ${enemyName}`;
+  switch (intent.type) {
+    case 'attack': {
+      const hits = intent.hits ?? 1;
+      return hits > 1
+        ? `${when} attacks ${hits} times for ${intent.amount} each (${hits * intent.amount} total). Your Block absorbs it first.`
+        : `${when} attacks for ${intent.amount}. Your Block absorbs it first.`;
+    }
+    case 'block':
+      return `${when} gains ${intent.amount} Block, which lasts through your next turn.`;
+    case 'poison':
+      return `${when} poisons you for ${intent.stacks}: damage equal to the stacks at the end of each turn, falling by ${status.poisonDecay}. Ignores Block.`;
+    case 'burn':
+      return `${when} sets you on fire (+1 Burn): ${status.burnDamage} damage per stack at the end of your next turn. Ignores Block.`;
+  }
 }
 
 /** One effect as a short sentence, with its real numbers. */
 export function effectSentence(effect: Effect, status: StatusConfig): string {
   switch (effect.type) {
     case 'damage':
-      return `Deals ${effect.amount} damage`;
+      return `Deals ${effect.amount} damage${effect.area ? ' to every enemy' : ''}`;
     case 'block':
       return `Gives you ${effect.amount} Block`;
     case 'poison':
-      return `Poisons for ${effect.stacks} (${effect.stacks} damage per turn, falling by ${status.poisonDecay})`;
+      return `Poisons ${effect.area ? 'every enemy ' : ''}for ${effect.stacks} (${effect.stacks} damage per turn, falling by ${status.poisonDecay})`;
     case 'burn':
-      return `Sets the enemy on fire (${status.burnDamage} damage at the end of the turn)`;
+      return `Sets ${effect.area ? 'every enemy' : 'the enemy'} on fire (+1 Burn: ${status.burnDamage} damage per stack at the end of the turn)`;
   }
 }
 

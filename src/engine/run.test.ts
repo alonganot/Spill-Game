@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { defaultRunConfig } from '../data/run';
 import { createSeededRng } from './rng';
 import { applyRunAction, battleConfigFor, capUpgradePrice, createRun, repaintPrice } from './run';
+import { botAction } from './testBot';
 import { fixedDie, noopRng, testConfig } from './testUtils';
 import type { EnemyDefinition, RunAction, RunConfig, RunState } from './types';
 
@@ -10,15 +11,13 @@ function enemy(id: string, maxHp = 10): EnemyDefinition {
 }
 
 function testRunConfig(overrides: Partial<RunConfig> = {}): RunConfig {
-  const { dice: _dice, enemy: _enemy, ...battle } = testConfig();
+  const { dice: _dice, enemies: _enemies, ...battle } = testConfig();
   return {
     battle,
     stages: [
-      { enemy: enemy('n1'), kind: 'normal', after: 'reward' },
-      { enemy: enemy('n2'), kind: 'normal', after: 'shop' },
-      { enemy: enemy('elite'), kind: 'elite', after: 'reward' },
-      { enemy: enemy('n3'), kind: 'normal', after: 'shop' },
-      { enemy: enemy('boss'), kind: 'boss', after: 'end' },
+      { enemies: [enemy('n1')], kind: 'normal', act: 1 },
+      { enemies: [enemy('elite'), enemy('minion', 4)], kind: 'elite', act: 1 },
+      { enemies: [enemy('boss')], kind: 'boss', act: 2 },
     ],
     startingDice: [fixedDie('red'), fixedDie('blue')],
     startingGold: 0,
@@ -31,7 +30,7 @@ function testRunConfig(overrides: Partial<RunConfig> = {}): RunConfig {
     ],
     economy: {
       goldPerWin: { normal: 10, elite: 20, boss: 0 },
-      rewards: { normal: { gold: 15, heal: 5 }, elite: { gold: 25, heal: 9 } },
+      rewards: { normal: { gold: 15, heal: 5 }, elite: { gold: 25, heal: 9 }, boss: { gold: 40, heal: 12 } },
       shop: {
         repaintPrice: 10,
         repaintPriceStep: 5,
@@ -54,7 +53,7 @@ function act(run: RunState, action: RunAction, cfg: RunConfig = config): RunStat
   return result.state;
 }
 
-/** Sets the enemy to 1 HP, kills it with a red attack, and returns the finished-fight state. */
+/** Leaves one enemy at 1 HP (the rest defeated), kills it with a red attack, and returns the finished-fight state. */
 function winFight(run: RunState, playerHp?: number): RunState {
   const battle = run.battle!;
   const rigged: RunState = {
@@ -62,7 +61,7 @@ function winFight(run: RunState, playerHp?: number): RunState {
     battle: {
       ...battle,
       pool: ['red'],
-      enemy: { ...battle.enemy, hp: 1, block: 0 },
+      enemies: battle.enemies.map((e, i) => ({ ...e, hp: i === 0 ? 1 : 0, block: 0 })),
       player: { ...battle.player, hp: playerHp ?? battle.player.hp },
     },
   };
@@ -75,11 +74,10 @@ function start(cfg: RunConfig = config): RunState {
   return createRun(cfg, noopRng).state;
 }
 
-/** Plays from the start to the first shop (stage 2), taking the gold reward. */
+/** Plays from the start to the first shop (after fight 1), taking the gold reward. */
 function toFirstShop(): RunState {
-  let run = act(winFight(start()), { type: 'continue' });
-  run = act(run, { type: 'chooseReward', index: 0 });
-  return act(winFight(run), { type: 'continue' });
+  const run = act(winFight(start()), { type: 'continue' });
+  return act(run, { type: 'chooseReward', index: 0 });
 }
 
 function withGold(run: RunState, gold: number): RunState {
@@ -92,7 +90,7 @@ describe('createRun', () => {
     expect(state).toMatchObject({ stageIndex: 0, phase: 'battle', hp: 20, gold: 0, diceCap: 3 });
     expect(state.dice).toHaveLength(2);
     expect(state.battle?.pool).toEqual(['red', 'blue']);
-    expect(state.battle?.enemy.hp).toBe(10);
+    expect(state.battle?.enemies.map((e) => e.hp)).toEqual([10]);
     expect(events[0]?.type).toBe('rolled');
   });
 
@@ -104,7 +102,7 @@ describe('createRun', () => {
 });
 
 describe('stage progression', () => {
-  it('follows Fight → Reward → Fight → Shop → Elite → Reward → Fight → Shop → Boss → victory', () => {
+  it('follows every fight but the last with a reward, then a shop', () => {
     const phases: string[] = [];
     let run = start();
     for (let guard = 0; guard < 20 && run.phase !== 'victory'; guard++) {
@@ -114,9 +112,16 @@ describe('stage progression', () => {
       else if (run.phase === 'shop') run = act(run, { type: 'leaveShop' });
     }
     expect(phases).toEqual([
-      'battle:0', 'reward:0', 'battle:1', 'shop:1', 'battle:2', 'reward:2', 'battle:3', 'shop:3', 'battle:4',
+      'battle:0', 'reward:0', 'shop:0', 'battle:1', 'reward:1', 'shop:1', 'battle:2',
     ]);
     expect(run.phase).toBe('victory');
+  });
+
+  it('starts a fight with every enemy of its stage', () => {
+    const run = act(toFirstShop(), { type: 'leaveShop' });
+    expect(run.stageIndex).toBe(1);
+    expect(run.battle?.enemies.map((e) => e.hp)).toEqual([10, 4]);
+    expect(battleConfigFor(run, config).enemies.map((e) => e.id)).toEqual(['elite', 'minion']);
   });
 
   it('cannot continue while the fight is still going', () => {
@@ -129,7 +134,7 @@ describe('stage progression', () => {
   it('passes battle actions through and keeps battle errors', () => {
     const run = start();
     const ok = applyRunAction(run, { type: 'battle', action: { type: 'trigger', attackId: 'hit' } }, config, noopRng);
-    expect(ok.ok && ok.state.battle?.enemy.hp).toBe(5);
+    expect(ok.ok && ok.state.battle?.enemies[0]!.hp).toBe(5);
     const bad = applyRunAction(run, { type: 'battle', action: { type: 'trigger', attackId: 'scorch' } }, config, noopRng);
     expect(bad).toMatchObject({ ok: false, error: 'missing_colors', state: run });
   });
@@ -165,8 +170,8 @@ describe('HP and gold between fights', () => {
     let run = winFight(start(), 13);
     run = act(run, { type: 'continue' });
     expect(run.hp).toBe(13);
-    run = act(run, { type: 'chooseReward', index: 0 });
-    expect(run.battle?.player).toMatchObject({ hp: 13, maxHp: 20, block: 0, statuses: { poison: 0, burn: false } });
+    run = act(act(run, { type: 'chooseReward', index: 0 }), { type: 'leaveShop' });
+    expect(run.battle?.player).toMatchObject({ hp: 13, maxHp: 20, block: 0, statuses: { poison: 0, burn: 0 } });
     expect(run.battle?.pool).toEqual(['red', 'blue']);
     expect(battleConfigFor(run, config).playerStartHp).toBe(13);
   });
@@ -174,10 +179,9 @@ describe('HP and gold between fights', () => {
   it('pays gold per win by fight kind', () => {
     let run = act(winFight(start()), { type: 'continue' });
     expect(run.gold).toBe(10);
-    run = act(run, { type: 'chooseReward', index: 0 }); // +15
-    run = act(act(winFight(run), { type: 'continue' }), { type: 'leaveShop' }); // +10
+    run = act(act(run, { type: 'chooseReward', index: 0 }), { type: 'leaveShop' }); // +15
     run = act(winFight(run), { type: 'continue' }); // elite +20
-    expect(run.gold).toBe(55);
+    expect(run.gold).toBe(45);
   });
 });
 
@@ -193,8 +197,7 @@ describe('rewards', () => {
   });
 
   it('gives bigger amounts after an elite', () => {
-    let run = act(atReward(), { type: 'chooseReward', index: 0 });
-    run = act(act(winFight(run), { type: 'continue' }), { type: 'leaveShop' });
+    let run = act(act(atReward(), { type: 'chooseReward', index: 0 }), { type: 'leaveShop' });
     run = act(winFight(run), { type: 'continue' });
     expect(run.rewardOffers.slice(0, 2)).toEqual([
       { type: 'gold', amount: 25 },
@@ -202,9 +205,10 @@ describe('rewards', () => {
     ]);
   });
 
-  it('gold reward adds gold and starts the next fight', () => {
+  it('picking a reward moves on to the shop', () => {
     const run = act(atReward(), { type: 'chooseReward', index: 0 });
-    expect(run).toMatchObject({ gold: 25, phase: 'battle', stageIndex: 1, rewardOffers: [] });
+    expect(run).toMatchObject({ gold: 25, phase: 'shop', stageIndex: 0, rewardOffers: [], battle: null });
+    expect(run.shopStock).toHaveLength(2);
   });
 
   it('heal reward restores HP but not above max', () => {
@@ -364,25 +368,3 @@ describe('determinism and simulation', () => {
     expect(outcomes).toContain('victory');
   });
 });
-
-/** Greedy bot: attack when possible; in shops buy cap → die → heal; take heal when hurt. */
-function botAction(run: RunState, cfg: RunConfig): RunAction {
-  if (run.phase === 'battle') {
-    const battle = run.battle!;
-    if (battle.phase !== 'player') return { type: 'continue' };
-    const bc = battleConfigFor(run, cfg);
-    const attack = bc.attacks.find((a) =>
-      Object.entries(a.cost).every(([c, n]) => battle.pool.filter((p) => p === c).length >= (n ?? 0)),
-    );
-    return attack ? { type: 'battle', action: { type: 'trigger', attackId: attack.id } } : { type: 'battle', action: { type: 'endTurn' } };
-  }
-  if (run.phase === 'reward') return { type: 'chooseReward', index: run.hp < run.maxHp / 2 ? 1 : 0 };
-  // shop
-  const offer = run.shopStock.findIndex((o) => !o.sold && o.price <= run.gold);
-  if (offer >= 0 && run.dice.length < run.diceCap) return { type: 'buyDie', offerIndex: offer };
-  if (run.dice.length >= run.diceCap && run.diceCap < cfg.maxDiceCap && capUpgradePrice(run, cfg) <= run.gold) {
-    return { type: 'buyCapUpgrade' };
-  }
-  if (run.hp < run.maxHp && run.gold >= cfg.economy.shop.healPrice) return { type: 'buyHeal' };
-  return { type: 'leaveShop' };
-}

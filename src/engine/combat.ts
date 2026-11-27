@@ -1,10 +1,10 @@
 import type { Combatant } from './types';
 
 /** Damage hits block first, then HP. */
-export function takeDamage(
-  target: Combatant,
+export function takeDamage<C extends Combatant>(
+  target: C,
   amount: number,
-): { combatant: Combatant; blocked: number; dealt: number } {
+): { combatant: C; blocked: number; dealt: number } {
   const blocked = Math.min(target.block, amount);
   const dealt = Math.min(target.hp, amount - blocked);
   return {
@@ -15,12 +15,12 @@ export function takeDamage(
 }
 
 /** Status damage ignores block. */
-export function loseHp(target: Combatant, amount: number): { combatant: Combatant; dealt: number } {
+export function loseHp<C extends Combatant>(target: C, amount: number): { combatant: C; dealt: number } {
   const dealt = Math.min(target.hp, amount);
   return { combatant: { ...target, hp: target.hp - dealt }, dealt };
 }
 
-export function gainBlock(target: Combatant, amount: number): Combatant {
+export function gainBlock<C extends Combatant>(target: C, amount: number): C {
   return { ...target, block: target.block + amount };
 }
 
@@ -30,5 +30,5 @@ export function isDefeated(c: Combatant): boolean {
 
 /** Starting HP is clamped to [1, maxHp] so a combatant never starts a battle already defeated. */
 export function createCombatant(maxHp: number, hp: number = maxHp): Combatant {
-  return { hp: Math.max(1, Math.min(hp, maxHp)), maxHp, block: 0, statuses: { poison: 0, burn: false } };
+  return { hp: Math.max(1, Math.min(hp, maxHp)), maxHp, block: 0, statuses: { poison: 0, burn: 0 } };
 }

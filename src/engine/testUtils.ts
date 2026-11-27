@@ -1,5 +1,5 @@
 import { MIX_RECIPES } from '../data/colors';
-import type { BaseColor, BattleConfig, BattleState, DieDefinition, Rng } from './types';
+import type { BaseColor, BattleConfig, BattleState, DieDefinition, EnemyDefinition, EnemyState, Rng } from './types';
 
 /** RNG that returns the given values in order, then repeats. */
 export function sequenceRng(values: readonly number[]): Rng {
@@ -13,6 +13,8 @@ export function fixedDie(color: BaseColor): DieDefinition {
 }
 
 export const noopRng: Rng = () => 0;
+
+export const DUMMY: EnemyDefinition = { id: 'dummy', name: 'Dummy', maxHp: 30, intents: [{ type: 'attack', amount: 6 }] };
 
 /** Small, readable config for tests. Numbers are independent of balance data. */
 export function testConfig(overrides: Partial<BattleConfig> = {}): BattleConfig {
@@ -35,7 +37,7 @@ export function testConfig(overrides: Partial<BattleConfig> = {}): BattleConfig 
       },
     ],
     status: { burnDamage: 4, poisonDecay: 1 },
-    enemy: { id: 'dummy', name: 'Dummy', maxHp: 30, intents: [{ type: 'attack', amount: 6 }] },
+    enemies: [DUMMY],
     ...overrides,
   };
 }
@@ -43,4 +45,9 @@ export function testConfig(overrides: Partial<BattleConfig> = {}): BattleConfig 
 /** Overwrite parts of a state, e.g. to set a specific pool. */
 export function withState(state: BattleState, patch: Partial<BattleState>): BattleState {
   return { ...state, ...patch };
+}
+
+/** Overwrite parts of one enemy (the first by default). */
+export function patchEnemy(state: BattleState, patch: Partial<EnemyState>, index = 0): BattleState {
+  return { ...state, enemies: state.enemies.map((e, i) => (i === index ? { ...e, ...patch } : e)) };
 }

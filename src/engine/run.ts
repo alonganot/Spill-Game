@@ -39,7 +39,7 @@ export function currentStage(run: RunState, config: RunConfig): StageDefinition 
   return config.stages[run.stageIndex];
 }
 
-/** Battle config for the current stage: the run's dice, HP, and enemy. */
+/** Battle config for the current stage: the run's dice, HP, and enemies. */
 export function battleConfigFor(run: RunState, config: RunConfig): BattleConfig {
   const stage = currentStage(run, config);
   if (!stage) throw new Error(`No stage at index ${run.stageIndex}`);
@@ -48,7 +48,7 @@ export function battleConfigFor(run: RunState, config: RunConfig): BattleConfig 
     playerMaxHp: run.maxHp,
     playerStartHp: run.hp,
     dice: run.dice,
-    enemy: stage.enemy,
+    enemies: stage.enemies,
   };
 }
 
@@ -88,14 +88,8 @@ export function applyRunAction(run: RunState, action: RunAction, config: RunConf
         gold: run.gold + config.economy.goldPerWin[stage.kind],
         battle: null,
       };
-      switch (stage.after) {
-        case 'end':
-          return done({ ...won, phase: 'victory' });
-        case 'reward':
-          return done({ ...won, phase: 'reward', rewardOffers: rewardOffersFor(stage, config) });
-        case 'shop':
-          return done({ ...won, phase: 'shop', shopStock: rollShopStock(config, rng) });
-      }
+      if (run.stageIndex >= config.stages.length - 1) return done({ ...won, phase: 'victory' });
+      return done({ ...won, phase: 'reward', rewardOffers: rewardOffersFor(stage, config) });
     }
 
     case 'chooseReward': {
@@ -111,8 +105,7 @@ export function applyRunAction(run: RunState, action: RunAction, config: RunConf
         if (!dice) return fail('invalid_target');
         next = { ...run, dice };
       }
-      const started = startStage({ ...next, rewardOffers: [] }, run.stageIndex + 1, config, rng);
-      return done(started.state, started.events);
+      return done({ ...next, phase: 'shop', rewardOffers: [], shopStock: rollShopStock(config, rng) });
     }
 
     case 'repaint': {
@@ -182,7 +175,7 @@ function startStage(run: RunState, stageIndex: number, config: RunConfig, rng: R
 }
 
 function rewardOffersFor(stage: StageDefinition, config: RunConfig): RewardOption[] {
-  const amounts = stage.kind === 'elite' ? config.economy.rewards.elite : config.economy.rewards.normal;
+  const amounts = config.economy.rewards[stage.kind];
   return [{ type: 'gold', amount: amounts.gold }, { type: 'heal', amount: amounts.heal }, { type: 'repaint' }];
 }
 

@@ -14,14 +14,15 @@ interface RunEndScreenProps {
 
 export function RunEndScreen({ run, config, seed, seeded, onNewRun, onReplaySeed, onMainMenu }: RunEndScreenProps) {
   const won = run.phase === 'victory';
-  const enemy = config.stages[run.stageIndex]?.enemy.name;
+  const names = [...new Set(config.stages[run.stageIndex]?.enemies.map((e) => e.name) ?? [])];
+  const foes = names.length === 0 ? 'an enemy' : names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
   return (
     <section className="panel run-end">
       <h2 className={won ? 'victory' : 'defeat'}>{won ? 'Run complete!' : 'Run over'}</h2>
       <p className="muted">
         {won
           ? `You beat all ${config.stages.length} fights with ${run.hp} HP left.`
-          : `Defeated by ${enemy ?? 'an enemy'} in fight ${run.stageIndex + 1} of ${config.stages.length}.`}
+          : `Defeated by ${foes} in fight ${run.stageIndex + 1} of ${config.stages.length}.`}
       </p>
       <div>
         <h3 className="subhead">Your dice</h3>

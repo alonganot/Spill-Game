@@ -21,11 +21,12 @@ export interface MixRecipe {
 /** How many of each color an attack consumes, e.g. `{ red: 2 }`. */
 export type ColorCost = Partial<Record<Color, number>>;
 
+/** Damage and statuses hit the target enemy, or every living enemy when `area` is set. Block goes to the player. */
 export type Effect =
-  | { type: 'damage'; amount: number }
+  | { type: 'damage'; amount: number; area?: true }
   | { type: 'block'; amount: number }
-  | { type: 'poison'; stacks: number }
-  | { type: 'burn' };
+  | { type: 'poison'; stacks: number; area?: true }
+  | { type: 'burn'; area?: true };
 
 export interface AttackDefinition {
   id: string;
@@ -35,8 +36,13 @@ export interface AttackDefinition {
 }
 
 export type EnemyIntent =
-  | { type: 'attack'; amount: number }
-  | { type: 'block'; amount: number };
+  /** Hits the player `hits` times (default 1) for `amount` each. */
+  | { type: 'attack'; amount: number; hits?: number }
+  | { type: 'block'; amount: number }
+  /** Adds poison stacks to the player. */
+  | { type: 'poison'; stacks: number }
+  /** Sets the player on fire. */
+  | { type: 'burn' };
 
 export interface EnemyDefinition {
   id: string;
@@ -47,7 +53,7 @@ export interface EnemyDefinition {
 }
 
 export interface StatusConfig {
-  /** Fixed damage dealt by Burn when it resolves (then Burn is cleared). */
+  /** Damage per Burn stack when Burn resolves (then every stack is cleared). */
   burnDamage: number;
   /** Poison stacks removed after each tick. */
   poisonDecay: number;
@@ -63,12 +69,14 @@ export interface BattleConfig {
   /** Attacks the player can trigger this battle. */
   attacks: readonly AttackDefinition[];
   status: StatusConfig;
-  enemy: EnemyDefinition;
+  /** The enemies in this fight, left to right. They act in this order. */
+  enemies: readonly EnemyDefinition[];
 }
 
 export interface Statuses {
   poison: number;
-  burn: boolean;
+  /** Burn stacks. Each deals `burnDamage` when Burn resolves; then all of them go out. */
+  burn: number;
 }
 
 export interface Combatant {
@@ -78,6 +86,11 @@ export interface Combatant {
   statuses: Statuses;
 }
 
+export interface EnemyState extends Combatant {
+  /** Counts this enemy's actions; its next intent is `intents[intentIndex % length]`. */
+  intentIndex: number;
+}
+
 export type BattlePhase = 'player' | 'victory' | 'defeat';
 
 export interface BattleState {
@@ -85,25 +98,29 @@ export interface BattleState {
   phase: BattlePhase;
   pool: Color[];
   player: Combatant;
-  enemy: Combatant;
-  enemyIntentIndex: number;
+  /** One per `BattleConfig.enemies`, same order. Defeated enemies stay in place at 0 HP. */
+  enemies: EnemyState[];
 }
 
 export type BattleAction =
   | { type: 'mix'; colors: readonly [Color, Color] }
-  | { type: 'trigger'; attackId: string }
+  /** `target` is an enemy index; when left out it is the first living enemy. */
+  | { type: 'trigger'; attackId: string; target?: number }
   | { type: 'endTurn' };
 
 export type Target = 'player' | 'enemy';
 
+/** Events that happen to an enemy carry its index in `enemy`; events on the player leave it out. */
 export type BattleEvent =
   | { type: 'rolled'; colors: readonly Color[]; discarded: readonly Color[] }
   | { type: 'mixed'; inputs: readonly [Color, Color]; output: Color }
-  | { type: 'triggered'; attackId: string }
-  | { type: 'damaged'; target: Target; amount: number; blocked: number; source: 'attack' | 'poison' | 'burn' }
-  | { type: 'blockGained'; target: Target; amount: number }
-  | { type: 'statusApplied'; target: Target; status: 'poison' | 'burn'; stacks: number }
-  | { type: 'enemyIntent'; intent: EnemyIntent }
+  /** `target` is the enemy the spell was aimed at. */
+  | { type: 'triggered'; attackId: string; target: number }
+  | { type: 'damaged'; target: Target; enemy?: number; amount: number; blocked: number; source: 'attack' | 'poison' | 'burn' }
+  | { type: 'blockGained'; target: Target; enemy?: number; amount: number }
+  | { type: 'statusApplied'; target: Target; enemy?: number; status: 'poison' | 'burn'; stacks: number }
+  /** Enemy `enemy` acts on its intent; the results follow as their own events. */
+  | { type: 'enemyIntent'; enemy: number; intent: EnemyIntent }
   | { type: 'victory' }
   | { type: 'defeat' };
 
@@ -111,7 +128,8 @@ export type ActionError =
   | 'battle_over'
   | 'no_recipe'
   | 'missing_colors'
-  | 'unknown_attack';
+  | 'unknown_attack'
+  | 'invalid_target';
 
 export type ActionResult =
   | { ok: true; state: BattleState; events: BattleEvent[] }
@@ -120,13 +138,12 @@ export type ActionResult =
 // ---------- Run loop ----------
 
 export type StageKind = 'normal' | 'elite' | 'boss';
-/** What happens after a stage's fight is won. */
-export type StageStop = 'reward' | 'shop' | 'end';
 
+/** One fight. After every fight but the last comes a reward pick, then a shop. */
 export interface StageDefinition {
-  enemy: EnemyDefinition;
+  enemies: readonly EnemyDefinition[];
   kind: StageKind;
-  after: StageStop;
+  act: number;
 }
 
 export interface DieForSale {
@@ -141,8 +158,8 @@ export interface RewardAmounts {
 
 export interface EconomyConfig {
   goldPerWin: Record<StageKind, number>;
-  /** Reward pick amounts after normal fights vs. elite fights. */
-  rewards: { normal: RewardAmounts; elite: RewardAmounts };
+  /** Reward pick amounts by the kind of fight just won. */
+  rewards: Record<StageKind, RewardAmounts>;
   shop: {
     repaintPrice: number;
     repaintPriceStep: number;
@@ -155,8 +172,8 @@ export interface EconomyConfig {
 }
 
 export interface RunConfig {
-  /** Battle settings shared by every fight; dice, enemy, and HP come from the run. */
-  battle: Omit<BattleConfig, 'dice' | 'enemy' | 'playerStartHp'>;
+  /** Battle settings shared by every fight; dice, enemies, and HP come from the run. */
+  battle: Omit<BattleConfig, 'dice' | 'enemies' | 'playerStartHp'>;
   stages: readonly StageDefinition[];
   startingDice: readonly DieDefinition[];
   startingGold: number;
@@ -201,7 +218,7 @@ export interface RepaintTarget {
 
 export type RunAction =
   | { type: 'battle'; action: BattleAction }
-  /** Leaves a finished fight: collects gold and moves to the next stop (or ends the run). */
+  /** Leaves a finished fight: collects gold and moves to the reward pick (or ends the run). */
   | { type: 'continue' }
   | { type: 'chooseReward'; index: number; repaint?: RepaintTarget }
   | { type: 'buyDie'; offerIndex: number }
@@ -217,7 +234,6 @@ export type RunError =
   | 'not_enough_gold'
   | 'dice_cap_reached'
   | 'cap_max_reached'
-  | 'invalid_target'
   | 'already_full_hp'
   | 'sold_out';
 

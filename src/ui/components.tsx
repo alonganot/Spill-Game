@@ -17,7 +17,7 @@ export function HpBar({ combatant }: { combatant: Combatant }) {
 /** Block and status badges; hover, focus, or tap one to see what it does. */
 export function Badges({ combatant, owner, status }: { combatant: Combatant; owner: Owner; status: StatusConfig }) {
   const { block, statuses } = combatant;
-  if (block === 0 && statuses.poison === 0 && !statuses.burn) return null;
+  if (block === 0 && statuses.poison === 0 && statuses.burn === 0) return null;
   return (
     <div className="badges">
       {block > 0 && (
@@ -30,9 +30,9 @@ export function Badges({ combatant, owner, status }: { combatant: Combatant; own
           <span className="badge badge-poison">☠ {statuses.poison}</span>
         </Tip>
       )}
-      {statuses.burn && (
-        <Tip text={burnTip(owner, status)} focusable>
-          <span className="badge badge-burn">🔥 Burn</span>
+      {statuses.burn > 0 && (
+        <Tip text={burnTip(statuses.burn, owner, status)} focusable>
+          <span className="badge badge-burn">🔥 {statuses.burn}</span>
         </Tip>
       )}
     </div>

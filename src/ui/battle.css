@@ -368,6 +368,100 @@
 
 .intent-attack { color: #ff8a8d; }
 .intent-block { color: #9cc0ff; }
+.intent-poison { color: #8fe39b; }
+.intent-burn { color: #ffb066; }
+
+/* ---------- Several enemies ---------- */
+
+/* One enemy keeps its usual card; two or three share a row of compact cards. */
+.enemy-row {
+  display: flex;
+  gap: 8px;
+}
+
+.enemy-row.enemies-1 {
+  display: contents;
+}
+
+.enemy-row:not(.enemies-1) .card.with-sprite {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 6px;
+}
+
+.enemy-row:not(.enemies-1) .card-body {
+  width: 100%;
+  align-items: center;
+}
+
+.enemy-row:not(.enemies-1) .card-title {
+  flex-direction: column;
+  gap: 2px;
+}
+
+.enemy-row:not(.enemies-1) .card h2 {
+  font-size: 0.85rem;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.enemy-row:not(.enemies-1) .intent {
+  font-size: 0.8rem;
+}
+
+/* The whole sprite is the target button. */
+.target-btn {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.target-btn:disabled {
+  cursor: default;
+}
+
+.target-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.card.enemy {
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.card.enemy.targeted {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 0 18px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.card.enemy.down {
+  opacity: 0.6;
+}
+
+.target-tag {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--bg);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
 
 /* Battle log: a fixed-height button; the history opens over the screen. */
 .battle-log {
@@ -839,6 +933,38 @@
 
   .arena .player { grid-area: hero; }
   .arena .enemy { grid-area: enemy; }
+
+  /* Two or three enemies get more of the arena and stand side by side. */
+  .arena.arena-crowd {
+    grid-template-columns: 2fr 3fr;
+  }
+
+  .arena .enemy-row:not(.enemies-1) {
+    grid-area: enemy;
+    align-self: end;
+    justify-content: space-around;
+    align-items: flex-end;
+    gap: 12px;
+  }
+
+  .arena .enemy-row:not(.enemies-1) .card.with-sprite {
+    padding: 10px 6px;
+    border: 1px solid transparent;
+    border-radius: 16px;
+  }
+
+  .arena .enemy-row:not(.enemies-1) .card.enemy.targeted {
+    border-color: var(--accent);
+  }
+
+  .arena .enemy-row:not(.enemies-1) .card h2 { font-size: 1rem; }
+
+  .arena .enemy-row:not(.enemies-1) .target-tag {
+    top: auto;
+    bottom: calc(100% + 4px);
+    right: 50%;
+    translate: 50% 0;
+  }
 
   .arena .battle-log {
     grid-area: log;

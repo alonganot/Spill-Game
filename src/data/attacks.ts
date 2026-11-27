@@ -35,6 +35,19 @@ export const ATTACKS = {
     effects: [{ type: 'burn' }, { type: 'poison', stacks: 3 }],
   },
 
+  // Area spells: hit every enemy
+  splash: {
+    id: 'splash',
+    name: 'Splash',
+    cost: { purple: 1, red: 1 },
+    effects: [{ type: 'damage', amount: 4, area: true }],
+  },
+  miasma: {
+    id: 'miasma',
+    name: 'Miasma',
+    cost: { cyan: 1, green: 1 },
+    effects: [{ type: 'poison', stacks: 2, area: true }],
+  },
   // Multi-color combo
   prism: {
     id: 'prism',

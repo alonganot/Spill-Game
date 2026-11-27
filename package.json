@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "typecheck": "tsc -b",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:balance": "vitest run --mode balance"
   },
   "dependencies": {
     "react": "^19.3.1",
