@@ -59,6 +59,18 @@
   gap: 8px;
 }
 
+/* The player's gold and turn, beside their name and above their HP. */
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card-meta .gold {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Cards with a sprite: art on the left, name/intent/HP on the right. */
 .card.with-sprite {
   flex-direction: row;
@@ -343,6 +355,7 @@
 
 .badges {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
@@ -357,6 +370,10 @@
 .badge-block { color: #9cc0ff; }
 .badge-poison { color: #7ee08a; }
 .badge-burn { color: #ffae6b; }
+.badge-curse { color: var(--curse); }
+.badge-silence { color: var(--silence); }
+.badge-immune { color: var(--muted); }
+.badge-chill { color: var(--chill); }
 
 .intent {
   font-size: 0.85rem;
@@ -370,6 +387,16 @@
 .intent-block { color: #9cc0ff; }
 .intent-poison { color: #8fe39b; }
 .intent-burn { color: #ffb066; }
+/* Silenced: the intent is shown but won't happen. */
+.intent.intent-skipped {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+/* Chilled: the attack shows its reduced numbers. */
+.intent.intent-chilled {
+  color: var(--chill);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chill) 50%, transparent);
+}
 
 /* ---------- Several enemies ---------- */
 
@@ -561,6 +588,13 @@
 .chip-purple, .dot-purple { background: var(--purple); }
 .chip-cyan, .dot-cyan { background: var(--cyan); }
 .chip-orange, .dot-orange { background: var(--orange); }
+.chip-white, .dot-white { background: var(--white); }
+.chip-black, .dot-black { background: var(--black); box-shadow: inset 0 0 0 2px var(--black-rim); }
+.chip-pink, .dot-pink { background: var(--pink); }
+.chip-grey, .dot-grey { background: var(--grey); }
+.chip-crimson, .dot-crimson { background: var(--crimson); }
+.chip-blight, .dot-blight { background: var(--blight); }
+.chip-frost, .dot-frost { background: var(--frost); }
 
 .mixbar {
   min-height: 44px;
@@ -786,16 +820,18 @@
   animation: fadein 0.2s ease both;
 }
 
-/* Slides up over the spell area, leaving the pool visible for mix hints. */
+/*
+ * Slides up and takes the whole window height. The title and buttons stay put;
+ * only the body (spells, mixes, legend) scrolls.
+ */
 .spellbook {
   position: fixed;
   left: 50%;
+  top: max(12px, env(safe-area-inset-top));
   bottom: 0;
   z-index: 12;
   width: min(480px, 100%);
-  /* Set from the pool's position so the sheet stops below the chips it highlights. */
-  max-height: var(--sheet-max, 55dvh);
-  overflow-y: auto;
+  overflow: hidden;
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
@@ -819,9 +855,24 @@
 }
 
 .spellbook-head {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.spellbook-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  /* Keeps absolutely placed bits (screen-reader labels) inside the scrolling list. */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* Room for focus rings and card glows at the scroll edges. */
+  margin: 0 -6px;
+  padding: 2px 6px;
 }
 
 .spellbook-head h3 {
@@ -866,6 +917,39 @@
 
 .spellbook-legend {
   font-size: 0.72rem;
+}
+
+.recipe-head {
+  margin: 12px 0 6px;
+  font-size: 0.85rem;
+}
+
+.recipe-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 6px 12px;
+}
+
+.recipe {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+}
+
+.recipe-drops {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--muted);
+}
+
+.recipe-text {
+  margin-left: 6px;
+  color: var(--muted);
 }
 
 .legend-craftable {
@@ -1075,6 +1159,7 @@
   .spellbook {
     width: min(760px, calc(100% - 48px));
     border-bottom: 1px solid var(--border);
+    top: 24px;
     bottom: 24px;
     border-radius: 18px;
   }
@@ -1569,4 +1654,104 @@ button.attack-mix-tag {
 
 @media (prefers-reduced-motion: reduce) {
   .tip { animation: none; }
+}
+
+/*
+ * Desktop battle: a fixed 50/50 split. The arena (top bar, dice, fighters,
+ * log) and the workbench both run the full window height, and neither
+ * changes size with the number of enemies. The top bar sits inside the
+ * arena's top edge.
+ */
+@media (min-width: 900px) {
+  .run-screen.in-battle {
+    --topbar-h: 44px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  .run-screen.in-battle .battle-layout {
+    display: contents;
+  }
+
+  .run-screen.in-battle > .topbar,
+  .run-screen.in-battle .arena,
+  .run-screen.in-battle .side-panel {
+    grid-row: 1;
+  }
+
+  .run-screen.in-battle > .topbar {
+    grid-column: 1;
+    align-self: start;
+    height: var(--topbar-h);
+    margin: 8px 18px 0 22px;
+  }
+
+  .run-screen.in-battle .arena {
+    grid-column: 1;
+    /*
+     * The hero (only as wide as its sprite) and the enemies sit between three
+     * equal spacers, so the pair is always centered in the arena and evenly
+     * spaced. When room is tight the spacers shrink to nothing first.
+     */
+    grid-template-columns: minmax(0, 1fr) min-content minmax(12px, 1fr) minmax(0, max-content) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'dice dice dice dice dice'
+      '. hero . enemy .'
+      'log log log log log';
+    column-gap: 0;
+    padding: calc(var(--topbar-h) + 12px) 16px 16px;
+  }
+
+  .run-screen.in-battle .side-panel {
+    grid-column: 2;
+  }
+
+  /* On a narrow arena, gold and turn drop under "You" rather than widening the hero's column. */
+  .run-screen.in-battle .arena .player .card-row {
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+
+  .run-screen.in-battle .arena .enemy-row:not(.enemies-1) {
+    gap: 4px;
+  }
+
+  .run-screen.in-battle .arena .enemy-row:not(.enemies-1) .card.with-sprite {
+    padding: 8px 4px;
+  }
+
+  .run-screen.in-battle .arena .enemy-row:not(.enemies-1) .card h2 {
+    font-size: 0.9rem;
+    white-space: nowrap;
+  }
+
+  .run-screen.in-battle .arena .enemy-row:not(.enemies-1) .intent {
+    font-size: 0.75rem;
+    padding: 3px 8px;
+    white-space: nowrap;
+  }
+
+  /* Your dice: a strip across the top of the arena, under the top bar and above the fighters. */
+  .arena .dice-rack-section {
+    grid-area: dice;
+    align-self: start;
+  }
+
+  .arena .dice-rack {
+    grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  }
+
+  /* The wider workbench fits more spells per row. */
+  .side-panel .attacks {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+
+  .side-panel > .spells-section {
+    min-height: 220px;
+    /* Keeps absolutely placed bits (screen-reader labels) inside the scrolling list, not the page. */
+    position: relative;
+  }
 }

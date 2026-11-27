@@ -1,7 +1,7 @@
 // Core engine types. Values for these shapes live in `src/data/`.
 
-export type BaseColor = 'red' | 'blue' | 'green';
-export type SecondaryColor = 'purple' | 'cyan' | 'orange';
+export type BaseColor = 'red' | 'blue' | 'green' | 'white' | 'black';
+export type SecondaryColor = 'purple' | 'cyan' | 'orange' | 'pink' | 'grey' | 'crimson' | 'blight' | 'frost';
 export type Color = BaseColor | SecondaryColor;
 
 /** Returns a float in [0, 1). Injected so rolls are deterministic in tests. */
@@ -21,12 +21,28 @@ export interface MixRecipe {
 /** How many of each color an attack consumes, e.g. `{ red: 2 }`. */
 export type ColorCost = Partial<Record<Color, number>>;
 
-/** Damage and statuses hit the target enemy, or every living enemy when `area` is set. Block goes to the player. */
+/**
+ * Damage and statuses (Poison, Burn, Curse, Silence, Chill) hit the target enemy,
+ * or every living enemy when `area` is set. Block, Heal, and Cleanse go to the player.
+ */
 export type Effect =
   | { type: 'damage'; amount: number; area?: true }
-  | { type: 'block'; amount: number }
+  /** `cleanAmount`, if set, replaces `amount` when the player has no Poison or Burn. */
+  | { type: 'block'; amount: number; cleanAmount?: number }
   | { type: 'poison'; stacks: number; area?: true }
-  | { type: 'burn'; area?: true };
+  | { type: 'burn'; area?: true }
+  /** Restores player HP, capped at max HP. */
+  | { type: 'heal'; amount: number }
+  /** Removes the player's Poison and Burn: all of it, or up to `stacks` of each. */
+  | { type: 'cleanse'; stacks?: number }
+  /** The enemy takes `curseBonus` more from each damage instance this turn. */
+  | { type: 'curse'; area?: true }
+  /** The enemy skips its next action. */
+  | { type: 'silence'; area?: true }
+  /** The enemy's next attack hits softer (`chillMultiplier`). */
+  | { type: 'chill'; area?: true }
+  /** Multiplies the enemy's Poison stacks. */
+  | { type: 'multiplyPoison'; factor: number; area?: true };
 
 export interface AttackDefinition {
   id: string;
@@ -57,6 +73,10 @@ export interface StatusConfig {
   burnDamage: number;
   /** Poison stacks removed after each tick. */
   poisonDecay: number;
+  /** Extra damage a Cursed enemy takes per damage instance (hit or tick). */
+  curseBonus: number;
+  /** A Chilled enemy's attack hits deal this fraction of their damage (rounded down). */
+  chillMultiplier: number;
 }
 
 export interface BattleConfig {
@@ -89,7 +109,18 @@ export interface Combatant {
 export interface EnemyState extends Combatant {
   /** Counts this enemy's actions; its next intent is `intents[intentIndex % length]`. */
   intentIndex: number;
+  /** Takes `curseBonus` more from each damage instance; clears after the turn's status step. */
+  cursed: boolean;
+  /** Skips its next action, then gains Silence Immunity. */
+  silenced: boolean;
+  /** Can't be Silenced until it next really acts. */
+  silenceImmune: boolean;
+  /** Its next action's attack hits deal `chillMultiplier` damage; clears after it really acts. */
+  chilled: boolean;
 }
+
+/** Statuses that only enemies carry (from White/Black spells). */
+export type EnemyCondition = 'curse' | 'silence' | 'chill';
 
 export type BattlePhase = 'player' | 'victory' | 'defeat';
 
@@ -118,9 +149,18 @@ export type BattleEvent =
   | { type: 'triggered'; attackId: string; target: number }
   | { type: 'damaged'; target: Target; enemy?: number; amount: number; blocked: number; source: 'attack' | 'poison' | 'burn' }
   | { type: 'blockGained'; target: Target; enemy?: number; amount: number }
-  | { type: 'statusApplied'; target: Target; enemy?: number; status: 'poison' | 'burn'; stacks: number }
+  /** Poison and Burn add `stacks`; Curse, Silence, and Chill (enemies only) are on/off, with `stacks` 1. */
+  | { type: 'statusApplied'; target: Target; enemy?: number; status: 'poison' | 'burn' | EnemyCondition; stacks: number }
+  /** HP actually restored (after the max HP cap). */
+  | { type: 'healed'; target: 'player'; amount: number }
+  /** Poison and Burn stacks removed from the player. */
+  | { type: 'cleansed'; target: 'player'; poison: number; burn: number }
+  /** Silence aimed at an enemy with Silence Immunity: nothing happens. */
+  | { type: 'silenceResisted'; enemy: number }
   /** Enemy `enemy` acts on its intent; the results follow as their own events. */
   | { type: 'enemyIntent'; enemy: number; intent: EnemyIntent }
+  /** Enemy `enemy` is Silenced and skips this intent. */
+  | { type: 'enemySkipped'; enemy: number; intent: EnemyIntent }
   | { type: 'victory' }
   | { type: 'defeat' };
 

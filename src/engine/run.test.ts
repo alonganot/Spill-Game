@@ -222,6 +222,10 @@ describe('rewards', () => {
     const repainted = act(run, { type: 'chooseReward', index: 2, repaint: { dieIndex: 0, faceIndex: 0, color: 'green' } });
     expect(repainted.dice[0]?.faces).toEqual(['green']);
     expect(repainted.gold).toBe(10);
+    for (const color of ['white', 'black'] as const) {
+      const painted = act(run, { type: 'chooseReward', index: 2, repaint: { dieIndex: 0, faceIndex: 0, color } });
+      expect(painted.dice[0]?.faces).toEqual([color]);
+    }
     for (const repaint of [
       undefined,
       { dieIndex: 5, faceIndex: 0, color: 'green' },

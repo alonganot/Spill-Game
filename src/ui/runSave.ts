@@ -15,15 +15,15 @@ import {
  * exactly, random rolls included.
  */
 export interface RunSave {
-  version: 2;
+  version: 3;
   seed: number;
   seeded: boolean;
   actions: RunAction[];
 }
 
-export const SAVE_KEY = 'spill.run.v2';
+export const SAVE_KEY = 'spill.run.v3';
 /** Saves from earlier versions, which can't be replayed by this engine. */
-export const OLD_SAVE_KEYS = ['spill.run.v1'] as const;
+export const OLD_SAVE_KEYS = ['spill.run.v1', 'spill.run.v2'] as const;
 
 const ACTION_TYPES = new Set<RunAction['type']>([
   'battle',
@@ -55,7 +55,7 @@ export function parseSave(text: string | null): RunSave | null {
   }
   if (typeof data !== 'object' || data === null) return null;
   const { version, seed, seeded, actions } = data as Record<string, unknown>;
-  if (version !== 2) return null;
+  if (version !== 3) return null;
   if (typeof seed !== 'number' || !Number.isInteger(seed) || seed < 0) return null;
   if (typeof seeded !== 'boolean') return null;
   if (!Array.isArray(actions) || !actions.every(isAction)) return null;

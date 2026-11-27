@@ -31,6 +31,13 @@ const DIE_SHEETS: Record<Color, SpriteSheet<'face'>> = {
   purple: dieSheet('purple'),
   cyan: dieSheet('cyan'),
   orange: dieSheet('orange'),
+  white: dieSheet('white'),
+  black: dieSheet('black'),
+  pink: dieSheet('pink'),
+  grey: dieSheet('grey'),
+  crimson: dieSheet('crimson'),
+  blight: dieSheet('blight'),
+  frost: dieSheet('frost'),
 };
 
 /** 16px art at 2×. Six dice and End turn still share one row at 375px. */

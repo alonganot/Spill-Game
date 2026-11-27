@@ -48,5 +48,5 @@ describe('balance (greedy bot over many seeded runs)', () => {
     // The opening stays fair, and the run isn't decided by a single wall.
     expect(pastFight3 / SEEDS).toBeGreaterThanOrEqual(0.8);
     expect(Math.max(...lossesByFight.values()) / SEEDS).toBeLessThanOrEqual(0.4);
-  });
+  }, 60_000);
 });

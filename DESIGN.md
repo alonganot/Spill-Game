@@ -1,6 +1,6 @@
 # DESIGN.md — Spill Visual Design System: "Cosmic Paint Workshop"
 
-This file is the visual source of truth for everything in `src/ui/` (CSS and components), `index.html`, and any new UI pixel-art sprites in `src/data/sprites.ts`. Gameplay rules live in `RULES.md`; scope and progress live in `PLAN.md` (Milestone 8 is the rollout of this design).
+This file is the visual source of truth for everything in `src/ui/` (CSS and components), `index.html`, and any new UI pixel-art sprites in `src/data/sprites.ts`. Gameplay rules live in `RULES.md`; scope and progress live in `PLAN.md` (Milestone 9 is the rollout of this design).
 
 ## 1. Theme & Atmosphere
 
@@ -10,7 +10,7 @@ Spill is played at an **alchemist-painter's workbench floating in a cosmic nebul
 - **Cosmic magic.** Everything sits on deep indigo/space-purple, with subtle nebula clouds and sparse starlight behind it. Frames are **antique bronze and gold pixel-art borders**. Paint is the only saturated thing on screen, and it glows when it is live (draggable, staged, ready to cast).
 
 Rules of thumb:
-- **Paint is the hero.** Surfaces stay dark and low-saturation so the six paint colors always read first.
+- **Paint is the hero.** Surfaces stay dark and low-saturation so the paint colors (five base, eight mixed) always read first.
 - **Glow means "you can act on this".** A glow marks something draggable, a filled socket, a ready Cast, or the current target. Idle, locked, or disabled things don't glow.
 - **Pixel-crisp, never blurry.** Hard edges, stepped corners, whole-pixel sizes. No soft drop shadows on cards, no gradients that look airbrushed (nebula backdrops may use soft gradients, but at low contrast and behind everything).
 - **Calm backdrop, loud foreground.** Backdrops (sky, nebula, floor) never animate faster than a slow twinkle and never compete with fighters, floats, or intents.
@@ -38,8 +38,20 @@ All colors are CSS custom properties on `:root` in `src/ui/global.css`. Componen
 | `--purple` | `#9b5de5` | `#a663f0` | Purple paint. |
 | `--cyan` | `#22c3d6` | `#2ed3e6` | Cyan paint. |
 | `--orange` | `#f08a24` | `#ff9229` | Orange paint. |
+| `--white` | `#f4f0e6` | `#f4f0e6` | White paint (Purity). |
+| `--black` | `#2b2238` | `#2b2238` | Black paint (Shadow). Always drawn with `--black-rim` so it reads on dark surfaces. |
+| `--black-rim` | `#8f86a8` | `#8f86a8` | The light outline of Black paint (drop outline, chip inset ring). |
+| `--pink` | `#ff7eb6` | `#ff7eb6` | Pink paint (Heal). |
+| `--grey` | `#9a96a8` | `#9a96a8` | Grey paint (Balance). |
+| `--crimson` | `#b5173f` | `#b5173f` | Crimson paint (Vampiric). Darker than Red so the two stay apart. |
+| `--blight` | `#8e9c1e` | `#8e9c1e` | Blight paint (Plague). Olive, so it stays apart from Green. |
+| `--frost` | `#a6ecff` | `#a6ecff` | Frost paint (Chill). Paler than Cyan. |
+| `--curse` | `#b58cff` | `#b58cff` | Curse badge, float, and glow. |
+| `--silence` | `#c9c3d8` | `#c9c3d8` | Silence badge, float, and glow. |
+| `--chill` | `#a6ecff` | `#a6ecff` | Chill badge, chilled intent, float, and glow. |
+| `--heal` | `#7dea9a` | `#7dea9a` | Heal float and glow. |
 
-The paint colors get a small boost in brightness and saturation so they still pop against indigo and bronze; hues stay the same so players' color memory carries over.
+The six original paint colors get a small boost in brightness and saturation so they still pop against indigo and bronze; hues stay the same so players' color memory carries over. The White/Black paints and their mixes (Milestone 8) were picked for the new palette already and keep their values.
 
 ### 2.2 New tokens
 
@@ -68,7 +80,7 @@ The paint colors get a small boost in brightness and saturation so they still po
 | `--burn` | `var(--orange)` | Burn badges and intents. |
 | `--danger` | `#e8484a` | Attack intents, destructive buttons. |
 | `--glow-size` | `6px` | Default glow radius; doubled on hover/drag. |
-| `--px` | `2px` | The UI "pixel": border and bevel thickness. `3px` at the large-desktop size is allowed. |
+| `--px` | `2px` | The UI "pixel": border and bevel thickness. `3px` on big desktop windows is allowed. |
 
 ### 2.3 Glows
 
@@ -86,7 +98,8 @@ Use glows for: draggable paint drops (on hover/focus), the drag ghost, filled co
 ### 2.4 Sprite palettes
 
 Sprite colors live in `src/data/sprites.ts` and `src/ui/PaintDrop.tsx`/`PixelDie.tsx` palettes, not CSS. Keep them aligned with the tokens:
-- `COLOR_HEX` in `src/ui/fx.ts` must use the same six paint values as the CSS color tokens (update both together).
+- `COLOR_HEX` in `src/ui/fx.ts` must use the same paint values as the CSS color tokens (update both together).
+- Black paint's drop uses `--black-rim` as its outline instead of `--bg` (`dropPalette` in `PaintDrop.tsx`).
 - Sprite outlines (`k` in `dropPalette`) use `--bg`'s value (`#0f0d1a`).
 - New UI sprites (cauldron, vial, icons, frames) draw from §2.1–2.2 values only.
 
@@ -157,12 +170,15 @@ Variants:
 
 ## 5. Battle Arena (left on desktop, top on phones)
 
+**Desktop proportions:** the battle screen is a fixed **50/50** two-column grid (`.run-screen.in-battle`): the arena on the left, the workbench on the right, both running the full window height, and neither changes size with the number of enemies. The top bar (☰, Spill, fight and act) sits **inside the top of the arena**, above the dice rack. Fighters scale with the window (`fighterPixel` in `BattleScreen.tsx`, 4×–14×) at one size for every fight, picked so the hero plus three crowd-sized enemies fit across and a lone enemy fits under the top bar and dice rack; the hero's column is only as wide as its sprite, and the hero and the enemies sit between equal spacers, so they're always centered in the arena and evenly spaced (the spacers shrink first when room is tight). During a fight, **gold** sits in the player's card beside their name and turn, above the HP bar (`.card-meta`), not in the top bar.
+
 - **Backdrop:** a cosmic starry sky. Layer, back to front: `--bg-deep` → soft nebula clouds (`radial-gradient`s of `--nebula-1/2/3` at 15–30% opacity) → sparse star pixels (a repeating background of 1–2px `--star` dots, or a small tiled pixel sprite). An optional slow twinkle (opacity, ≥4s period) is turned off under `prefers-reduced-motion`.
 - **Floor:** an ancient stone-tile floor along the bottom third of the arena: rows of `--stone`/`--stone-dark` tiles with 1px `--bg-deep` grout and a few `--stone-light` chips, slightly darker toward the back. The hero and every enemy stand on the floor (their sprite's feet line up with the tile row). Can be CSS gradients or a tiled code-drawn sprite.
 - **Fighters:** the hero on the left facing right; **1–3 enemies in a row** on the right (`.enemy-row`). Enemy cards lose their opaque card background in the arena: each enemy is the sprite on the floor plus a small gold-framed plate under or above it holding name, intent, badges, and HP.
 - **HP bars:** golden pixel frames (`.px-frame-gold`, stepped), a recessed `--recess` track, a flat `--hp` fill with a 1px lighter top line, and `--hp-low` under 30%. HP text (`12 / 30`) in the pixel font, centered, with a 1px `--ink` text shadow for legibility.
 - **Intents** (`.intent-attack`, `-block`, `-poison`, `-burn`): a pixel speech-bubble/banner above the enemy, framed in the intent's color (`--danger`, `--block`, `--poison`, `--burn`) on `--surface`, with the icon and number in the pixel font. They must pop: the brightest thing on the enemy plate after the sprite. A gentle 1-step bob is allowed (off with reduced motion). Multi-hit attacks show `6×2` style text.
-- **Status badges** (`.badge-block`, `-poison`, `-burn`): small square pixel gems with a colored frame, icon, and number. **Burn shows its stack count** (`🔥 2`) and gets brighter/hotter as stacks grow. Badges sit next to the HP bar and never cover the sprite.
+- **Status badges** (`.badge-block`, `-poison`, `-burn`, and the enemy-only `-curse`, `-silence`, `-immune`, `-chill`): small square pixel gems with a colored frame, icon, and number. **Burn shows its stack count** (`🔥 2`) and gets brighter/hotter as stacks grow. Badges sit next to the HP bar, wrap onto a second row when there are many, and never cover the sprite.
+- **Changed intents:** a Silenced enemy's intent is struck through and dimmed with `🤐` (`.intent-skipped`); a Chilled enemy's attack shows its reduced numbers in `--chill` with `❄` (`.intent-chilled`).
 - **Targeting:** the selected enemy has a **gold pixel ring** on the floor under its feet (or around the sprite) with a soft gold glow, and a parchment **"Target" tag** (`.target-tag`) with `--ink` text. Hovering/focusing another living enemy shows a fainter ring. Defeated enemies are dimmed and can't be targeted; their ring and badges are hidden.
 - **Feedback** (`fx.css`): floats use the pixel font with a 2px `--ink` outline; damage in `--danger`/white, block in `--block`, poison/burn in their colors. Paint bolts keep the paint color with a glow trail.
 - **Battle log and Spellbook buttons** in the arena use the icon-button style (§4.2).
@@ -172,6 +188,7 @@ Variants:
 The workbench is one `.px-frame-gold` panel. Sections keep their `section-head` headings in the pixel font with a thin bronze rule under them.
 
 ### 6.1 Your dice (`DiceRack.tsx`, phone `.dice-tray`)
+- On desktop the dice rack is a strip across the **top of the arena**, above the fighters (grid area `dice`), not in the workbench. Phones keep the tray in the footer.
 - A **recessed stone/wood tray** (`.px-recess` with a `--wood` rim) with one **inset socket** per die.
 - The rolled face sits big in its socket. The six small faces beside it are **gem-like indicators**: tiny faceted squares in the face color with a 1px highlight; faces that don't match the roll are dimmed (not hidden).
 - Overflowed dice (pool full) look greyed and cracked; "away" dice (on the roll stage) leave an empty glowing socket.
@@ -179,7 +196,7 @@ The workbench is one `.px-frame-gold` panel. Sections keep their `section-head` 
 ### 6.2 Mixing bowl (`MixingBowl` in `workbench.tsx`)
 - A **pixel cauldron** sprite (new, in `sprites.ts`) holds the **two liquid slots** (`.bowl-slot-wrap`). Empty slots are dark recessed pools; a filled slot shows the paint as glowing liquid (the paint drop sits in a glowing pool of its color).
 - The `=` leads to a **potion vial** (new sprite) as the output. Empty vial: clear glass. `?`: waiting. `✕` (no recipe): a cracked/smoky vial. A valid mix fills the vial with the new color and it **glows and gently pulses** (pulse off with reduced motion); it stays draggable and tappable exactly as today.
-- The bowl note stays below in the body font.
+- The bowl note stays below in the body font. It never lists the recipes (those live in the Spellbook); when the bowl is empty it points there.
 
 ### 6.3 Craftable spells (`SpellCard` in `Spellbook.tsx`, `.attacks`)
 - **Dark parchment cards** (`--parchment-dark` fill with a faint paper-grain texture, stepped corners) with an **element-tinted border**: the border takes the color of the spell's main cost color (set as a `--spell-color` custom property on the card).
@@ -205,7 +222,7 @@ Every screen shares the same backdrop (nebula + stars, without the floor), frame
 - **Reward cards** (`RewardScreen.tsx`, `run.css` `.choice`): three `.px-frame-gold` parchment cards; the icon sits in a recessed socket; hover/focus glows gold.
 - **Dice Shop** (`ShopScreen.tsx`): shop items are dark parchment rows/cards in bronze frames; prices in the pixel font with a gold coin glyph; Buy is primary; unaffordable items are flat and dim with their reason visible.
 - **Dice editor** (`DiceEditor.tsx`): faces sit in recessed stone sockets like the dice tray; color picks are glowing drops.
-- **Spellbook** (`Spellbook.tsx`): a large parchment-and-bronze sheet over the workbench, using the same spell cards.
+- **Spellbook** (`Spellbook.tsx`): a large parchment-and-bronze sheet using the same spell cards, with every mix recipe listed under them as paint drops (`.recipe-list`). It takes the whole window height (24px margins on desktop); the title, the Unavailable-only toggle, and ✕ stay fixed at the top, and only the body (`.spellbook-body`: spells, mixes, legend) scrolls.
 - **Battle Log** (`BattleLog.tsx`): an aged scroll panel (`--parchment-dark`, bronze frame), body-font lines.
 - **Settings** (`SettingsScreen.tsx`): grouped `.px-frame` panels; the seed in the pixel font in a recessed field; danger actions use `.btn-danger`.
 - **Run End** (`RunEndScreen.tsx`): a large gold-framed panel, Victory in gold / Defeat in `--danger`, stats in the pixel font.
@@ -218,7 +235,7 @@ Every screen shares the same backdrop (nebula + stars, without the floor), frame
 - Every frame in a sheet is a rectangle of the same size (`src/data/sprites.test.ts` checks this); add new sheets to that test.
 - New UI sprites for this theme: **cauldron**, **potion vial** (empty / filled / cracked), **target ring**, **area ("hits all") icon**, **coin**, intent/badge icons where emoji read poorly, and optional floor-tile and star tiles.
 - Palettes use the values in §2. Outlines use `--bg`'s value. Fill colors that depend on paint (vial liquid, socket glow) are passed in at render time, as `dropPalette` does.
-- Scale by whole pixels only. Desktop fighters stay at 10× (13× on large desktop); UI sprites pick a fixed whole-pixel scale per breakpoint.
+- Scale by whole pixels only. Desktop fighters scale with the window, 4× to 14× (`fighterPixel`, §5); UI sprites pick a fixed whole-pixel scale per breakpoint.
 
 ## 9. Motion
 
@@ -230,6 +247,6 @@ Every screen shares the same backdrop (nebula + stars, without the floor), frame
 
 - **Where changes go:** `src/ui/` (CSS and components), `src/data/sprites.ts` (new UI sprites), and `index.html` (font loading). No changes to `src/engine/` or gameplay data; the redesign is visual only.
 - **Keep all interaction working:** drag-and-drop (`useDrag.ts`, `data-drop` targets), click/tap-to-place, keyboard (Enter to lift/place, Escape to go back, focusable tooltips), and all `aria-*` labels. Decorative sprites and backdrops are `aria-hidden`.
-- **Keep the responsive breakpoints:** `useDesktop` (`min-width: 900px`) and `useLargeDesktop` (`min-width: 1500px` and `min-height: 960px`) in `useMediaQuery.ts`, and the matching CSS `@media` blocks. The desktop battle screen still fills the window with no scrolling; phones keep the single column.
+- **Keep the responsive breakpoints:** `useDesktop` (`min-width: 900px`) in `useMediaQuery.ts` and the matching CSS `@media` blocks; desktop fighter sizes come from the window size (`useWindowSize`, `fighterPixel`). The desktop battle screen still fills the window with no scrolling; phones keep the single column.
 - **Performance:** backdrops are CSS gradients or small tiled sprites, not large images; no heavy shaders or canvas effects.
 - **Tokens first:** new colors are added as tokens in §2 before use. Update this file when a token, utility, or rule changes.

@@ -14,7 +14,7 @@ import {
   type BattleState,
   type Rng,
 } from '../engine';
-import { beforeOpeningRoll, buildTimeline } from './timeline';
+import { beforeOpeningRoll, buildTimeline, type Conditions } from './timeline';
 
 function battle(overrides: Partial<BattleState> = {}): BattleState {
   const base = createBattle(defaultBattleConfig(), createSeededRng(1)).state;
@@ -26,6 +26,12 @@ function withVitals(state: BattleState, who: 'player' | 'enemy', hp: number, blo
   return { ...state, enemies: state.enemies.map((e, i) => (i === 0 ? { ...e, hp, block } : e)) };
 }
 
+const conditionsOf = (e: Partial<Conditions>) => ({
+  cursed: e.cursed,
+  silenced: e.silenced,
+  silenceImmune: e.silenceImmune,
+  chilled: e.chilled,
+});
 const vitalsOf = (c: { hp: number; block: number; statuses: BattleState['player']['statuses'] }) => ({
   hp: c.hp,
   block: c.block,
@@ -54,6 +60,29 @@ describe('buildTimeline', () => {
       { hp: 30, block: 5 },
       { hp: 27, block: 0 },
       { hp: 27, block: 0 },
+    ]);
+  });
+
+  it('shows Curse, Silence, and Chill coming and going beat by beat', () => {
+    const before = battle();
+    const events: BattleEvent[] = [
+      { type: 'statusApplied', target: 'enemy', enemy: 0, status: 'curse', stacks: 1 },
+      { type: 'statusApplied', target: 'enemy', enemy: 0, status: 'silence', stacks: 1 },
+      { type: 'statusApplied', target: 'enemy', enemy: 0, status: 'chill', stacks: 1 },
+      { type: 'enemySkipped', enemy: 0, intent: { type: 'attack', amount: 6 } },
+      { type: 'rolled', colors: [], discarded: [] },
+    ];
+    const after = { ...before, enemies: [{ ...before.enemies[0]!, silenceImmune: true, chilled: true }] };
+    const flags = buildTimeline(before, events, after, STATUS_CONFIG).map((s) => {
+      const { cursed, silenced, silenceImmune, chilled } = s.enemies[0]!;
+      return { cursed, silenced, silenceImmune, chilled };
+    });
+    expect(flags).toEqual([
+      { cursed: true, silenced: false, silenceImmune: false, chilled: false },
+      { cursed: true, silenced: true, silenceImmune: false, chilled: false },
+      { cursed: true, silenced: true, silenceImmune: false, chilled: true },
+      { cursed: false, silenced: false, silenceImmune: true, chilled: true },
+      { cursed: false, silenced: false, silenceImmune: true, chilled: true },
     ]);
   });
 
@@ -162,7 +191,7 @@ describe('buildTimeline against the engine', () => {
         const steps = buildTimeline(state, result.events, result.state, config.status);
         const last = steps.at(-1)!;
         expect(last.player).toEqual({ hp: result.state.player.hp, block: result.state.player.block, statuses: result.state.player.statuses });
-        expect(last.enemies).toEqual(result.state.enemies.map(vitalsOf));
+        expect(last.enemies).toEqual(result.state.enemies.map((e) => ({ ...vitalsOf(e), ...conditionsOf(e) })));
         expect(last.pool).toEqual(result.state.pool);
         // Replaying forward should already land on the real numbers before the final snap.
         const replayed = buildTimeline(state, [...result.events, { type: 'victory' }], result.state, config.status).at(-2)!;
@@ -170,6 +199,7 @@ describe('buildTimeline against the engine', () => {
         expect(replayed.enemies.map((e) => e.hp)).toEqual(result.state.enemies.map((e) => e.hp));
         expect(replayed.player.statuses).toEqual(result.state.player.statuses);
         expect(replayed.enemies.map((e) => e.statuses)).toEqual(result.state.enemies.map((e) => e.statuses));
+        expect(replayed.enemies.map(conditionsOf)).toEqual(result.state.enemies.map(conditionsOf));
         for (const step of steps) {
           expect(step.player.hp).toBeGreaterThanOrEqual(0);
           for (const enemy of step.enemies) expect(enemy.hp).toBeGreaterThanOrEqual(0);

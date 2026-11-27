@@ -1,7 +1,7 @@
 {
   "name": "spill",
   "productName": "Spill",
-  "version": "1.0.1",
+  "version": "0.0.0-dev",
   "description": "A turn-based roguelite where you roll paint dice, mix colors, and cast spells.",
   "author": "Alon Ganot",
   "private": true,

@@ -1,6 +1,6 @@
 import type { Color } from '../engine';
 import type { SpriteSheet } from '../data/sprites';
-import { COLOR_HEX } from './fx';
+import { BLACK_RIM, COLOR_HEX } from './fx';
 import { PixelSprite } from './PixelSprite';
 
 // A 12×13 drop of paint: dark outline, a highlight down its left side, and
@@ -37,6 +37,8 @@ function shade(hex: string, amount: number): string {
 /** The drop's colors: outline (k), paint (c), highlight (h), and shade (d). Shared with the dice faces. */
 export function dropPalette(color: Color): Record<'k' | 'c' | 'h' | 'd', string> {
   const base = COLOR_HEX[color];
+  // Black paint gets a light rim (and a stronger highlight) so it reads on the dark background.
+  if (color === 'black') return { k: BLACK_RIM, c: base, h: shade(base, 0.35), d: '#120e1a' };
   return { k: '#14121a', c: base, h: shade(base, 0.45), d: shade(base, -0.3) };
 }
 
@@ -52,6 +54,13 @@ const DROP_SHEETS: Record<Color, SpriteSheet<'drop'>> = {
   purple: dropSheet('purple'),
   cyan: dropSheet('cyan'),
   orange: dropSheet('orange'),
+  white: dropSheet('white'),
+  black: dropSheet('black'),
+  pink: dropSheet('pink'),
+  grey: dropSheet('grey'),
+  crimson: dropSheet('crimson'),
+  blight: dropSheet('blight'),
+  frost: dropSheet('frost'),
 };
 
 /** A pixel paint drop in a color. `size` is the largest side in CSS px (13px art, whole-pixel scaling). */

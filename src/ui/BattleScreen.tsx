@@ -4,14 +4,19 @@ import {
   firstLivingEnemy,
   isAreaSpell,
   mixColors,
+  mixCost,
   findMixPlan,
+  spendColors,
   getEnemyIntent,
+  attackHitDamage,
   type BattleAction,
   type BattleConfig,
   type BattleEvent,
   type BattleState,
   type Color,
   type EnemyIntent,
+  type EnemyState,
+  type Effect,
   type MixRecipe,
 } from '../engine';
 import { MIX_HINT_MAX_MIXES } from '../data/balance';
@@ -22,19 +27,20 @@ import { SpellCard, Spellbook, type Spell } from './Spellbook';
 import { chipPopMs, useReducedMotion } from './anim';
 import { RollStage, TrayDie } from './PixelDie';
 import { EnemyStage, HeroStage, Projectile } from './Fighters';
-import { COLOR_HEX, floatsFor, stageFxFor } from './fx';
-import { COLOR_LABEL, describeIntent, enemyLabels, formatEvent, intentTip } from './format';
+import { COLOR_HEX, floatsFor, glowHex, stageFxFor } from './fx';
+import { COLOR_LABEL, describeIntent, enemyLabels, formatEvent, intentTip, type IntentMark } from './format';
 import { Tip } from './Tooltip';
 import { beforeOpeningRoll, buildTimeline } from './timeline';
 import { chipsForPlan } from './mixHint';
 import { usePlayback } from './usePlayback';
-import { useDesktop, useLargeDesktop } from './useMediaQuery';
+import { useDesktop, useWindowSize } from './useMediaQuery';
 import { DiceRack } from './DiceRack';
 import { useChipDrag } from './useDrag';
 import { BOWL_RESULT, MixingBowl, WorkbenchProvider, type Workbench } from './workbench';
 import { PaintDrop } from './PaintDrop';
 import {
   bowlResult,
+  carryStaging,
   EMPTY_STAGING,
   place,
   remove,
@@ -58,6 +64,8 @@ interface BattleScreenProps {
   lastRoll: RolledEvent | null;
   actionCount: number;
   isFinalFight: boolean;
+  /** The run's gold, shown beside the player's HP. */
+  gold: number;
   onAction: (action: BattleAction) => void;
   onContinue: () => void;
 }
@@ -70,6 +78,7 @@ export function BattleScreen({
   lastRoll,
   actionCount,
   isFinalFight,
+  gold,
   onAction,
   onContinue,
 }: BattleScreenProps) {
@@ -90,14 +99,12 @@ export function BattleScreen({
   const reducedMotion = useReducedMotion();
   const onStage = rolling && !reducedMotion && rollEvent !== undefined;
   const trayRef = useRef<HTMLDivElement>(null);
-  // Desktop shows the fighters at one pixel scale (22px enemy, 16px hero): 10×, or 13× on big screens.
-  // Two or three enemies share the arena, so they're drawn smaller.
   const desktop = useDesktop();
-  const large = useLargeDesktop();
-  const pixel = large ? 13 : 10;
+  const { width: windowWidth, height: windowHeight } = useWindowSize();
   const enemyCount = config.enemies.length;
-  const crowd = enemyCount >= 3 ? 0.5 : enemyCount === 2 ? 0.7 : 1;
-  const enemySize = desktop ? 22 * Math.max(4, Math.round(pixel * crowd)) : enemyCount >= 3 ? 56 : enemyCount === 2 ? 68 : 88;
+  const pixel = fighterPixel(windowWidth, windowHeight, config.dice.length);
+  const crowd = enemyCount >= 3 ? CROWD_SCALE[3] : enemyCount === 2 ? CROWD_SCALE[2] : 1;
+  const enemySize = desktop ? 22 * Math.max(3, Math.floor(pixel * crowd)) : enemyCount >= 3 ? 56 : enemyCount === 2 ? 68 : 88;
   const heroSize = desktop ? 16 * pixel : 48;
   const keptCount = shownRoll ? shownRoll.colors.length - shownRoll.discarded.length : 0;
 
@@ -117,13 +124,13 @@ export function BattleScreen({
   const beatKey = `${actionCount}-${index}`;
   const enemyStageRefs = useMemo(() => config.enemies.map(() => createRef<HTMLDivElement>()), [config.enemies]);
   const heroStageRef = useRef<HTMLDivElement>(null);
-  const poolRef = useRef<HTMLElement>(null);
-  // A spell that harms enemies sends a bolt of its first cost color: to its target, or to every living enemy.
+  // A spell that reaches enemies sends a bolt of its first cost color: to its target, or to every living enemy.
+  // Spells that only touch the player (Block, Heal, Cleanse) send none.
   const castAttack =
     beatEvent?.type === 'triggered' ? config.attacks.find((x) => x.id === beatEvent.attackId) : undefined;
   const castColor = castAttack && (Object.keys(castAttack.cost)[0] as Color | undefined);
   const boltColor =
-    castAttack && castColor && castAttack.effects.some((e) => e.type !== 'block') ? COLOR_HEX[castColor] : null;
+    castAttack && castColor && castAttack.effects.some((e) => !PLAYER_EFFECTS.has(e.type)) ? glowHex(castColor) : null;
   const boltTargets =
     beatEvent?.type !== 'triggered' || !castAttack
       ? []
@@ -165,18 +172,24 @@ export function BattleScreen({
     setHintedAttack(null);
   }, []);
 
-  // Colors dragged (or tapped) into the bowl or onto spells. UI-only, and
-  // reset whenever the pool changes, which is on every action.
-  const [stage, setStage] = useState<{ key: number; staging: Staging; selected: number | null }>({
+  // Colors dragged (or tapped) into the bowl or onto spells. UI-only. A Cast
+  // or Mix carries the rest over to the pool it leaves (`carryOver`); any other
+  // change (a new turn, a rejected action) starts fresh. Staging made for one
+  // action and pool never applies to another.
+  const [stage, setStage] = useState<{ key: number; pool: readonly Color[]; staging: Staging; selected: number | null }>({
     key: actionCount,
+    pool,
     staging: EMPTY_STAGING,
     selected: null,
   });
-  const fresh = stage.key === actionCount;
+  const fresh = stage.key === actionCount && samePool(stage.pool, pool);
   const staging = fresh ? stage.staging : EMPTY_STAGING;
   const selectedChip = fresh ? stage.selected : null;
   const setStaging = (next: Staging, selected: number | null = null) =>
-    setStage({ key: actionCount, staging: next, selected });
+    setStage({ key: actionCount, pool, staging: next, selected });
+  /** Stages `next` for the action about to happen, which leaves the pool as `after`. */
+  const carryOver = (next: Staging, after: readonly Color[]) =>
+    setStage({ key: actionCount + 1, pool: after, staging: next, selected: null });
   const staged = stagedIndices(staging);
   const costs = useMemo(() => Object.fromEntries(config.attacks.map((a) => [a.id, a.cost])), [config.attacks]);
 
@@ -211,11 +224,16 @@ export function BattleScreen({
   const bowl = bowlResult(staging, pool, config.recipes);
   const mixed = bowl.kind === 'mix' ? mixColors(pool, config.recipes, bowl.inputs[0], bowl.inputs[1]) : null;
   const mixedPool = mixed?.ok ? mixed.pool : null;
+  /** What stays staged once the bowl is mixed. */
+  const afterMix =
+    bowl.kind === 'mix' && mixedPool
+      ? carryStaging(staging, pool, mixCost(bowl.inputs[0], bowl.inputs[1]), mixedPool, { kind: 'bowl' })
+      : null;
 
   /** Where the bowl's new color could go on a spell, after the mix. */
   function placeMixed(target: StageTarget) {
-    if (!mixedPool || target.kind !== 'spell') return null;
-    const result = place(EMPTY_STAGING, mixedPool.length - 1, target, mixedPool, costs);
+    if (!mixedPool || !afterMix || target.kind !== 'spell') return null;
+    const result = place(afterMix, mixedPool.length - 1, target, mixedPool, costs);
     return result.ok ? result.staging : null;
   }
 
@@ -223,15 +241,19 @@ export function BattleScreen({
   function mixInto(target: StageTarget | 'pool') {
     if (bowl.kind !== 'mix' || !mixedPool) return;
     const mixAction: BattleAction = { type: 'mix', colors: bowl.inputs };
-    if (target === 'pool' || target.kind === 'bowl') return act(mixAction);
+    if (target === 'pool' || target.kind === 'bowl') {
+      act(mixAction);
+      if (afterMix) carryOver(afterMix, mixedPool);
+      return;
+    }
     const onSpell = placeMixed(target);
     if (!onSpell) {
       setReject((r) => ({ target: keyOf(target), n: (r?.n ?? 0) + 1 }));
       return;
     }
     act(mixAction);
-    // The mix is the next action, so stage the new color for it.
-    setStage({ key: actionCount + 1, staging: onSpell, selected: null });
+    // The new color goes straight onto the spell; the rest of the staging stays.
+    carryOver(onSpell, mixedPool);
   }
 
   const { drag, start: chipPointerDown, click: chipClick } = useChipDrag((chip, key) => {
@@ -301,6 +323,8 @@ export function BattleScreen({
       if (!cost || !spellReady(staging, attackId, cost, pool)) return;
       closeBook();
       act({ type: 'trigger', attackId, target });
+      const after = spendColors(pool, cost);
+      if (after) carryOver(carryStaging(staging, pool, cost, after, { kind: 'spell', attackId }), after);
     },
     prepareMix,
     hint: setHintedAttack,
@@ -315,7 +339,7 @@ export function BattleScreen({
   // The color pool: on phones it sits above the spells, so it never scrolls
   // out of reach; on PC it's the bottom of the workbench.
   const poolSection = (
-      <section className={`pool-section${dropClass('pool')}`} ref={poolRef} data-drop="pool">
+      <section className={`pool-section${dropClass('pool')}`} data-drop="pool">
         <div className="section-head">
           <h3>Color pool</h3>
           <span className="muted">
@@ -377,13 +401,18 @@ export function BattleScreen({
       {/* On phones these wrappers are display: contents, so it's one column; on desktop, an arena and a side panel. */}
       <div className="battle-layout">
       <div className={`arena${enemyCount > 1 ? ' arena-crowd' : ''}`}>
+      {desktop && (
+        <DiceRack dice={config.dice} roll={shownRoll} kept={keptCount} away={onStage} trayRef={trayRef} />
+      )}
       <div className={`enemy-row enemies-${enemyCount}`}>
         {config.enemies.map((def, i) => {
           const enemy = enemies[i]!;
           const label = labels[i]!;
           const art = enemySprite(def.id);
           const down = enemy.hp === 0;
-          const intent = down ? undefined : getEnemyIntent(playing ? before : state, config, i);
+          const shown = playing ? before : state;
+          const intent = down ? undefined : getEnemyIntent(shown, config, i);
+          const plan = intent && intentPlan(intent, shown.enemies[i]!, config);
           const targeted = choosing && i === target && !down;
           const stage = art ? (
             <EnemyStage
@@ -425,10 +454,14 @@ export function BattleScreen({
                   {/* A defeated enemy's leftover statuses never tick, so they aren't shown. */}
                   {!down && <Badges combatant={enemy} owner={{ kind: 'enemy', name: label }} status={config.status} />}
                 </div>
-                {intent && !isOver && (
-                  <Tip text={intentTip(intent, label, config.status)} focusable>
-                    <span className={`intent intent-${intent.type}`} aria-label={`${label} intent`}>
-                      {INTENT_ICON[intent.type]} {describeIntent(intent)}
+                {intent && plan && !isOver && (
+                  <Tip text={intentTip(plan.intent, label, config.status, plan.mark)} focusable>
+                    <span
+                      className={`intent intent-${intent.type}${plan.mark ? ` intent-${plan.mark}` : ''}`}
+                      aria-label={`${label} intent${plan.mark === 'skipped' ? ' (skipped: Silenced)' : plan.mark === 'chilled' ? ' (Chilled)' : ''}`}
+                    >
+                      {plan.mark === 'skipped' ? '🤐 ' : plan.mark === 'chilled' ? '❄ ' : ''}
+                      {INTENT_ICON[intent.type]} {describeIntent(plan.intent)}
                     </span>
                   </Tip>
                 )}
@@ -457,7 +490,12 @@ export function BattleScreen({
               <h2>You</h2>
               <Badges combatant={player} owner={{ kind: 'player' }} status={config.status} />
             </div>
-            <span className="muted">Turn {state.turn}</span>
+            <span className="card-meta">
+              <span className="gold" aria-label="Gold">
+                🪙 {gold}
+              </span>
+              <span className="muted">Turn {state.turn}</span>
+            </span>
           </div>
           <HpBar combatant={player} />
         </div>
@@ -465,10 +503,6 @@ export function BattleScreen({
       </div>
 
       <div className="side-panel">
-      {desktop && (
-        <DiceRack dice={config.dice} roll={shownRoll} kept={keptCount} away={onStage} trayRef={trayRef} />
-      )}
-
       <MixingBowl />
 
       {!desktop && poolSection}
@@ -516,10 +550,10 @@ export function BattleScreen({
       {bookOpen && (
         <Spellbook
           spells={spells}
+          recipes={config.recipes}
           unavailableOnly={unavailableOnly}
           onToggleUnavailableOnly={() => setUnavailableOnly((v) => !v)}
           onClose={closeBook}
-          keepVisibleRef={poolRef}
         />
       )}
 
@@ -587,7 +621,59 @@ export function BattleScreen({
   );
 }
 
+/** How much smaller each enemy is drawn in a fight with two or three of them. */
+const CROWD_SCALE = { 2: 0.8, 3: 0.6 } as const;
+
+/** Arena height that isn't the fighters' sprites: page padding, top bar, row gaps, the name/intent/HP under each sprite, and the log button. */
+const ARENA_CHROME_HEIGHT = 28 + 56 + 32 + 130 + 44 + 16;
+/** The dice rack: its first row (with the heading), then each extra row. */
+const DICE_FIRST_ROW = 90;
+const DICE_EXTRA_ROW = 60;
+const DICE_MIN_WIDTH = 136;
+
+/**
+ * Desktop fighters' pixel scale (hero 16px, enemy 22px of art). The arena is
+ * half the window, so this follows the window size, and it's the same in
+ * every fight: picked so the hero plus three crowd-sized enemies fit across,
+ * and a lone enemy fits under the top bar and dice, so the hero never changes
+ * size when more enemies appear.
+ */
+export function fighterPixel(windowWidth: number, windowHeight: number, diceCount: number): number {
+  // Half the window, less the page padding (24px each side), the 20px gap, and the arena's own padding.
+  const arena = (windowWidth - 68) / 2 - 32;
+  // Across: hero (16) + three enemies (22 × 0.6 each) in pixels, plus about 48px of gaps and card padding.
+  const byWidth = Math.floor((arena - 48) / (16 + 3 * 22 * CROWD_SCALE[3]));
+  // Down: a lone enemy (22) has to fit what the rest of the arena leaves.
+  const perRow = Math.max(1, Math.floor(arena / DICE_MIN_WIDTH));
+  const diceRows = Math.max(1, Math.ceil(diceCount / perRow));
+  const dice = DICE_FIRST_ROW + (diceRows - 1) * DICE_EXTRA_ROW;
+  const byHeight = Math.floor((windowHeight - ARENA_CHROME_HEIGHT - dice) / 22);
+  return Math.max(4, Math.min(14, byWidth, byHeight));
+}
+
+function samePool(a: readonly Color[], b: readonly Color[]): boolean {
+  return a.length === b.length && a.every((c, i) => c === b[i]);
+}
+
+const PLAYER_EFFECTS = new Set<Effect['type']>(['block', 'heal', 'cleanse']);
+
 const INTENT_ICON: Record<EnemyIntent['type'], string> = { attack: '⚔', block: '🛡', poison: '☠', burn: '🔥' };
+
+/**
+ * What an enemy will really do: a Silenced enemy skips its intent, and a Chilled
+ * one's attack shows its reduced per-hit damage.
+ */
+function intentPlan(
+  intent: EnemyIntent,
+  enemy: EnemyState,
+  config: BattleConfig,
+): { intent: EnemyIntent; mark: IntentMark | null } {
+  if (enemy.silenced) return { intent, mark: 'skipped' };
+  if (enemy.chilled && intent.type === 'attack') {
+    return { intent: { ...intent, amount: attackHitDamage(intent.amount, enemy, config) }, mark: 'chilled' };
+  }
+  return { intent, mark: null };
+}
 
 /** Who was still standing when the player fell. */
 function defeatLine(state: BattleState, labels: readonly string[]): string {

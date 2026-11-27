@@ -36,7 +36,7 @@ export function testConfig(overrides: Partial<BattleConfig> = {}): BattleConfig 
         effects: [{ type: 'damage', amount: 30 }],
       },
     ],
-    status: { burnDamage: 4, poisonDecay: 1 },
+    status: { burnDamage: 4, poisonDecay: 1, curseBonus: 3, chillMultiplier: 0.5 },
     enemies: [DUMMY],
     ...overrides,
   };

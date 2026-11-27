@@ -1,5 +1,16 @@
 import type { Color, ColorCost, Combatant, StatusConfig } from '../engine';
-import { blockTip, burnTip, COLOR_LABEL, poisonTip, type Owner } from './format';
+import {
+  blockTip,
+  burnTip,
+  chillTip,
+  COLOR_LABEL,
+  curseTip,
+  poisonTip,
+  silenceImmuneTip,
+  silenceTip,
+  type Owner,
+} from './format';
+import type { Conditions } from './timeline';
 import { Tip } from './Tooltip';
 
 export function HpBar({ combatant }: { combatant: Combatant }) {
@@ -14,10 +25,21 @@ export function HpBar({ combatant }: { combatant: Combatant }) {
   );
 }
 
-/** Block and status badges; hover, focus, or tap one to see what it does. */
-export function Badges({ combatant, owner, status }: { combatant: Combatant; owner: Owner; status: StatusConfig }) {
-  const { block, statuses } = combatant;
-  if (block === 0 && statuses.poison === 0 && statuses.burn === 0) return null;
+/** Block and status badges; hover, focus, or tap one to see what it does. Enemies also show their Conditions. */
+export function Badges({
+  combatant,
+  owner,
+  status,
+}: {
+  combatant: Combatant & Partial<Conditions>;
+  owner: Owner;
+  status: StatusConfig;
+}) {
+  const { block, statuses, cursed, silenced, silenceImmune, chilled } = combatant;
+  const name = owner.kind === 'enemy' ? owner.name : 'You';
+  if (block === 0 && statuses.poison === 0 && statuses.burn === 0 && !cursed && !silenced && !silenceImmune && !chilled) {
+    return null;
+  }
   return (
     <div className="badges">
       {block > 0 && (
@@ -33,6 +55,26 @@ export function Badges({ combatant, owner, status }: { combatant: Combatant; own
       {statuses.burn > 0 && (
         <Tip text={burnTip(statuses.burn, owner, status)} focusable>
           <span className="badge badge-burn">🔥 {statuses.burn}</span>
+        </Tip>
+      )}
+      {cursed && (
+        <Tip text={curseTip(name, status)} focusable>
+          <span className="badge badge-curse">🌑 +{status.curseBonus}</span>
+        </Tip>
+      )}
+      {silenced && (
+        <Tip text={silenceTip(name)} focusable>
+          <span className="badge badge-silence">🤐 Silenced</span>
+        </Tip>
+      )}
+      {silenceImmune && !silenced && (
+        <Tip text={silenceImmuneTip(name)} focusable>
+          <span className="badge badge-immune">🗣 Immune</span>
+        </Tip>
+      )}
+      {chilled && (
+        <Tip text={chillTip(name, status)} focusable>
+          <span className="badge badge-chill">❄ Chill</span>
         </Tip>
       )}
     </div>

@@ -18,18 +18,38 @@ export const COLOR_LABEL: Record<Color, string> = {
   purple: 'Purple',
   cyan: 'Cyan',
   orange: 'Orange',
+  white: 'White',
+  black: 'Black',
+  pink: 'Pink',
+  grey: 'Grey',
+  crimson: 'Crimson',
+  blight: 'Blight',
+  frost: 'Frost',
 };
 
 export function describeEffect(effect: Effect): string {
+  const all = 'area' in effect && effect.area ? ' all' : '';
   switch (effect.type) {
     case 'damage':
-      return `${effect.amount} dmg${effect.area ? ' all' : ''}`;
+      return `${effect.amount} dmg${all}`;
     case 'block':
-      return `${effect.amount} block`;
+      return effect.cleanAmount === undefined ? `${effect.amount} block` : `${effect.amount}/${effect.cleanAmount} block`;
     case 'poison':
-      return `${effect.stacks} poison${effect.area ? ' all' : ''}`;
+      return `${effect.stacks} poison${all}`;
     case 'burn':
-      return effect.area ? 'burn all' : 'burn';
+      return `burn${all}`;
+    case 'heal':
+      return `${effect.amount} heal`;
+    case 'cleanse':
+      return effect.stacks === undefined ? 'cleanse' : `cleanse ${effect.stacks}`;
+    case 'curse':
+      return `curse${all}`;
+    case 'silence':
+      return `silence${all}`;
+    case 'chill':
+      return `chill${all}`;
+    case 'multiplyPoison':
+      return `poison ×${effect.factor}${all}`;
   }
 }
 
@@ -98,8 +118,29 @@ export function formatEvent(
       return event.target === 'player' ? `You gain ${event.amount} block` : `${name(event.enemy)} gains ${event.amount} block`;
     case 'statusApplied': {
       const who = event.target === 'enemy' ? name(event.enemy) : 'You are';
-      return event.status === 'poison' ? `${who} poisoned (+${event.stacks})` : `${who} set on fire`;
+      switch (event.status) {
+        case 'poison':
+          return `${who} poisoned (+${event.stacks})`;
+        case 'burn':
+          return `${who} set on fire`;
+        case 'curse':
+          return `${who} is cursed`;
+        case 'silence':
+          return `${who} is silenced`;
+        case 'chill':
+          return `${who} is chilled`;
+      }
     }
+    case 'healed':
+      return `You heal ${event.amount}`;
+    case 'cleansed': {
+      const parts = [event.poison > 0 ? `${event.poison} Poison` : '', event.burn > 0 ? `${event.burn} Burn` : ''];
+      return `You cleanse ${parts.filter(Boolean).join(' and ')}`;
+    }
+    case 'silenceResisted':
+      return `${name(event.enemy)} resists Silence`;
+    case 'enemySkipped':
+      return `${name(event.enemy)} is silenced and skips ${describeIntent(event.intent)}`;
     case 'enemyIntent':
       // Block already names who gained it. Attacks only need the attacker named when there are several enemies.
       if (event.intent.type === 'block') return null;
@@ -131,13 +172,41 @@ export function burnTip(stacks: number, owner: Owner, status: StatusConfig): str
   return `Burn ${stacks}: ${who} ${status.burnDamage * stacks} damage${each} at the end of the turn, then it goes out. Ignores Block. Burning again adds a stack.`;
 }
 
+export function curseTip(name: string, status: StatusConfig): string {
+  return `Cursed: ${name} takes ${status.curseBonus} more from every hit and every Poison or Burn tick until this turn's statuses resolve.`;
+}
+
+export function silenceTip(name: string): string {
+  return `Silenced: ${name} skips its next action. Afterwards it can't be Silenced again until it really acts.`;
+}
+
+export function silenceImmuneTip(name: string): string {
+  return `Silence Immunity: ${name} was just Silenced, so Silence has no effect on it until it acts again.`;
+}
+
+export function chillTip(name: string, status: StatusConfig): string {
+  return `Chilled: ${name}'s next attack deals ${Math.round(status.chillMultiplier * 100)}% damage per hit (rounded down). Clears after it acts.`;
+}
+
 export function blockTip(amount: number, owner: Owner): string {
   return owner.kind === 'player'
     ? `Block ${amount}: absorbs the next ${amount} attack damage. It lasts until your next turn starts.`
     : `Block ${amount}: absorbs the next ${amount} damage from your spells. It lasts until ${owner.name} acts again.`;
 }
 
-export function intentTip(intent: EnemyIntent, enemyName: string, status: StatusConfig): string {
+/** How an enemy's intent is changed: skipped (Silenced) or softened (Chilled). */
+export type IntentMark = 'skipped' | 'chilled';
+
+/** `intent` is what the enemy will really do (a Chilled attack already reduced). */
+export function intentTip(intent: EnemyIntent, enemyName: string, status: StatusConfig, mark: IntentMark | null = null): string {
+  if (mark === 'skipped') {
+    return `${enemyName} is Silenced: it skips ${describeIntent(intent)} when you end your turn.`;
+  }
+  const base = intentText(intent, enemyName, status);
+  return mark === 'chilled' ? `${base} (Chilled: ${Math.round(status.chillMultiplier * 100)}% damage per hit.)` : base;
+}
+
+function intentText(intent: EnemyIntent, enemyName: string, status: StatusConfig): string {
   const when = `When you end your turn, ${enemyName}`;
   switch (intent.type) {
     case 'attack': {
@@ -161,11 +230,27 @@ export function effectSentence(effect: Effect, status: StatusConfig): string {
     case 'damage':
       return `Deals ${effect.amount} damage${effect.area ? ' to every enemy' : ''}`;
     case 'block':
-      return `Gives you ${effect.amount} Block`;
+      return effect.cleanAmount === undefined
+        ? `Gives you ${effect.amount} Block`
+        : `Gives you ${effect.amount} Block, or ${effect.cleanAmount} if you have no Poison or Burn`;
     case 'poison':
       return `Poisons ${effect.area ? 'every enemy ' : ''}for ${effect.stacks} (${effect.stacks} damage per turn, falling by ${status.poisonDecay})`;
     case 'burn':
       return `Sets ${effect.area ? 'every enemy' : 'the enemy'} on fire (+1 Burn: ${status.burnDamage} damage per stack at the end of the turn)`;
+    case 'heal':
+      return `Heals you for ${effect.amount} (up to your max HP)`;
+    case 'cleanse':
+      return effect.stacks === undefined
+        ? 'Removes all your Poison and Burn'
+        : `Removes ${effect.stacks} of your Poison and ${effect.stacks} of your Burn`;
+    case 'curse':
+      return `Curses ${effect.area ? 'every enemy' : 'the enemy'} (+${status.curseBonus} damage from each hit and tick until the end of the turn)`;
+    case 'silence':
+      return `Silences ${effect.area ? 'every enemy' : 'the enemy'} (it skips its next action, then can't be Silenced again until it acts)`;
+    case 'chill':
+      return `Chills ${effect.area ? 'every enemy' : 'the enemy'} (its next attack deals ${Math.round(status.chillMultiplier * 100)}% damage)`;
+    case 'multiplyPoison':
+      return `Multiplies ${effect.area ? 'every enemy’s' : 'the enemy’s'} Poison by ${effect.factor}`;
   }
 }
 

@@ -1,56 +1,134 @@
 // A simple greedy bot for simulation tests. Not part of the game.
 import { isAreaEffect } from './attacks';
-import { firstLivingEnemy, getEnemyIntent } from './battle';
+import { attackHitDamage, firstLivingEnemy, getEnemyIntent } from './battle';
 import { isDefeated } from './combat';
 import { findMixPlan } from './mixing';
 import { canAfford } from './pool';
 import { battleConfigFor, capUpgradePrice } from './run';
 import type { AttackDefinition, BattleConfig, BattleState, RunAction, RunConfig, RunState } from './types';
 
-/** Damage the living enemies will deal when the turn ends (block ignored). */
-function incomingDamage(state: BattleState, config: BattleConfig): number {
-  let total = 0;
-  state.enemies.forEach((enemy, i) => {
-    if (isDefeated(enemy)) return;
-    const intent = getEnemyIntent(state, config, i);
-    if (intent?.type === 'attack') total += intent.amount * (intent.hits ?? 1);
-  });
-  return total;
+/** Damage enemy `i` will deal when the turn ends (block ignored, Chill and Silence counted). */
+function enemyThreat(state: BattleState, config: BattleConfig, i: number): number {
+  const enemy = state.enemies[i]!;
+  if (isDefeated(enemy) || enemy.silenced) return 0;
+  const intent = getEnemyIntent(state, config, i);
+  if (intent?.type !== 'attack') return 0;
+  return attackHitDamage(intent.amount, enemy, config) * (intent.hits ?? 1);
 }
 
-/** Rough value of casting `attack` now. */
-function score(attack: AttackDefinition, state: BattleState, config: BattleConfig): number {
-  const living = state.enemies.filter((e) => !isDefeated(e)).length;
-  const uncoveredHit = Math.max(0, incomingDamage(state, config) - state.player.block);
+/** Damage the living enemies will deal when the turn ends (block ignored). */
+function incomingDamage(state: BattleState, config: BattleConfig): number {
+  return state.enemies.reduce((total, _, i) => total + enemyThreat(state, config, i), 0);
+}
+
+/** Rough worth of everything an enemy intent would do to the player (attack damage, poison, burn). */
+function intentHarm(state: BattleState, config: BattleConfig, i: number): number {
+  const enemy = state.enemies[i]!;
+  if (isDefeated(enemy)) return 0;
+  const intent = getEnemyIntent(state, config, i);
+  if (intent?.type === 'poison') return intent.stacks * 2;
+  if (intent?.type === 'burn') return config.status.burnDamage;
+  return enemyThreat(state, config, i);
+}
+
+/** Rough value of casting `attack` at enemy `target` now. */
+function score(attack: AttackDefinition, state: BattleState, config: BattleConfig, target: number): number {
+  const { status } = config;
+  const living = state.enemies.map((e, i) => ({ e, i })).filter(({ e }) => !isDefeated(e));
+  const { player } = state;
+  const uncoveredHit = Math.max(0, incomingDamage(state, config) - player.block);
+  const afflicted = player.statuses.poison > 0 || player.statuses.burn > 0;
   let value = 0;
   for (const effect of attack.effects) {
-    const targets = isAreaEffect(effect) ? living : 1;
-    if (effect.type === 'damage') value += effect.amount * targets;
-    else if (effect.type === 'poison') value += effect.stacks * 2 * targets;
-    else if (effect.type === 'burn') value += config.status.burnDamage * targets;
-    else value += Math.min(effect.amount, uncoveredHit);
+    const hit = isAreaEffect(effect) ? living : living.filter(({ i }) => i === target);
+    switch (effect.type) {
+      case 'damage':
+        for (const { e } of hit) value += effect.amount + (e.cursed ? status.curseBonus : 0);
+        break;
+      case 'poison':
+        value += effect.stacks * 2 * hit.length;
+        break;
+      case 'burn':
+        value += status.burnDamage * hit.length;
+        break;
+      case 'multiplyPoison':
+        for (const { e } of hit) value += e.statuses.poison * (effect.factor - 1) * 2;
+        break;
+      case 'block': {
+        const amount = effect.cleanAmount !== undefined && !afflicted ? effect.cleanAmount : effect.amount;
+        value += Math.min(amount, uncoveredHit);
+        break;
+      }
+      case 'heal':
+        // Worth less than damage at high HP, more when low.
+        value += Math.min(effect.amount, player.maxHp - player.hp) * (player.hp < player.maxHp / 2 ? 1.5 : 0.75);
+        break;
+      case 'cleanse': {
+        const limit = effect.stacks ?? Infinity;
+        value += Math.min(player.statuses.poison, limit) * 2 + Math.min(player.statuses.burn, limit) * status.burnDamage;
+        break;
+      }
+      case 'curse':
+        // Pays off on this turn's status ticks plus one more hit.
+        for (const { e } of hit) {
+          if (e.cursed) continue;
+          const ticks = (e.statuses.poison > 0 ? 1 : 0) + (e.statuses.burn > 0 ? 1 : 0);
+          value += status.curseBonus * (ticks + 1);
+        }
+        break;
+      case 'silence':
+        for (const { e, i } of hit) {
+          if (e.silenced || e.silenceImmune) continue;
+          value += Math.min(intentHarm(state, config, i), uncoveredHit + 6);
+        }
+        break;
+      case 'chill':
+        for (const { e, i } of hit) {
+          if (e.chilled) continue;
+          value += Math.min(enemyThreat(state, config, i) * (1 - status.chillMultiplier), uncoveredHit);
+        }
+        break;
+    }
   }
   return value;
 }
 
-function battleAction(state: BattleState, config: BattleConfig): RunAction {
+/** The best enemy to aim `attack` at; ties go to the weakest, so the crowd thins out. */
+function bestTarget(attack: AttackDefinition, state: BattleState, config: BattleConfig): { target: number; value: number } {
   const living = state.enemies.map((e, i) => ({ e, i })).filter(({ e }) => !isDefeated(e));
-  // Focus the weakest enemy, so the crowd thins out.
-  const target = living.reduce((best, x) => (x.e.hp < best.e.hp ? x : best), living[0] ?? { e: state.enemies[0]!, i: firstLivingEnemy(state) }).i;
+  let best = { target: living[0]?.i ?? firstLivingEnemy(state), value: -Infinity, hp: Infinity };
+  for (const { e, i } of living) {
+    const value = score(attack, state, config, i);
+    if (value > best.value || (value === best.value && e.hp < best.hp)) best = { target: i, value, hp: e.hp };
+  }
+  return { target: best.target, value: best.value };
+}
 
+/** A spell one mix away must beat the best ready spell by this factor before the bot mixes for it. */
+const MIX_WORTH = 1.5;
+
+function battleAction(state: BattleState, config: BattleConfig): RunAction {
   const ready = config.attacks
     .filter((a) => canAfford(state.pool, a.cost))
-    .map((a) => ({ a, value: score(a, state, config) }))
+    .map((a) => ({ a, ...bestTarget(a, state, config) }))
     .sort((x, y) => y.value - x.value);
-  if (ready[0] && ready[0].value > 0) {
-    return { type: 'battle', action: { type: 'trigger', attackId: ready[0].a.id, target } };
-  }
+  const bestReady = ready[0] && ready[0].value > 0 ? ready[0] : undefined;
 
-  // Nothing worth casting: mix toward the best spell two mixes away.
+  // Spells a mix or two away, best first.
   const craftable = config.attacks
-    .map((a) => ({ a, plan: findMixPlan(state.pool, a.cost, config.recipes, 2), value: score(a, state, config) }))
+    .map((a) => ({ a, plan: findMixPlan(state.pool, a.cost, config.recipes, 2), value: bestTarget(a, state, config).value }))
     .filter((x) => x.plan && x.plan.length > 0 && x.value > 0)
     .sort((x, y) => y.value - x.value);
+  const oneMix = craftable.find((x) => x.plan!.length === 1);
+
+  // Mix first when a spell one mix away is clearly better than anything ready.
+  if (oneMix && (!bestReady || oneMix.value > bestReady.value * MIX_WORTH)) {
+    return { type: 'battle', action: { type: 'mix', colors: oneMix.plan![0]!.inputs } };
+  }
+  if (bestReady) {
+    return { type: 'battle', action: { type: 'trigger', attackId: bestReady.a.id, target: bestReady.target } };
+  }
+  // Nothing worth casting: mix toward the best spell two mixes away.
   const mix = craftable[0]?.plan?.[0];
   if (mix) return { type: 'battle', action: { type: 'mix', colors: mix.inputs } };
 

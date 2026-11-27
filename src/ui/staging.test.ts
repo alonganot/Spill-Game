@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { MIX_RECIPES } from '../data/colors';
-import { canAfford, type Color, type ColorCost } from '../engine';
+import { canAfford, mixColors, spendColors, type Color, type ColorCost } from '../engine';
 import {
   bowlResult,
+  carryStaging,
   costSlots,
   EMPTY_STAGING,
   missingColors,
@@ -102,5 +103,54 @@ describe('moving chips', () => {
   it('rejects unknown chips and spells', () => {
     expect(place(EMPTY_STAGING, 99, { kind: 'bowl' }, pool, costs).ok).toBe(false);
     expect(place(EMPTY_STAGING, 0, { kind: 'spell', attackId: 'nope' }, pool, costs).ok).toBe(false);
+  });
+});
+
+describe('carrying staging over a Cast or Mix', () => {
+  const cast = (staging: Staging, before: Color[], attackId: string, cost: ColorCost) =>
+    carryStaging(staging, before, cost, spendColors(before, cost)!, { kind: 'spell', attackId });
+
+  it('keeps other spells and the bowl, following their chips to new indices', () => {
+    const before: Color[] = ['red', 'blue', 'green', 'red', 'purple'];
+    const staged: Staging = { bowl: [2], spells: { ember: [0], steam: [4, 1] } };
+    // Casting Ember spends the first red (index 0); everything after shifts down by one.
+    expect(cast(staged, before, 'ember', { red: 1 })).toEqual({ bowl: [1], spells: { steam: [3, 0] } });
+  });
+
+  it('moves a chip the engine spent from under another spell to a free chip of the same color', () => {
+    const before: Color[] = ['red', 'red', 'blue'];
+    // Inferno-to-be holds chip 0; Ember holds chip 1. Casting Ember spends chip 0 (the first red).
+    const staged: Staging = { bowl: [], spells: { inferno: [0], ember: [1] } };
+    const after = cast(staged, before, 'ember', { red: 1 });
+    expect(after).toEqual({ bowl: [], spells: { inferno: [0] } });
+    expect(['red', 'blue'][after.spells.inferno![0]!]).toBe('red');
+  });
+
+  it('drops a chip whose color is gone', () => {
+    const before: Color[] = ['red', 'blue'];
+    const staged: Staging = { bowl: [], spells: { inferno: [0], steam: [1] } };
+    // Casting something that costs the only red takes Inferno's chip with it.
+    expect(cast(staged, before, 'steam', { red: 1, blue: 1 })).toEqual({ bowl: [], spells: {} });
+  });
+
+  it('after a Mix, empties the bowl and keeps spell slots; the new color is last in the pool', () => {
+    const before: Color[] = ['green', 'red', 'blue', 'red'];
+    const staged: Staging = { bowl: [1, 2], spells: { ember: [3] } };
+    const mixed = mixColors(before, MIX_RECIPES, 'red', 'blue');
+    if (!mixed.ok) throw new Error('mix failed');
+    expect(mixed.pool).toEqual(['green', 'red', 'purple']);
+    // The engine spends the first red (index 1, the bowl's own) so Ember's red keeps going.
+    expect(carryStaging(staged, before, { red: 1, blue: 1 }, mixed.pool, { kind: 'bowl' })).toEqual({
+      bowl: [],
+      spells: { ember: [1] },
+    });
+  });
+
+  it('never stages two places on one chip', () => {
+    const before: Color[] = ['red', 'red', 'red'];
+    const staged: Staging = { bowl: [2], spells: { inferno: [0, 1] } };
+    const after = cast(staged, before, 'inferno', { red: 2 });
+    expect(after).toEqual({ bowl: [0], spells: {} });
+    expect(stagedIndices(after).size).toBe(1);
   });
 });

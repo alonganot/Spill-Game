@@ -12,6 +12,11 @@ export type MixResult =
   | { ok: true; pool: Color[]; output: Color }
   | { ok: false; error: 'no_recipe' | 'missing_colors' };
 
+/** The colors a mix of `a` and `b` takes from the pool (two of one color when they're the same). */
+export function mixCost(a: Color, b: Color): ColorCost {
+  return a === b ? { [a]: 2 } : { [a]: 1, [b]: 1 };
+}
+
 /** Consumes both inputs from the pool and adds the mixed color. */
 export function mixColors(
   pool: readonly Color[],
@@ -21,8 +26,7 @@ export function mixColors(
 ): MixResult {
   const recipe = findRecipe(recipes, a, b);
   if (!recipe) return { ok: false, error: 'no_recipe' };
-  const cost: ColorCost = a === b ? { [a]: 2 } : { [a]: 1, [b]: 1 };
-  const spent = spendColors(pool, cost);
+  const spent = spendColors(pool, mixCost(a, b));
   if (!spent) return { ok: false, error: 'missing_colors' };
   return { ok: true, pool: [...spent, recipe.output], output: recipe.output };
 }

@@ -72,6 +72,46 @@
   to { transform: translate(-50%, -22px) scale(1.2); opacity: 0; }
 }
 
+/* White, Pink, and Black effects: a tinted glow with the effect's icon rising off the sprite. */
+.fighter.fx-heal,
+.fighter.fx-cleanse,
+.fighter.fx-curse,
+.fighter.fx-silence,
+.fighter.fx-chill {
+  position: relative;
+  animation: aura 0.5s ease-out;
+}
+
+.fighter.fx-heal { --aura: var(--heal); }
+.fighter.fx-cleanse { --aura: var(--white); }
+.fighter.fx-curse { --aura: var(--curse); }
+.fighter.fx-silence { --aura: var(--silence); }
+.fighter.fx-chill { --aura: var(--chill); }
+
+.fighter.fx-heal::after,
+.fighter.fx-cleanse::after,
+.fighter.fx-curse::after,
+.fighter.fx-silence::after,
+.fighter.fx-chill::after {
+  position: absolute;
+  left: 50%;
+  top: 20%;
+  font-size: 1.1rem;
+  animation: puff-up 0.5s ease-out forwards;
+}
+
+.fighter.fx-heal::after { content: '✚'; color: var(--heal); }
+.fighter.fx-cleanse::after { content: '✨'; }
+.fighter.fx-curse::after { content: '🌑'; }
+.fighter.fx-silence::after { content: '🤐'; }
+.fighter.fx-chill::after { content: '❄'; color: var(--chill); }
+
+@keyframes aura {
+  0% { filter: drop-shadow(0 0 0 var(--aura)); }
+  40% { filter: drop-shadow(0 0 8px var(--aura)) brightness(1.15); }
+  100% { filter: none; }
+}
+
 /* Gaining block: a blue shield glow. */
 .fighter.fx-guard {
   animation: guard 0.4s ease-out;
@@ -136,6 +176,12 @@
 .float-burn { color: #ffae6b; }
 .float-block { color: #9cc0ff; font-size: 0.95rem; }
 .float-blocked { color: var(--muted); font-size: 0.75rem; }
+.float-heal { color: var(--heal); }
+.float-cleanse { color: var(--white); font-size: 0.95rem; }
+.float-curse { color: var(--curse); font-size: 0.95rem; }
+.float-silence { color: var(--silence); font-size: 0.95rem; }
+.float-chill { color: var(--chill); font-size: 0.95rem; }
+.float-resist { color: var(--muted); font-size: 0.85rem; }
 
 @keyframes float-up {
   0% { transform: translateY(6px) scale(0.7); opacity: 0; }

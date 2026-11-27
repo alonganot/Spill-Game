@@ -112,3 +112,64 @@ export function prune(staging: Staging, pool: readonly Color[]): Staging {
   }
   return { bowl: staging.bowl.filter(valid), spells };
 }
+
+/**
+ * Keeps what's staged after a Cast or Mix changes the pool, instead of
+ * clearing it. `used` is what was just spent (the cast spell, or the bowl),
+ * so its own staging goes; everything else follows its chips to their new
+ * indices in `after`. The engine spends the first chips of each color in the
+ * pool (`spendColors`), which may be chips staged elsewhere: those move to
+ * another free chip of the same color, or drop if none is left.
+ */
+export function carryStaging(
+  staging: Staging,
+  before: readonly Color[],
+  spent: ColorCost,
+  after: readonly Color[],
+  used: StageTarget,
+): Staging {
+  // Old index -> new index, for chips the engine keeps (in order, mixes append after them).
+  const left = new Map(Object.entries(spent) as [Color, number][]);
+  const moved: (number | undefined)[] = [];
+  let next = 0;
+  for (const color of before) {
+    const n = left.get(color) ?? 0;
+    if (n > 0) {
+      left.set(color, n - 1);
+      moved.push(undefined);
+    } else {
+      moved.push(next++);
+    }
+  }
+
+  const groups: [StageTarget, readonly number[]][] = [
+    [{ kind: 'bowl' }, used.kind === 'bowl' ? [] : staging.bowl],
+    ...Object.entries(staging.spells)
+      .filter(([id]) => !(used.kind === 'spell' && used.attackId === id))
+      .map(([attackId, chips]): [StageTarget, readonly number[]] => [{ kind: 'spell', attackId }, chips]),
+  ];
+
+  // First every chip that survived keeps its place; then lost chips take a free chip of their color.
+  const taken = new Set<number>();
+  const kept = groups.map(([, chips]) =>
+    chips.map((chip) => {
+      const to = moved[chip];
+      if (to === undefined || after[to] !== before[chip]) return undefined;
+      taken.add(to);
+      return to;
+    }),
+  );
+  const carried: { bowl: number[]; spells: Record<string, number[]> } = { bowl: [], spells: {} };
+  groups.forEach(([target, chips], g) => {
+    const placed = kept[g]!.flatMap((to, i) => {
+      if (to !== undefined) return [to];
+      const free = after.findIndex((c, j) => c === before[chips[i]!] && !taken.has(j));
+      if (free < 0) return [];
+      taken.add(free);
+      return [free];
+    });
+    if (target.kind === 'bowl') carried.bowl = placed;
+    else if (placed.length > 0) carried.spells[target.attackId] = placed;
+  });
+  return carried;
+}
