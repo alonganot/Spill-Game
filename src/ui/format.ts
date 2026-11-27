@@ -89,8 +89,9 @@ export function formatEvent(event: BattleEvent, config: BattleConfig): string | 
       return event.status === 'poison' ? `${who} poisoned (+${event.stacks})` : `${who} set on fire`;
     }
     case 'enemyIntent':
-      // Attacks and blocks show up as their own lines; name the actor when the result alone wouldn't.
-      return event.intent.type === 'poison' || event.intent.type === 'burn' || config.enemies.length > 1
+      // Block already names who gained it. Attacks only need the attacker named when there are several enemies.
+      if (event.intent.type === 'block') return null;
+      return event.intent.type !== 'attack' || config.enemies.length > 1
         ? `${name(event.enemy)}: ${describeIntent(event.intent)}`
         : null;
     case 'victory':

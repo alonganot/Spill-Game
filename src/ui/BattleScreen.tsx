@@ -416,7 +416,8 @@ export function BattleScreen({
               <div className="card-body">
                 <div className="card-title">
                   <h2>{label}</h2>
-                  <Badges combatant={enemy} owner={{ kind: 'enemy', name: label }} status={config.status} />
+                  {/* A defeated enemy's leftover statuses never tick, so they aren't shown. */}
+                  {!down && <Badges combatant={enemy} owner={{ kind: 'enemy', name: label }} status={config.status} />}
                 </div>
                 {intent && !isOver && (
                   <Tip text={intentTip(intent, label, config.status)} focusable>

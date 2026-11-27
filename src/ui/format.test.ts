@@ -36,12 +36,14 @@ describe('formatEvent', () => {
       { type: 'triggered', attackId: 'ember', target: 1 },
       { type: 'damaged', target: 'enemy', enemy: 1, amount: 4, blocked: 0, source: 'attack' },
       { type: 'enemyIntent', enemy: 2, intent: { type: 'attack', amount: 3, hits: 2 } },
+      { type: 'enemyIntent', enemy: 0, intent: { type: 'block', amount: 4 } },
       { type: 'victory' },
     ] as BattleEvent[]).map((e) => formatEvent(e, many));
     expect(lines).toEqual([
       'You used Ember on Puddle Slime B',
       'Puddle Slime B takes 4 damage',
       'Ink Blob: Attack 3×2',
+      null,
       'Every enemy is defeated!',
     ]);
     expect(formatEvent({ type: 'triggered', attackId: 'splash', target: 0 }, {
