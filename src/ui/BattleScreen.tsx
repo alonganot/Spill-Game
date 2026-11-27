@@ -5,6 +5,7 @@ import {
   isAreaSpell,
   mixColors,
   findMixPlan,
+  spendColors,
   getEnemyIntent,
   attackHitDamage,
   type BattleAction,
@@ -38,6 +39,7 @@ import { BOWL_RESULT, MixingBowl, WorkbenchProvider, type Workbench } from './wo
 import { PaintDrop } from './PaintDrop';
 import {
   bowlResult,
+  carryStaging,
   EMPTY_STAGING,
   place,
   remove,
@@ -169,18 +171,24 @@ export function BattleScreen({
     setHintedAttack(null);
   }, []);
 
-  // Colors dragged (or tapped) into the bowl or onto spells. UI-only, and
-  // reset whenever the pool changes, which is on every action.
-  const [stage, setStage] = useState<{ key: number; staging: Staging; selected: number | null }>({
+  // Colors dragged (or tapped) into the bowl or onto spells. UI-only. A Cast
+  // or Mix carries the rest over to the pool it leaves (`carryOver`); any other
+  // change (a new turn, a rejected action) starts fresh. Staging made for one
+  // action and pool never applies to another.
+  const [stage, setStage] = useState<{ key: number; pool: readonly Color[]; staging: Staging; selected: number | null }>({
     key: actionCount,
+    pool,
     staging: EMPTY_STAGING,
     selected: null,
   });
-  const fresh = stage.key === actionCount;
+  const fresh = stage.key === actionCount && samePool(stage.pool, pool);
   const staging = fresh ? stage.staging : EMPTY_STAGING;
   const selectedChip = fresh ? stage.selected : null;
   const setStaging = (next: Staging, selected: number | null = null) =>
-    setStage({ key: actionCount, staging: next, selected });
+    setStage({ key: actionCount, pool, staging: next, selected });
+  /** Stages `next` for the action about to happen, which leaves the pool as `after`. */
+  const carryOver = (next: Staging, after: readonly Color[]) =>
+    setStage({ key: actionCount + 1, pool: after, staging: next, selected: null });
   const staged = stagedIndices(staging);
   const costs = useMemo(() => Object.fromEntries(config.attacks.map((a) => [a.id, a.cost])), [config.attacks]);
 
@@ -215,11 +223,16 @@ export function BattleScreen({
   const bowl = bowlResult(staging, pool, config.recipes);
   const mixed = bowl.kind === 'mix' ? mixColors(pool, config.recipes, bowl.inputs[0], bowl.inputs[1]) : null;
   const mixedPool = mixed?.ok ? mixed.pool : null;
+  /** What stays staged once the bowl is mixed. */
+  const afterMix =
+    bowl.kind === 'mix' && mixedPool
+      ? carryStaging(staging, pool, { [bowl.inputs[0]]: 1, [bowl.inputs[1]]: 1 }, mixedPool, { kind: 'bowl' })
+      : null;
 
   /** Where the bowl's new color could go on a spell, after the mix. */
   function placeMixed(target: StageTarget) {
-    if (!mixedPool || target.kind !== 'spell') return null;
-    const result = place(EMPTY_STAGING, mixedPool.length - 1, target, mixedPool, costs);
+    if (!mixedPool || !afterMix || target.kind !== 'spell') return null;
+    const result = place(afterMix, mixedPool.length - 1, target, mixedPool, costs);
     return result.ok ? result.staging : null;
   }
 
@@ -227,15 +240,19 @@ export function BattleScreen({
   function mixInto(target: StageTarget | 'pool') {
     if (bowl.kind !== 'mix' || !mixedPool) return;
     const mixAction: BattleAction = { type: 'mix', colors: bowl.inputs };
-    if (target === 'pool' || target.kind === 'bowl') return act(mixAction);
+    if (target === 'pool' || target.kind === 'bowl') {
+      act(mixAction);
+      if (afterMix) carryOver(afterMix, mixedPool);
+      return;
+    }
     const onSpell = placeMixed(target);
     if (!onSpell) {
       setReject((r) => ({ target: keyOf(target), n: (r?.n ?? 0) + 1 }));
       return;
     }
     act(mixAction);
-    // The mix is the next action, so stage the new color for it.
-    setStage({ key: actionCount + 1, staging: onSpell, selected: null });
+    // The new color goes straight onto the spell; the rest of the staging stays.
+    carryOver(onSpell, mixedPool);
   }
 
   const { drag, start: chipPointerDown, click: chipClick } = useChipDrag((chip, key) => {
@@ -305,6 +322,8 @@ export function BattleScreen({
       if (!cost || !spellReady(staging, attackId, cost, pool)) return;
       closeBook();
       act({ type: 'trigger', attackId, target });
+      const after = spendColors(pool, cost);
+      if (after) carryOver(carryStaging(staging, pool, cost, after, { kind: 'spell', attackId }), after);
     },
     prepareMix,
     hint: setHintedAttack,
@@ -596,6 +615,10 @@ export function BattleScreen({
       )}
     </WorkbenchProvider>
   );
+}
+
+function samePool(a: readonly Color[], b: readonly Color[]): boolean {
+  return a.length === b.length && a.every((c, i) => c === b[i]);
 }
 
 const PLAYER_EFFECTS = new Set<Effect['type']>(['block', 'heal', 'cleanse']);
