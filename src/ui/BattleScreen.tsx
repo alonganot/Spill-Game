@@ -32,7 +32,7 @@ import { Tip } from './Tooltip';
 import { beforeOpeningRoll, buildTimeline } from './timeline';
 import { chipsForPlan } from './mixHint';
 import { usePlayback } from './usePlayback';
-import { useDesktop, useLargeDesktop } from './useMediaQuery';
+import { useDesktop, useWindowSize } from './useMediaQuery';
 import { DiceRack } from './DiceRack';
 import { useChipDrag } from './useDrag';
 import { BOWL_RESULT, MixingBowl, WorkbenchProvider, type Workbench } from './workbench';
@@ -63,6 +63,8 @@ interface BattleScreenProps {
   lastRoll: RolledEvent | null;
   actionCount: number;
   isFinalFight: boolean;
+  /** The run's gold, shown beside the player's HP. */
+  gold: number;
   onAction: (action: BattleAction) => void;
   onContinue: () => void;
 }
@@ -75,6 +77,7 @@ export function BattleScreen({
   lastRoll,
   actionCount,
   isFinalFight,
+  gold,
   onAction,
   onContinue,
 }: BattleScreenProps) {
@@ -95,14 +98,12 @@ export function BattleScreen({
   const reducedMotion = useReducedMotion();
   const onStage = rolling && !reducedMotion && rollEvent !== undefined;
   const trayRef = useRef<HTMLDivElement>(null);
-  // Desktop shows the fighters at one pixel scale (22px enemy, 16px hero): 10×, or 13× on big screens.
-  // Two or three enemies share the arena, so they're drawn smaller.
   const desktop = useDesktop();
-  const large = useLargeDesktop();
-  const pixel = large ? 13 : 10;
+  const { width: windowWidth } = useWindowSize();
   const enemyCount = config.enemies.length;
-  const crowd = enemyCount >= 3 ? 0.5 : enemyCount === 2 ? 0.7 : 1;
-  const enemySize = desktop ? 22 * Math.max(4, Math.round(pixel * crowd)) : enemyCount >= 3 ? 56 : enemyCount === 2 ? 68 : 88;
+  const pixel = fighterPixel(windowWidth);
+  const crowd = enemyCount >= 3 ? CROWD_SCALE[3] : enemyCount === 2 ? CROWD_SCALE[2] : 1;
+  const enemySize = desktop ? 22 * Math.max(3, Math.floor(pixel * crowd)) : enemyCount >= 3 ? 56 : enemyCount === 2 ? 68 : 88;
   const heroSize = desktop ? 16 * pixel : 48;
   const keptCount = shownRoll ? shownRoll.colors.length - shownRoll.discarded.length : 0;
 
@@ -400,6 +401,9 @@ export function BattleScreen({
       {/* On phones these wrappers are display: contents, so it's one column; on desktop, an arena and a side panel. */}
       <div className="battle-layout">
       <div className={`arena${enemyCount > 1 ? ' arena-crowd' : ''}`}>
+      {desktop && (
+        <DiceRack dice={config.dice} roll={shownRoll} kept={keptCount} away={onStage} trayRef={trayRef} />
+      )}
       <div className={`enemy-row enemies-${enemyCount}`}>
         {config.enemies.map((def, i) => {
           const enemy = enemies[i]!;
@@ -486,7 +490,12 @@ export function BattleScreen({
               <h2>You</h2>
               <Badges combatant={player} owner={{ kind: 'player' }} status={config.status} />
             </div>
-            <span className="muted">Turn {state.turn}</span>
+            <span className="card-meta">
+              <span className="gold" aria-label="Gold">
+                🪙 {gold}
+              </span>
+              <span className="muted">Turn {state.turn}</span>
+            </span>
           </div>
           <HpBar combatant={player} />
         </div>
@@ -494,10 +503,6 @@ export function BattleScreen({
       </div>
 
       <div className="side-panel">
-      {desktop && (
-        <DiceRack dice={config.dice} roll={shownRoll} kept={keptCount} away={onStage} trayRef={trayRef} />
-      )}
-
       <MixingBowl />
 
       {!desktop && poolSection}
@@ -615,6 +620,23 @@ export function BattleScreen({
       )}
     </WorkbenchProvider>
   );
+}
+
+/** How much smaller each enemy is drawn in a fight with two or three of them. */
+const CROWD_SCALE = { 2: 0.8, 3: 0.6 } as const;
+
+/**
+ * Desktop fighters' pixel scale (hero 16px, enemy 22px of art). The arena is
+ * half the window, so this follows the window width, and it's the same in
+ * every fight: picked so the hero plus three crowd-sized enemies fit, so the
+ * hero never changes size when more enemies appear.
+ */
+export function fighterPixel(windowWidth: number): number {
+  // Half the window, less the page padding (24px each side), the 20px gap, and the arena's own padding.
+  const arena = (windowWidth - 68) / 2 - 32;
+  // Hero (16) + three enemies (22 × 0.6 each) in pixels, plus about 48px of gaps and card padding.
+  const perPixel = 16 + 3 * 22 * CROWD_SCALE[3];
+  return Math.max(4, Math.min(14, Math.floor((arena - 48) / perPixel)));
 }
 
 function samePool(a: readonly Color[], b: readonly Color[]): boolean {

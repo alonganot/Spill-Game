@@ -170,6 +170,8 @@ Variants:
 
 ## 5. Battle Arena (left on desktop, top on phones)
 
+**Desktop proportions:** the battle screen is a fixed **50/50** two-column grid (`.run-screen.in-battle`): the arena on the left, the workbench on the right, both running the full window height, and neither changes size with the number of enemies. The top bar (☰, Spill, fight and act) sits **inside the top of the arena**, above the dice rack. Fighters scale with the window width (`fighterPixel` in `BattleScreen.tsx`, 4×–14×) at one size for every fight, picked so the hero plus three crowd-sized enemies always fit; the hero's column is only as wide as its sprite, and the hero and the enemies sit between equal spacers, so they're always centered in the arena and evenly spaced (the spacers shrink first when room is tight). During a fight, **gold** sits in the player's card beside their name and turn, above the HP bar (`.card-meta`), not in the top bar.
+
 - **Backdrop:** a cosmic starry sky. Layer, back to front: `--bg-deep` → soft nebula clouds (`radial-gradient`s of `--nebula-1/2/3` at 15–30% opacity) → sparse star pixels (a repeating background of 1–2px `--star` dots, or a small tiled pixel sprite). An optional slow twinkle (opacity, ≥4s period) is turned off under `prefers-reduced-motion`.
 - **Floor:** an ancient stone-tile floor along the bottom third of the arena: rows of `--stone`/`--stone-dark` tiles with 1px `--bg-deep` grout and a few `--stone-light` chips, slightly darker toward the back. The hero and every enemy stand on the floor (their sprite's feet line up with the tile row). Can be CSS gradients or a tiled code-drawn sprite.
 - **Fighters:** the hero on the left facing right; **1–3 enemies in a row** on the right (`.enemy-row`). Enemy cards lose their opaque card background in the arena: each enemy is the sprite on the floor plus a small gold-framed plate under or above it holding name, intent, badges, and HP.
@@ -186,6 +188,7 @@ Variants:
 The workbench is one `.px-frame-gold` panel. Sections keep their `section-head` headings in the pixel font with a thin bronze rule under them.
 
 ### 6.1 Your dice (`DiceRack.tsx`, phone `.dice-tray`)
+- On desktop the dice rack is a strip across the **top of the arena**, above the fighters (grid area `dice`), not in the workbench. Phones keep the tray in the footer.
 - A **recessed stone/wood tray** (`.px-recess` with a `--wood` rim) with one **inset socket** per die.
 - The rolled face sits big in its socket. The six small faces beside it are **gem-like indicators**: tiny faceted squares in the face color with a 1px highlight; faces that don't match the roll are dimmed (not hidden).
 - Overflowed dice (pool full) look greyed and cracked; "away" dice (on the roll stage) leave an empty glowing socket.

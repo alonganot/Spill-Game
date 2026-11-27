@@ -112,12 +112,12 @@ describe('Cleanse', () => {
     expect(events.some((e) => e.type === 'cleansed')).toBe(false);
   });
 
-  it('Radiant Burst removes 1 stack of each and hits every living enemy for 8', () => {
+  it('Radiant Burst removes 1 stack of each and hits every living enemy for 6', () => {
     let s = start({ ...config, enemies: [DUMMY, DUMMY, DUMMY] });
     s = patchEnemy(s, { hp: 0 }, 1);
     s = withPool(poisoned(s, 3, 2), ['white', 'red']);
     const { state, events } = cast(s, 'radiantBurst');
-    expect(state.enemies.map((e) => e.hp)).toEqual([22, 0, 22]);
+    expect(state.enemies.map((e) => e.hp)).toEqual([24, 0, 24]);
     expect(state.player.statuses).toEqual({ poison: 2, burn: 1 });
     expect(events).toContainEqual({ type: 'cleansed', target: 'player', poison: 1, burn: 1 });
   });
@@ -164,7 +164,7 @@ describe('Curse', () => {
   it('only the cursed enemy takes the bonus from an area spell', () => {
     let s = start({ ...config, enemies: [DUMMY, DUMMY] });
     s = withPool(patchEnemy(s, { cursed: true }, 1), ['white', 'red']);
-    expect(cast(s, 'radiantBurst').state.enemies.map((e) => e.hp)).toEqual([22, 19]);
+    expect(cast(s, 'radiantBurst').state.enemies.map((e) => e.hp)).toEqual([24, 21]);
   });
 });
 

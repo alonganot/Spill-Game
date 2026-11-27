@@ -71,7 +71,7 @@ export const PALETTE_ATTACKS = {
     id: 'radiantBurst',
     name: 'Radiant Burst',
     cost: { white: 1, red: 1 },
-    effects: [{ type: 'damage', amount: 8, area: true }, { type: 'cleanse', stacks: 1 }],
+    effects: [{ type: 'damage', amount: 6, area: true }, { type: 'cleanse', stacks: 1 }],
   },
 
   // Pink: heal

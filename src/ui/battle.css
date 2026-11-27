@@ -59,6 +59,18 @@
   gap: 8px;
 }
 
+/* The player's gold and turn, beside their name and above their HP. */
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card-meta .gold {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Cards with a sprite: art on the left, name/intent/HP on the right. */
 .card.with-sprite {
   flex-direction: row;
@@ -1624,4 +1636,104 @@ button.attack-mix-tag {
 
 @media (prefers-reduced-motion: reduce) {
   .tip { animation: none; }
+}
+
+/*
+ * Desktop battle: a fixed 50/50 split. The arena (top bar, dice, fighters,
+ * log) and the workbench both run the full window height, and neither
+ * changes size with the number of enemies. The top bar sits inside the
+ * arena's top edge.
+ */
+@media (min-width: 900px) {
+  .run-screen.in-battle {
+    --topbar-h: 44px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  .run-screen.in-battle .battle-layout {
+    display: contents;
+  }
+
+  .run-screen.in-battle > .topbar,
+  .run-screen.in-battle .arena,
+  .run-screen.in-battle .side-panel {
+    grid-row: 1;
+  }
+
+  .run-screen.in-battle > .topbar {
+    grid-column: 1;
+    align-self: start;
+    height: var(--topbar-h);
+    margin: 8px 18px 0 22px;
+  }
+
+  .run-screen.in-battle .arena {
+    grid-column: 1;
+    /*
+     * The hero (only as wide as its sprite) and the enemies sit between three
+     * equal spacers, so the pair is always centered in the arena and evenly
+     * spaced. When room is tight the spacers shrink to nothing first.
+     */
+    grid-template-columns: minmax(0, 1fr) min-content minmax(12px, 1fr) minmax(0, max-content) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'dice dice dice dice dice'
+      '. hero . enemy .'
+      'log log log log log';
+    column-gap: 0;
+    padding: calc(var(--topbar-h) + 12px) 16px 16px;
+  }
+
+  .run-screen.in-battle .side-panel {
+    grid-column: 2;
+  }
+
+  /* On a narrow arena, gold and turn drop under "You" rather than widening the hero's column. */
+  .run-screen.in-battle .arena .player .card-row {
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+
+  .run-screen.in-battle .arena .enemy-row:not(.enemies-1) {
+    gap: 4px;
+  }
+
+  .run-screen.in-battle .arena .enemy-row:not(.enemies-1) .card.with-sprite {
+    padding: 8px 4px;
+  }
+
+  .run-screen.in-battle .arena .enemy-row:not(.enemies-1) .card h2 {
+    font-size: 0.9rem;
+    white-space: nowrap;
+  }
+
+  .run-screen.in-battle .arena .enemy-row:not(.enemies-1) .intent {
+    font-size: 0.75rem;
+    padding: 3px 8px;
+    white-space: nowrap;
+  }
+
+  /* Your dice: a strip across the top of the arena, under the top bar and above the fighters. */
+  .arena .dice-rack-section {
+    grid-area: dice;
+    align-self: start;
+  }
+
+  .arena .dice-rack {
+    grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  }
+
+  /* The wider workbench fits more spells per row. */
+  .side-panel .attacks {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+
+  .side-panel > .spells-section {
+    min-height: 220px;
+    /* Keeps absolutely placed bits (screen-reader labels) inside the scrolling list, not the page. */
+    position: relative;
+  }
 }

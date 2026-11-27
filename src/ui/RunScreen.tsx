@@ -95,7 +95,8 @@ export function RunScreen({
               ❤ {run.hp}/{run.maxHp}
             </span>
           )}
-          <span aria-label="Gold">🪙 {run.gold}</span>
+          {/* In a fight, gold sits beside the player's HP instead. */}
+          {outsideBattle && <span aria-label="Gold">🪙 {run.gold}</span>}
         </span>
       </header>
 
@@ -115,6 +116,7 @@ export function RunScreen({
           lastRoll={view.lastRoll}
           actionCount={view.actionCount}
           isFinalFight={run.stageIndex === config.stages.length - 1}
+          gold={run.gold}
           onAction={(action) => dispatch({ type: 'battle', action })}
           onContinue={() => dispatch({ type: 'continue' })}
         />

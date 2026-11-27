@@ -32,3 +32,15 @@ export function useDesktop(): boolean {
 export function useLargeDesktop(): boolean {
   return useMediaQuery(LARGE_QUERY);
 }
+
+function subscribeResize(onChange: () => void) {
+  window.addEventListener('resize', onChange);
+  return () => window.removeEventListener('resize', onChange);
+}
+
+/** The window's inner width and height, kept current as it resizes. */
+export function useWindowSize(): { width: number; height: number } {
+  const width = useSyncExternalStore(subscribeResize, () => window.innerWidth, () => 0);
+  const height = useSyncExternalStore(subscribeResize, () => window.innerHeight, () => 0);
+  return { width, height };
+}
