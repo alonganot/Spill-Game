@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { defaultRunConfig } from '../data/run';
 import { createSeededRng } from './rng';
 import { applyRunAction, battleConfigFor, capUpgradePrice, createRun, repaintPrice } from './run';
+import { botAction } from './testBot';
 import { fixedDie, noopRng, testConfig } from './testUtils';
 import type { EnemyDefinition, RunAction, RunConfig, RunState } from './types';
 
@@ -367,25 +368,3 @@ describe('determinism and simulation', () => {
     expect(outcomes).toContain('victory');
   });
 });
-
-/** Greedy bot: attack when possible; in shops buy cap → die → heal; take heal when hurt. */
-function botAction(run: RunState, cfg: RunConfig): RunAction {
-  if (run.phase === 'battle') {
-    const battle = run.battle!;
-    if (battle.phase !== 'player') return { type: 'continue' };
-    const bc = battleConfigFor(run, cfg);
-    const attack = bc.attacks.find((a) =>
-      Object.entries(a.cost).every(([c, n]) => battle.pool.filter((p) => p === c).length >= (n ?? 0)),
-    );
-    return attack ? { type: 'battle', action: { type: 'trigger', attackId: attack.id } } : { type: 'battle', action: { type: 'endTurn' } };
-  }
-  if (run.phase === 'reward') return { type: 'chooseReward', index: run.hp < run.maxHp / 2 ? 1 : 0 };
-  // shop
-  const offer = run.shopStock.findIndex((o) => !o.sold && o.price <= run.gold);
-  if (offer >= 0 && run.dice.length < run.diceCap) return { type: 'buyDie', offerIndex: offer };
-  if (run.dice.length >= run.diceCap && run.diceCap < cfg.maxDiceCap && capUpgradePrice(run, cfg) <= run.gold) {
-    return { type: 'buyCapUpgrade' };
-  }
-  if (run.hp < run.maxHp && run.gold >= cfg.economy.shop.healPrice) return { type: 'buyHeal' };
-  return { type: 'leaveShop' };
-}
