@@ -112,6 +112,13 @@ function setUpFullScreen() {
   });
 }
 
+/** The main menu's Quit button closes the app. */
+function setUpQuit() {
+  ipcMain.handle('app:quit', () => {
+    app.quit();
+  });
+}
+
 /** Keeps the page and the saved choice in step with the window, however it changed. */
 function watchFullScreen(win) {
   const report = () => {
@@ -185,6 +192,7 @@ if (!app.requestSingleInstanceLock()) {
     serveDist();
     setUpUpdates();
     setUpFullScreen();
+    setUpQuit();
     createWindow();
   });
 

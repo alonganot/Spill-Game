@@ -22,7 +22,8 @@ interface SpellCardProps {
 
 /**
  * A spell with one slot per color it costs. Drag colors onto it (or tap an
- * empty slot to fill it from the pool), then Cast once every slot is full.
+ * empty slot to fill it from the bowl or pool), then Cast once every slot is
+ * full. With Auto-cast on there's no Cast button: it casts itself when full.
  */
 export function SpellCard({ spell }: SpellCardProps) {
   const wb = useWorkbench();
@@ -94,17 +95,19 @@ export function SpellCard({ spell }: SpellCardProps) {
             ),
           )}
         </span>
-        <button
-          type="button"
-          className="btn attack-cast"
-          disabled={wb.locked || !ready}
-          onClick={(e) => {
-            e.stopPropagation();
-            wb.cast(attack.id);
-          }}
-        >
-          Cast
-        </button>
+        {!wb.autoCast && (
+          <button
+            type="button"
+            className="btn attack-cast"
+            disabled={wb.locked || !ready}
+            onClick={(e) => {
+              e.stopPropagation();
+              wb.cast(attack.id);
+            }}
+          >
+            Cast
+          </button>
+        )}
       </div>
     </div>
   );
@@ -141,6 +144,7 @@ export function Spellbook({
   const titleId = useId();
   const sheetRef = useRef<HTMLElement>(null);
   const shown = unavailableOnly ? spells.filter((s) => s.status !== 'ready') : spells;
+  const { autoCast } = useWorkbench();
 
   // Move focus into the sheet, keep Tab inside it, and hand focus back on close.
   useEffect(() => {
@@ -225,7 +229,7 @@ export function Spellbook({
           ))}
         </ul>
         <p className="spellbook-legend muted">
-          Tap an empty slot to fill it from your pool, then Cast. <span className="legend-craftable">⚗ Mix first</span> puts the colors to mix in the bowl. Dim spells need colors you don't have.
+          Tap an empty slot to fill it from your bowl or pool, {autoCast ? 'and the spell casts once every slot is full' : 'then Cast'}. <span className="legend-craftable">⚗ Mix first</span> puts the colors to mix in the bowl. Dim spells need colors you don't have.
         </p>
         </div>
       </section>

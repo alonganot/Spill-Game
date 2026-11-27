@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { defaultRunConfig } from '../data/run';
 import { createSeededRng } from './rng';
-import { applyRunAction, battleConfigFor, capUpgradePrice, createRun, repaintPrice } from './run';
+import { applyRunAction, battleConfigFor, capUpgradePrice, createRun, repaintPrice, victoryGold } from './run';
 import { botAction } from './testBot';
 import { fixedDie, noopRng, testConfig } from './testUtils';
 import type { EnemyDefinition, RunAction, RunConfig, RunState } from './types';
@@ -30,6 +30,7 @@ function testRunConfig(overrides: Partial<RunConfig> = {}): RunConfig {
     ],
     economy: {
       goldPerWin: { normal: 10, elite: 20, boss: 0 },
+      leftoverColorGold: 2,
       rewards: { normal: { gold: 15, heal: 5 }, elite: { gold: 25, heal: 9 }, boss: { gold: 40, heal: 12 } },
       shop: {
         repaintPrice: 10,
@@ -176,6 +177,16 @@ describe('HP and gold between fights', () => {
     expect(battleConfigFor(run, config).playerStartHp).toBe(13);
   });
 
+  it('pays a bonus for every color left in the pool', () => {
+    const won = winFight(start());
+    const rich: RunState = { ...won, battle: { ...won.battle!, pool: ['red', 'blue', 'green', 'red'] } };
+    expect(victoryGold(rich, config)).toEqual({ base: 10, leftover: 4, perColor: 2, bonus: 8, total: 18 });
+    expect(act(rich, { type: 'continue' }).gold).toBe(18);
+    expect(victoryGold(won, config)).toEqual({ base: 10, leftover: 0, perColor: 2, bonus: 0, total: 10 });
+    const none = testRunConfig({ economy: { ...config.economy, leftoverColorGold: 0 } });
+    expect(act(rich, { type: 'continue' }, none).gold).toBe(10);
+  });
+
   it('pays gold per win by fight kind', () => {
     let run = act(winFight(start()), { type: 'continue' });
     expect(run.gold).toBe(10);
@@ -310,6 +321,32 @@ describe('shop', () => {
     run = act(run, { type: 'buyCapUpgrade' });
     run = act(run, { type: 'buyDie', offerIndex: 1 });
     expect(run.dice[3]).toEqual(second!.die);
+  });
+
+  it('buying a die can replace one of yours, in its place, even with every slot full', () => {
+    let run = withGold(toFirstShop(), 200);
+    const [first, second] = run.shopStock;
+    run = act(run, { type: 'buyDie', offerIndex: 0 }); // 3 / 3 slots
+    const before = run.dice;
+    run = act(run, { type: 'buyDie', offerIndex: 1, replaceIndex: 0 });
+    expect(run.dice).toEqual([second!.die, before[1], first!.die]);
+    expect(run.gold).toBe(200 - first!.price - second!.price);
+    expect(run.shopStock[1]?.sold).toBe(true);
+  });
+
+  it('replacing works with a free slot too, and needs a die at that index', () => {
+    const shop = withGold(toFirstShop(), 200);
+    const swapped = act(shop, { type: 'buyDie', offerIndex: 0, replaceIndex: 1 });
+    expect(swapped.dice).toEqual([shop.dice[0], shop.shopStock[0]!.die]);
+    for (const replaceIndex of [2, -1, 0.5]) {
+      expect(applyRunAction(shop, { type: 'buyDie', offerIndex: 0, replaceIndex }, config, noopRng)).toMatchObject({
+        ok: false,
+        error: 'invalid_target',
+      });
+    }
+    expect(
+      applyRunAction(withGold(shop, 0), { type: 'buyDie', offerIndex: 0, replaceIndex: 0 }, config, noopRng),
+    ).toMatchObject({ error: 'not_enough_gold' });
   });
 
   it('buying a die fails without enough gold or a bad offer index', () => {

@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { ConfirmDialog } from './ConfirmDialog';
 import { SeedLine } from './SeedLine';
 import { parseSeed } from './seed';
+import { updateSettings, useSettings } from './settings';
 import { useFullScreen } from './useFullScreen';
 
 /** The run Settings can act on: one that's in progress (not ended). */
@@ -42,6 +43,7 @@ export function SettingsScreen({
   const [pending, setPending] = useState<Pending | null>(null);
   const typedSeed = parseSeed(seedText);
   const display = useFullScreen();
+  const { autoCast } = useSettings();
 
   // Move focus into the panel so keyboard users start here.
   useEffect(() => {
@@ -98,6 +100,24 @@ export function SettingsScreen({
             </div>
           </div>
         )}
+
+        <div className="settings-group">
+          <h3 className="subhead">Spells</h3>
+          <div className="settings-row" role="group" aria-label="Casting">
+            {([false, true] as const).map((auto) => (
+              <button
+                key={String(auto)}
+                type="button"
+                className={`btn ${autoCast === auto ? 'btn-primary' : 'btn-menu'}`}
+                aria-pressed={autoCast === auto}
+                onClick={() => updateSettings({ autoCast: auto })}
+              >
+                {auto ? 'Auto-cast' : 'Cast button'}
+              </button>
+            ))}
+          </div>
+          <p className="muted settings-hint">Auto-cast casts a spell on your target as soon as its slots are full.</p>
+        </div>
 
         {display && (
           <div className="settings-group">

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { desktopBridge } from '../desktop/bridge';
 import { enemySprite, HERO_SPRITE, TITLE_SPRITE } from '../data/sprites';
 import { ConfirmDialog } from './ConfirmDialog';
 import { PixelSprite } from './PixelSprite';
@@ -21,6 +22,9 @@ export function MainMenu({ canContinue, onNewRun, onContinue, onSettings }: Main
   const [confirmingNewRun, setConfirmingNewRun] = useState(false);
   // Twice as big on desktop, still in whole pixels (27px logo, 16px hero, 22px slime).
   const scale = useDesktop() ? 2 : 1;
+  // Only the Windows app can close itself; a browser tab can't, so there's no Quit there.
+  const bridge = desktopBridge();
+  const quit = bridge && typeof bridge.quit === 'function' ? () => void bridge.quit() : null;
 
   return (
     <main className="screen main-menu">
@@ -58,6 +62,11 @@ export function MainMenu({ canContinue, onNewRun, onContinue, onSettings }: Main
         <button type="button" className="btn btn-menu" onClick={onSettings}>
           Settings
         </button>
+        {quit && (
+          <button type="button" className="btn btn-menu" onClick={quit}>
+            Quit
+          </button>
+        )}
       </nav>
 
       <p className="app-version muted">v{APP_VERSION}</p>

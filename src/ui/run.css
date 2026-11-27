@@ -308,6 +308,43 @@ button.face.selected {
   color: var(--muted);
 }
 
+/* On a buyable button the note ("Swap a die") reads on the gold. */
+.btn-buy:not(:disabled) .buy-reason {
+  color: inherit;
+  opacity: 0.8;
+}
+
+/* Die swap picker (shop, every slot full): the new die, then your dice to pick from. */
+.swap-new {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.swap-list {
+  margin-bottom: 14px;
+  max-height: calc(4 * 54px + 3 * 6px);
+  overflow-y: auto;
+}
+
+.swap-pick {
+  width: 100%;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.swap-pick:hover {
+  border-color: var(--muted);
+}
+
+.swap-pick.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
 /* Run end */
 .run-end {
   margin-top: 24px;

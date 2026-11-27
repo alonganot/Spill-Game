@@ -96,6 +96,26 @@ export function bowlResult(
   return recipe ? { kind: 'mix', inputs: [a, b], recipe } : { kind: 'no-mix' };
 }
 
+/**
+ * Where a tapped empty slot of `color` takes its paint from: the Mixing Bowl
+ * first (a drop in it, then the bowl's mixed result), then the first free pool
+ * chip. Null when none of them has that color.
+ */
+export function slotSource(
+  staging: Staging,
+  pool: readonly Color[],
+  color: Color,
+  recipes: readonly MixRecipe[],
+): { kind: 'chip'; chip: number } | { kind: 'mixed' } | null {
+  const inBowl = staging.bowl.find((i) => pool[i] === color);
+  if (inBowl !== undefined) return { kind: 'chip', chip: inBowl };
+  const bowl = bowlResult(staging, pool, recipes);
+  if (bowl.kind === 'mix' && bowl.recipe.output === color) return { kind: 'mixed' };
+  const staged = stagedIndices(staging);
+  const free = pool.findIndex((c, i) => c === color && !staged.has(i));
+  return free >= 0 ? { kind: 'chip', chip: free } : null;
+}
+
 /** True once a spell's slots are all filled. */
 export function spellReady(staging: Staging, attackId: string, cost: ColorCost, pool: readonly Color[]): boolean {
   const staged = (staging.spells[attackId] ?? []).map((i) => pool[i]!);

@@ -24,4 +24,8 @@ contextBridge.exposeInMainWorld('spillDesktop', {
   setFullScreen(fullscreen) {
     return ipcRenderer.invoke('window:setFullScreen', fullscreen);
   },
+  /** Closes the app. */
+  quit() {
+    return ipcRenderer.invoke('app:quit');
+  },
 });

@@ -6,4 +6,4 @@ export { findMixPlan, findRecipe, mixColors, mixCost } from './mixing';
 export { applyAction, attackHitDamage, createBattle, firstLivingEnemy, getEnemyIntent } from './battle';
 export { isDefeated } from './combat';
 export { isAreaEffect, isAreaSpell } from './attacks';
-export { applyRunAction, battleConfigFor, capUpgradePrice, createRun, currentStage, repaintPrice } from './run';
+export { applyRunAction, battleConfigFor, capUpgradePrice, createRun, currentStage, repaintPrice, victoryGold } from './run';

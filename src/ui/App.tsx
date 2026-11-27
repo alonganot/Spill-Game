@@ -48,6 +48,7 @@ export function App() {
           onMainMenu={() => flow.reset(['menu'])}
           onMenu={() => flow.push('settings')}
           hidden={!runVisible}
+          paused={flow.top !== 'run'}
         />
       )}
       {flow.top === 'settings' && (
