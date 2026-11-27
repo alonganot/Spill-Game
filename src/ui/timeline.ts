@@ -64,16 +64,27 @@ export function buildTimeline(
         update(event.target, event.enemy, (v) => ({ ...v, block: v.block + event.amount }));
         break;
       case 'statusApplied': {
-        const apply = (v: Vitals): Vitals => ({
+        const { status: applied, stacks } = event;
+        // Curse, Silence, and Chill aren't part of Vitals yet (Milestone 8, Task 3).
+        if (applied !== 'poison' && applied !== 'burn') break;
+        update(event.target, event.enemy, (v) => ({
           ...v,
-          statuses:
-            event.status === 'poison'
-              ? { ...v.statuses, poison: v.statuses.poison + event.stacks }
-              : { ...v.statuses, burn: v.statuses.burn + event.stacks },
-        });
-        update(event.target, event.enemy, apply);
+          statuses: { ...v.statuses, [applied]: v.statuses[applied] + stacks },
+        }));
         break;
       }
+      case 'healed':
+        update('player', undefined, (v) => ({ ...v, hp: v.hp + event.amount }));
+        break;
+      case 'cleansed':
+        update('player', undefined, (v) => ({
+          ...v,
+          statuses: { ...v.statuses, poison: v.statuses.poison - event.poison, burn: v.statuses.burn - event.burn },
+        }));
+        break;
+      case 'silenceResisted':
+        break;
+      case 'enemySkipped':
       case 'enemyIntent':
         // The enemy's old block expires right before it acts.
         update('enemy', event.enemy, (v) => ({ ...v, block: 0 }));

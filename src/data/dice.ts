@@ -13,6 +13,11 @@ export const DICE = {
   dusk: { id: 'dusk', name: 'Dusk', faces: ['red', 'red', 'red', 'blue', 'blue', 'blue'] },
   lagoon: { id: 'lagoon', name: 'Lagoon', faces: ['blue', 'blue', 'blue', 'green', 'green', 'green'] },
   ash: { id: 'ash', name: 'Ash', faces: ['red', 'red', 'red', 'green', 'green', 'green'] },
+
+  // White and Black (Milestone 8).
+  cleric: { id: 'cleric', name: 'Cleric', faces: ['white', 'white', 'white', 'red', 'red', 'blue'] },
+  occult: { id: 'occult', name: 'Occult', faces: ['black', 'black', 'black', 'green', 'green', 'red'] },
+  monochrome: { id: 'monochrome', name: 'Monochrome', faces: ['white', 'white', 'white', 'black', 'black', 'black'] },
 } as const satisfies Record<string, DieDefinition>;
 
 export const STANDARD_DIE: DieDefinition = DICE.standard;
@@ -28,4 +33,8 @@ export const SHOP_DICE: readonly DieForSale[] = [
   { die: DICE.dusk, price: 50 },
   { die: DICE.lagoon, price: 50 },
   { die: DICE.ash, price: 50 },
+  // White and Black
+  { die: DICE.cleric, price: 55 },
+  { die: DICE.occult, price: 55 },
+  { die: DICE.monochrome, price: 60 },
 ];

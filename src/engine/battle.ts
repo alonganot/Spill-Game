@@ -22,7 +22,14 @@ export function createBattle(config: BattleConfig, rng: Rng): { state: BattleSta
     phase: 'player',
     pool: [],
     player: createCombatant(config.playerMaxHp, config.playerStartHp),
-    enemies: config.enemies.map((enemy) => ({ ...createCombatant(enemy.maxHp), intentIndex: 0 })),
+    enemies: config.enemies.map((enemy) => ({
+      ...createCombatant(enemy.maxHp),
+      intentIndex: 0,
+      cursed: false,
+      silenced: false,
+      silenceImmune: false,
+      chilled: false,
+    })),
   };
   return startPlayerTurn(initial, config, rng);
 }
@@ -84,7 +91,7 @@ function triggerAttack(
   let { player, enemies } = state;
   const events: BattleEvent[] = [{ type: 'triggered', attackId, target }];
   for (const effect of attack.effects) {
-    const result = applyEffect(effect, player, enemies, target);
+    const result = applyEffect(effect, player, enemies, target, config.status);
     player = result.player;
     enemies = result.enemies;
     events.push(...result.events);
@@ -101,7 +108,8 @@ function endTurn(state: BattleState, config: BattleConfig, rng: Rng): ActionResu
   for (let i = 0; i < current.enemies.length; i++) {
     const enemy = current.enemies[i]!;
     if (isDefeated(enemy)) continue;
-    const resolved = resolveStatuses(enemy, 'enemy', config.status, i);
+    const bonus = enemy.cursed ? config.status.curseBonus : 0;
+    const resolved = resolveStatuses(enemy, 'enemy', config.status, i, bonus);
     events.push(...resolved.events);
     current = checkOutcome(withEnemy(current, i, resolved.combatant), events);
     if (over()) return { ok: true, state: current, events };
@@ -110,17 +118,32 @@ function endTurn(state: BattleState, config: BattleConfig, rng: Rng): ActionResu
   events.push(...playerStatus.events);
   current = checkOutcome({ ...current, player: playerStatus.combatant }, events);
   if (over()) return { ok: true, state: current, events };
+  // Curse lasts through this turn's status ticks, then clears.
+  current = { ...current, enemies: current.enemies.map((e) => (e.cursed ? { ...e, cursed: false } : e)) };
 
   // 2. Each living enemy acts in order. Its own block lasts until its next action.
+  //    A Silenced enemy skips its intent (which still counts as used) and becomes
+  //    immune to Silence; an enemy that really acts loses its Chill and immunity.
   for (let i = 0; i < current.enemies.length; i++) {
     if (isDefeated(current.enemies[i]!)) continue;
     const intent = getEnemyIntent(current, config, i);
     if (!intent) continue;
-    current = withEnemy(current, i, { ...current.enemies[i]!, block: 0 });
+    const enemy: EnemyState = { ...current.enemies[i]!, block: 0 };
+    if (enemy.silenced) {
+      events.push({ type: 'enemySkipped', enemy: i, intent });
+      current = withEnemy(current, i, { ...enemy, silenced: false, silenceImmune: true, intentIndex: enemy.intentIndex + 1 });
+      continue;
+    }
+    current = withEnemy(current, i, enemy);
     events.push({ type: 'enemyIntent', enemy: i, intent });
-    current = performIntent(current, i, intent, events);
+    current = performIntent(current, i, intent, config, events);
     const acted = current.enemies[i]!;
-    current = withEnemy(current, i, { ...acted, intentIndex: acted.intentIndex + 1 });
+    current = withEnemy(current, i, {
+      ...acted,
+      chilled: false,
+      silenceImmune: false,
+      intentIndex: acted.intentIndex + 1,
+    });
     current = checkOutcome(current, events);
     if (over()) return { ok: true, state: current, events };
   }
@@ -130,13 +153,20 @@ function endTurn(state: BattleState, config: BattleConfig, rng: Rng): ActionResu
   return { ok: true, state: started.state, events: [...events, ...started.events] };
 }
 
-function performIntent(state: BattleState, index: number, intent: EnemyIntent, events: BattleEvent[]): BattleState {
+function performIntent(
+  state: BattleState,
+  index: number,
+  intent: EnemyIntent,
+  config: BattleConfig,
+  events: BattleEvent[],
+): BattleState {
   switch (intent.type) {
     case 'attack': {
       let player = state.player;
       const hits = Math.max(1, intent.hits ?? 1);
+      const amount = attackHitDamage(intent.amount, state.enemies[index]!, config);
       for (let h = 0; h < hits && !isDefeated(player); h++) {
-        const { combatant, blocked, dealt } = takeDamage(player, intent.amount);
+        const { combatant, blocked, dealt } = takeDamage(player, amount);
         player = combatant;
         events.push({ type: 'damaged', target: 'player', amount: dealt, blocked, source: 'attack' });
       }
@@ -154,6 +184,11 @@ function performIntent(state: BattleState, index: number, intent: EnemyIntent, e
       events.push({ type: 'statusApplied', target: 'player', status: 'burn', stacks: 1 });
       return { ...state, player: { ...state.player, statuses: { ...state.player.statuses, burn: state.player.statuses.burn + 1 } } };
   }
+}
+
+/** Damage per hit of an enemy's attack, after Chill. */
+export function attackHitDamage(amount: number, enemy: EnemyState, config: BattleConfig): number {
+  return enemy.chilled ? Math.floor(amount * config.status.chillMultiplier) : amount;
 }
 
 function withEnemy(state: BattleState, index: number, enemy: EnemyState): BattleState {

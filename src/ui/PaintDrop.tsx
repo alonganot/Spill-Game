@@ -52,6 +52,13 @@ const DROP_SHEETS: Record<Color, SpriteSheet<'drop'>> = {
   purple: dropSheet('purple'),
   cyan: dropSheet('cyan'),
   orange: dropSheet('orange'),
+  white: dropSheet('white'),
+  black: dropSheet('black'),
+  pink: dropSheet('pink'),
+  grey: dropSheet('grey'),
+  crimson: dropSheet('crimson'),
+  blight: dropSheet('blight'),
+  frost: dropSheet('frost'),
 };
 
 /** A pixel paint drop in a color. `size` is the largest side in CSS px (13px art, whole-pixel scaling). */

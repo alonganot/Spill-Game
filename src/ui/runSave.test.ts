@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defaultRunConfig } from '../data/run';
+import { BASE_COLORS } from '../data/colors';
 import {
   applyRunAction,
   createRun,
@@ -32,7 +33,7 @@ function candidateActions(run: RunState, rng: Rng): RunAction[] {
       }
     }
   }
-  const repaint = { dieIndex: 0, faceIndex: Math.floor(rng() * 6), color: pick(['red', 'blue', 'green'] as const, rng) };
+  const repaint = { dieIndex: 0, faceIndex: Math.floor(rng() * 6), color: pick(BASE_COLORS, rng) };
   return [
     ...battle.map((action): RunAction => ({ type: 'battle', action })),
     { type: 'continue' },
@@ -67,7 +68,7 @@ describe('replayRun', () => {
         phasesSeen.add(run.phase);
         furthestStage = Math.max(furthestStage, run.stageIndex);
 
-        if (n % 25 === 0) {
+        if (actions.length % 10 === 0) {
           const replayed = replayRun({ version: 2, seed, seeded: false, actions: [...actions] }, config);
           expect(replayed?.run).toEqual(run);
           replays++;

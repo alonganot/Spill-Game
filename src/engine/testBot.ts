@@ -28,7 +28,8 @@ function score(attack: AttackDefinition, state: BattleState, config: BattleConfi
     if (effect.type === 'damage') value += effect.amount * targets;
     else if (effect.type === 'poison') value += effect.stacks * 2 * targets;
     else if (effect.type === 'burn') value += config.status.burnDamage * targets;
-    else value += Math.min(effect.amount, uncoveredHit);
+    else if (effect.type === 'block') value += Math.min(effect.amount, uncoveredHit);
+    // Heal, Cleanse, Curse, Silence, Chill: the bot learns them in Milestone 8, Task 4.
   }
   return value;
 }

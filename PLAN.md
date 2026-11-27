@@ -1,7 +1,7 @@
 # PLAN.md — Spill Development Roadmap
 
 ## Current Focus
-**Milestone 7 done (V1 Wrap-up); Milestone 8 (Cosmic Paint Workshop UI overhaul, `DESIGN.md`) is next.** V1 is a PC game: it fills a desktop screen, stays playable on a phone-sized window, and ships as a Windows app (Electron, `npm run dist:win` builds `release/Spill-Setup-<version>.exe`); mobile app builds are out of V1. A full 15-fight run (3 acts, multi-enemy fights from fight 4) with a main menu, seeded runs, rewards, a dice shop, pixel-art sprites, and beat-by-beat combat playback is playable via `npm run dev` (`src/ui/RunScreen.tsx`, driven by `useRun` and `src/engine/run.ts`).
+**Milestone 7 done (V1 Wrap-up); Milestone 8 (Expanded Color Palette: White, Pink & Black) is next, then Milestone 9 (Cosmic Paint Workshop UI overhaul, `DESIGN.md`).** V1 is a PC game: it fills a desktop screen, stays playable on a phone-sized window, and ships as a Windows app (Electron, `npm run dist:win` builds `release/Spill-Setup-<version>.exe`); mobile app builds are out of V1. A full 15-fight run (3 acts, multi-enemy fights from fight 4) with a main menu, seeded runs, rewards, a dice shop, pixel-art sprites, and beat-by-beat combat playback is playable via `npm run dev` (`src/ui/RunScreen.tsx`, driven by `useRun` and `src/engine/run.ts`).
 
 ## Milestones
 
@@ -67,7 +67,34 @@
 - [x] Automatic releases: every push to `main` runs `.github/workflows/release.yml`, which picks patch/minor/major from the change (`scripts/release-version.mjs`, rules in `CLAUDE.md`), tests, tags `vX.Y.Z`, and publishes the installer to GitHub Releases. The main menu shows the game's version in the bottom-left corner.
 - [x] Settings → Display: Windowed / Fullscreen. The Windows app switches its window, remembers the choice for the next launch (`display.json` in the app data), and F11 toggles it; a browser uses the Fullscreen API for the page (hidden where unsupported). `src/desktop/display.ts`, `useFullScreen`. `SPILL_UPDATE_URL` points an installed game at a local folder of builds for testing. Version 1.0.1 is the first release; players on 1.0.0 install it by hand once.
 
-### Milestone 8: Cosmic Paint Workshop UI Overhaul
+### Milestone 8: Expanded Color Palette — White, Pink & Black
+Add two base colors (White: purity, Black: shadow/curse), five new mixes (Pink, Grey, Crimson, Blight, Frost), in-combat Heal and Cleanse, three enemy statuses (Curse, Silence with 1-turn immunity, Chill), 12 new spells, and three themed shop dice. Rules and timing are in `RULES.md` §2–§4. Starter dice stay Red/Blue/Green. Each task ships on its own and the game stays playable after it.
+
+New spells (`src/data/attacks.ts`; numbers are starting values for the balance pass):
+
+| Spell | Cost | Effect |
+|---|---|---|
+| Purify | White | Cleanse all Poison and Burn, Block 3 |
+| Aegis | White ×2 | Block 12, or 16 if the player has no Poison or Burn |
+| Radiant Burst | White + Red | 8 damage to all enemies, cleanse 1 Poison and 1 Burn stack |
+| Mend | Pink | Heal 5 |
+| Rejuvenate | Pink + Green | Heal 4, Block 6 |
+| Blood Bloom | Pink + Red | 10 damage, Heal 4 |
+| Hex | Black | Curse the target |
+| Hush | Black + Blue | Silence the target |
+| Soul Siphon | Crimson | 7 damage, Heal 3 |
+| Eclipse | Grey | Silence the target, Block 8 |
+| Plague Burst | Blight | 2 Poison on the target, then double its Poison |
+| Frostbite | Frost | 5 damage, Chill the target |
+
+New shop dice (starting faces and prices, tuned in Task 4): **Cleric** (White ×3, Red ×2, Blue), **Occult** (Black ×3, Green ×2, Red), **Monochrome** (White ×3, Black ×3).
+
+- [x] **Task 1, Data & Types** (`src/engine/types.ts`, `src/data/colors.ts`, `attacks.ts`, `balance.ts`, `dice.ts`): `white`/`black` in `BaseColor` and `BASE_COLORS`, `pink`/`grey`/`crimson`/`blight`/`frost` in `SecondaryColor`; the 5 new recipes as `PALETTE_RECIPES`; new `Effect` types `heal`, `cleanse` (optional `stacks` per status), `curse`, `silence`, `chill`, `multiplyPoison`, and `block.cleanAmount` for Aegis; `curseBonus: 3`, `chillMultiplier: 0.5` in `STATUS_CONFIG`; the 12 spells as `PALETTE_ATTACKS`; Cleric/Occult/Monochrome in `DICE` and `PALETTE_SHOP_DICE`; `REPAINT_COLORS` (still Red/Blue/Green) drives the repaint picker. Defined but **not wired into play**: `applyEffect` treats the new effects as no-ops, and the game plays exactly as before. Placeholder paints for the 7 colors in `COLOR_HEX`, `COLOR_LABEL`, and the drop/die sprite sheets; spell texts for the new effects in `src/ui/format.ts`. Data-shape tests in `src/data/colors.test.ts`.
+- [x] **Task 2, Headless Combat Engine** (`src/engine/attacks.ts`, `battle.ts`, `statuses.ts`, `types.ts`, `src/data/`): the new content is in play: all 8 recipes in `MIX_RECIPES`, the 12 spells in `STARTING_ATTACKS` (23 in all), the Cleric/Occult/Monochrome dice in `SHOP_DICE`, and repaint (shop and reward) offers all 5 base colors. Heal (capped at max HP) and Cleanse go to the player; Aegis's `cleanAmount` applies when the player has no Poison or Burn; Plague Burst multiplies Poison. Enemy flags `cursed`, `silenced`, `silenceImmune`, `chilled` live on `EnemyState` (the player's `Statuses` is unchanged) and start false every fight: Curse adds `curseBonus` to each hit and each Poison/Burn tick (`resolveStatuses` takes a `bonus`), then clears after the status step; a Silenced enemy skips its action (its Block still expires, its intent still advances) and turns immune until it really acts; Chill scales each attack hit (`attackHitDamage`) and clears after the next real action. New events: `healed`, `cleansed`, `silenceResisted`, `enemySkipped`, and `statusApplied` with `curse`/`silence`/`chill`; the battle log, playback beats, and timeline handle them (visuals in Task 3). Tests in `src/engine/palette.test.ts`; repaint to White/Black in `run.test.ts`. Saves moved to `spill.run.v3` (v2 saves are dropped), so this ships as a **major** release. The balance simulation still lands in its 5–35% band with the bot unchanged.
+- [ ] **Task 3, UI & Visuals** (`src/ui/`, following `DESIGN.md`): paint colors for the 7 new colors (`COLOR_HEX`, `PaintDrop.tsx` outline, CSS tokens; update `DESIGN.md`), so White and Black read clearly on the dark background; enemy badges for Curse, Silence, Silence Immunity, and Chill; the intent display marked when an enemy will skip (Silenced) or hit softer (Chilled); tooltips with real numbers (`src/ui/format.ts`); battle log lines, floats (green heal numbers, cleanse puffs), and playback beats for the new events; Spellbook and workbench show the new spells and mixes; the repaint picker and dice editor offer White and Black.
+- [ ] **Task 4, Bot & Balance** (`src/engine/testBot.ts`, `src/data/`): teach the greedy bot to Heal when hurt, Cleanse when Poison/Burn would hurt, Silence or Chill the enemy with the biggest incoming hit, and Curse before a big hit; let it buy the new dice. Tune spell numbers, dice prices, and enemy stats so `npm run test:balance` stays in its 5–35% win band, and note the new win rate here.
+
+### Milestone 9: Cosmic Paint Workshop UI Overhaul
 Restyle the whole game to the "Cosmic Paint Workshop" theme in `DESIGN.md`: a pixel-art painter's workbench in a cosmic nebula. Visual only, so no engine or gameplay-data changes. Drag-and-drop, tap-to-place, keyboard support, aria labels, `prefers-reduced-motion`, and the `useDesktop` (900px) / `useLargeDesktop` breakpoints all keep working. Each task ships on its own and the game stays playable after it.
 - [ ] **Task 1, Foundation** (`index.html`, `src/ui/global.css`, shared button styles in `battle.css`/`run.css`/`menu.css`): load `Pixelify Sans` from Google Fonts; add `--font-pixel`/`--font-body`; remap the existing color tokens and add the new ones (DESIGN.md §2), keeping `COLOR_HEX` in `fx.ts` and the drop outline in `PaintDrop.tsx` in sync; add the `.px-frame`, `.px-frame-gold`, `.px-recess`, and `.px-raised` utilities; restyle `.btn`, `.btn-primary`, `.btn-secondary`, `.btn-mix`, `.btn-danger`, `.btn.attack-cast`, and the icon buttons as tactile beveled blocks with gold focus rings; drop soft `border-radius` from cards and panels.
 - [ ] **Task 2, Battle Arena** (`Fighters.tsx`, the `components.tsx` `HpBar`/`Badges`, arena rules in `battle.css`, `fx.css` floats, new sprites in `src/data/sprites.ts`): nebula-and-stars backdrop, stone-tile floor under the hero and the 1–3 enemy row, enemies as sprites on the floor with gold-framed name/intent/HP plates, gold pixel-framed HP bars, louder intent banners (attack, block, poison, burn, multi-hit), gem-style status badges with the Burn stack count, a gold floor ring plus the "Target" tag for the selected enemy, and pixel-font floats.

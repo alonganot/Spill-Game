@@ -1,6 +1,6 @@
 # DESIGN.md — Spill Visual Design System: "Cosmic Paint Workshop"
 
-This file is the visual source of truth for everything in `src/ui/` (CSS and components), `index.html`, and any new UI pixel-art sprites in `src/data/sprites.ts`. Gameplay rules live in `RULES.md`; scope and progress live in `PLAN.md` (Milestone 8 is the rollout of this design).
+This file is the visual source of truth for everything in `src/ui/` (CSS and components), `index.html`, and any new UI pixel-art sprites in `src/data/sprites.ts`. Gameplay rules live in `RULES.md`; scope and progress live in `PLAN.md` (Milestone 9 is the rollout of this design).
 
 ## 1. Theme & Atmosphere
 

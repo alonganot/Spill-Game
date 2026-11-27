@@ -21,9 +21,9 @@ export interface RunSave {
   actions: RunAction[];
 }
 
-export const SAVE_KEY = 'spill.run.v2';
+export const SAVE_KEY = 'spill.run.v3';
 /** Saves from earlier versions, which can't be replayed by this engine. */
-export const OLD_SAVE_KEYS = ['spill.run.v1'] as const;
+export const OLD_SAVE_KEYS = ['spill.run.v1', 'spill.run.v2'] as const;
 
 const ACTION_TYPES = new Set<RunAction['type']>([
   'battle',

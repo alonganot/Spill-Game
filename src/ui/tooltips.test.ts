@@ -4,7 +4,7 @@ import { MIX_RECIPES } from '../data/colors';
 import type { AttackDefinition, StatusConfig } from '../engine';
 import { blockTip, burnTip, dieTip, effectSentence, intentTip, poisonTip, spellTip } from './format';
 
-const status: StatusConfig = { burnDamage: 4, poisonDecay: 1 };
+const status: StatusConfig = { burnDamage: 4, poisonDecay: 1, curseBonus: 3, chillMultiplier: 0.5 };
 const enemy = { kind: 'enemy', name: 'Ink Blob' } as const;
 const player = { kind: 'player' } as const;
 

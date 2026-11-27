@@ -16,6 +16,14 @@ export const COLOR_HEX: Record<Color, string> = {
   purple: '#9b5de5',
   cyan: '#22c3d6',
   orange: '#f08a24',
+  // Placeholders until Milestone 8, Task 3 sets the final paints (DESIGN.md).
+  white: '#f2eee6',
+  black: '#2a2433',
+  pink: '#f27fb2',
+  grey: '#8f8a99',
+  crimson: '#a3123a',
+  blight: '#6b7a1f',
+  frost: '#a8e6ff',
 };
 
 export type FloatKind = 'damage' | 'poison' | 'burn' | 'blocked' | 'block';
@@ -39,9 +47,9 @@ export function floatsFor(event: BattleEvent | null, who: Who): FloatText[] {
     return [{ text: `🛡+${event.amount}`, kind: 'block' }];
   }
   if (event.type === 'statusApplied' && aimsAt(event, who)) {
-    return event.status === 'poison'
-      ? [{ text: `☠+${event.stacks}`, kind: 'poison' }]
-      : [{ text: `🔥+${event.stacks}`, kind: 'burn' }];
+    if (event.status === 'poison') return [{ text: `☠+${event.stacks}`, kind: 'poison' }];
+    if (event.status === 'burn') return [{ text: `🔥+${event.stacks}`, kind: 'burn' }];
+    return [];
   }
   return [];
 }
@@ -58,7 +66,8 @@ export function stageFxFor(event: BattleEvent | null, who: Who): StageFx | null 
     case 'blockGained':
       return aimsAt(event, who) ? 'guard' : null;
     case 'statusApplied':
-      return aimsAt(event, who) ? event.status : null;
+      // Curse, Silence, and Chill get their own visuals in Milestone 8, Task 3.
+      return aimsAt(event, who) && (event.status === 'poison' || event.status === 'burn') ? event.status : null;
     case 'enemyIntent':
       // Attackers lunge; poisoners and burners lunge too, since they reach the player.
       return event.enemy === who && event.intent.type !== 'block' ? 'lunge' : null;
