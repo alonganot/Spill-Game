@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { capUpgradePrice, repaintPrice, type RunAction, type RunConfig, type RunState } from '../engine';
+import { ConfirmDialog } from './ConfirmDialog';
 import { DiceEditor, DieFaces } from './DiceEditor';
 
 interface ShopScreenProps {
@@ -14,6 +16,15 @@ export function ShopScreen({ run, config, onAction }: ShopScreenProps) {
   const slotsFull = run.dice.length >= run.diceCap;
   const capMaxed = run.diceCap >= config.maxDiceCap;
   const fullHp = run.hp >= run.maxHp;
+  // With every slot full, buying a die means picking one of yours to replace.
+  const [swapping, setSwapping] = useState<number | null>(null);
+  const [replaced, setReplaced] = useState<number | null>(null);
+  const swapOffer = swapping === null ? undefined : run.shopStock[swapping];
+
+  function closeSwap() {
+    setSwapping(null);
+    setReplaced(null);
+  }
 
   return (
     <>
@@ -29,13 +40,7 @@ export function ShopScreen({ run, config, onAction }: ShopScreenProps) {
         <h3 className="subhead">Dice for sale</h3>
         <ul className="shop-list">
           {run.shopStock.map((offer, i) => {
-            const reason = offer.sold
-              ? 'Sold'
-              : slotsFull
-                ? 'No free slot'
-                : run.gold < offer.price
-                  ? 'Not enough gold'
-                  : null;
+            const reason = offer.sold ? 'Sold' : run.gold < offer.price ? 'Not enough gold' : null;
             return (
               <li key={i} className="shop-item">
                 <span className="item-main">
@@ -45,7 +50,8 @@ export function ShopScreen({ run, config, onAction }: ShopScreenProps) {
                 <BuyButton
                   label={offer.sold ? 'Sold' : `${offer.price}g`}
                   reason={reason}
-                  onClick={() => onAction({ type: 'buyDie', offerIndex: i })}
+                  note={reason === null && slotsFull ? 'Swap a die' : undefined}
+                  onClick={() => (slotsFull ? setSwapping(i) : onAction({ type: 'buyDie', offerIndex: i }))}
                 />
               </li>
             );
@@ -101,6 +107,42 @@ export function ShopScreen({ run, config, onAction }: ShopScreenProps) {
         </div>
       </section>
 
+      {swapOffer && (
+        <ConfirmDialog
+          title={`Swap in the ${swapOffer.die.name} die?`}
+          body="Every slot is full. Pick one of your dice to replace; the new die takes its place."
+          confirmLabel={`Replace · ${swapOffer.price}g`}
+          confirmDisabled={replaced === null}
+          onConfirm={() => {
+            if (swapping === null || replaced === null) return;
+            onAction({ type: 'buyDie', offerIndex: swapping, replaceIndex: replaced });
+            closeSwap();
+          }}
+          onCancel={closeSwap}
+        >
+          <div className="swap-new">
+            <span className="muted small">New</span>
+            <DieFaces die={swapOffer.die} />
+          </div>
+          <ul className="dice-list swap-list" role="group" aria-label="Die to replace">
+            {run.dice.map((die, i) => (
+              <li key={i}>
+                <button
+                  type="button"
+                  className={`die-row swap-pick${replaced === i ? ' selected' : ''}`}
+                  aria-pressed={replaced === i}
+                  aria-label={`Replace ${die.name} die ${i + 1}`}
+                  onClick={() => setReplaced(i)}
+                >
+                  <span className="die-name">{die.name}</span>
+                  <DieFaces die={die} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </ConfirmDialog>
+      )}
+
       <footer className="footer">
         <button type="button" className="btn btn-primary" onClick={() => onAction({ type: 'leaveShop' })}>
           Leave shop
@@ -110,13 +152,23 @@ export function ShopScreen({ run, config, onAction }: ShopScreenProps) {
   );
 }
 
-/** Price button; when it can't be bought, the reason is shown inside the button. */
-function BuyButton({ label, reason, onClick }: { label: string; reason: string | null; onClick: () => void }) {
-  const showReason = reason !== null && reason !== label;
+/** Price button; when it can't be bought, the reason is shown inside the button (or else an optional note). */
+function BuyButton({
+  label,
+  reason,
+  note,
+  onClick,
+}: {
+  label: string;
+  reason: string | null;
+  note?: string;
+  onClick: () => void;
+}) {
+  const shown = reason !== null && reason !== label ? reason : note;
   return (
     <button type="button" className="btn btn-buy" disabled={reason !== null} onClick={onClick}>
       <span>{label}</span>
-      {showReason && <span className="buy-reason">{reason}</span>}
+      {shown && <span className="buy-reason">{shown}</span>}
     </button>
   );
 }

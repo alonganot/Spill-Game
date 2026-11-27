@@ -13,6 +13,7 @@ import type {
   RunState,
   ShopDieOffer,
   StageDefinition,
+  VictoryGold,
 } from './types';
 
 type Started = { state: RunState; events: BattleEvent[] };
@@ -62,6 +63,16 @@ export function capUpgradePrice(run: RunState, config: RunConfig): number {
   return base + step * run.purchases.cap;
 }
 
+/** What winning the current fight pays: base gold for its kind, plus a bonus per color left in the pool. */
+export function victoryGold(run: RunState, config: RunConfig): VictoryGold {
+  const stage = currentStage(run, config);
+  const base = stage ? config.economy.goldPerWin[stage.kind] : 0;
+  const leftover = run.battle?.pool.length ?? 0;
+  const perColor = config.economy.leftoverColorGold;
+  const bonus = leftover * perColor;
+  return { base, leftover, perColor, bonus, total: base + bonus };
+}
+
 /** Applies a run action. Invalid actions return the unchanged run and an error. */
 export function applyRunAction(run: RunState, action: RunAction, config: RunConfig, rng: Rng): RunActionResult {
   const fail = (error: RunError): RunActionResult => ({ ok: false, state: run, error });
@@ -85,7 +96,7 @@ export function applyRunAction(run: RunState, action: RunAction, config: RunConf
       const won: RunState = {
         ...run,
         hp: battle.player.hp,
-        gold: run.gold + config.economy.goldPerWin[stage.kind],
+        gold: run.gold + victoryGold(run, config).total,
         battle: null,
       };
       if (run.stageIndex >= config.stages.length - 1) return done({ ...won, phase: 'victory' });
@@ -148,12 +159,16 @@ export function applyRunAction(run: RunState, action: RunAction, config: RunConf
       const offer = run.shopStock[action.offerIndex];
       if (!offer) return fail('invalid_target');
       if (offer.sold) return fail('sold_out');
-      if (run.dice.length >= run.diceCap) return fail('dice_cap_reached');
+      const { replaceIndex } = action;
+      const replacing = replaceIndex !== undefined;
+      if (replacing && (!Number.isInteger(replaceIndex) || !run.dice[replaceIndex])) return fail('invalid_target');
+      if (!replacing && run.dice.length >= run.diceCap) return fail('dice_cap_reached');
       if (run.gold < offer.price) return fail('not_enough_gold');
       return done({
         ...run,
         gold: run.gold - offer.price,
-        dice: [...run.dice, offer.die],
+        // A replaced die keeps its place, so the roll order stays the same.
+        dice: replacing ? run.dice.map((d, i) => (i === replaceIndex ? offer.die : d)) : [...run.dice, offer.die],
         shopStock: run.shopStock.map((o, i) => (i === action.offerIndex ? { ...o, sold: true } : o)),
       });
     }

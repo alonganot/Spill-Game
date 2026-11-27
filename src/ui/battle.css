@@ -772,6 +772,36 @@
 .result h2.victory { color: var(--accent); }
 .result h2.defeat { color: var(--red); }
 
+/* Victory gold: base, unused paint bonus, total. */
+.gold-breakdown {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+
+.gold-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.9rem;
+}
+
+.gold-line dt { color: var(--muted); }
+.gold-line dd { margin: 0; font-weight: 700; }
+
+.gold-total {
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+  margin-top: 2px;
+  font-size: 1rem;
+}
+
+.gold-total dt { color: var(--text); font-weight: 700; }
+.gold-total dd { color: var(--accent); }
+
 /* Ready spells + Spellbook */
 .spells-section .section-head {
   align-items: center;

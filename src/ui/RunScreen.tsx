@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { battleConfigFor, currentStage, type RunAction, type RunConfig, type RunError, type RunState } from '../engine';
+import { battleConfigFor, currentStage, victoryGold, type RunAction, type RunConfig, type RunError, type RunState } from '../engine';
 import { BattleScreen } from './BattleScreen';
 import { RewardScreen } from './RewardScreen';
 import { RunEndScreen } from './RunEndScreen';
@@ -51,6 +51,8 @@ interface RunScreenProps {
   onMenu: () => void;
   /** Hidden, but kept mounted, while another screen shows. */
   hidden: boolean;
+  /** Another screen (Settings, the menu) is on top, so nothing should act on its own. */
+  paused: boolean;
 }
 
 /**
@@ -67,6 +69,7 @@ export function RunScreen({
   onMainMenu,
   onMenu,
   hidden,
+  paused,
 }: RunScreenProps) {
   const { run } = view;
   const outsideBattle = run.phase !== 'battle';
@@ -117,6 +120,8 @@ export function RunScreen({
           actionCount={view.actionCount}
           isFinalFight={run.stageIndex === config.stages.length - 1}
           gold={run.gold}
+          paused={paused}
+          reward={run.battle.phase === 'victory' ? victoryGold(run, config) : null}
           onAction={(action) => dispatch({ type: 'battle', action })}
           onContinue={() => dispatch({ type: 'continue' })}
         />

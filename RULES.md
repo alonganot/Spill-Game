@@ -67,14 +67,14 @@ Enemies can carry Poison and Burn (above) plus these. All values (`curseBonus`, 
 - A run is **15 fights in 3 acts of 5**. Fights 1–3 have one enemy; from fight 4 on, every fight has 2–3. Elites are fights 3, 8, and 13; act bosses (with minions) are fights 5, 10, and 15. Act 3 reuses earlier enemies, tougher.
 - **After every fight but the last:** a free **Reward** pick, then a **Shop**, then the next fight. Beating the final boss wins the run; losing any fight ends it.
 - **HP carries over** between fights (including HP healed during a fight). Block, all statuses (player and enemy), and the Color Pool reset at the start of each fight.
-- Each won fight pays **gold** (elites and bosses pay more). Unspent gold carries over.
+- Each won fight pays **gold** (elites and bosses pay more), plus a **leftover paint bonus**: 1 gold for every color still in the Color Pool when the fight is won. The Victory popup shows the base gold, the bonus, and the total. Unspent gold carries over.
 - **Dice:** a run starts with 2 Standard dice (Red/Blue/Green) and a **dice cap** of 3. Dice faces are base colors only (Red, Blue, Green, White, Black).
 - **Reward stops:** pick 1 of 3 offers drawn from Gold, Heal (can't go above max HP), and Free repaint (to any base color, White and Black included). Elite and boss rewards are bigger.
 - **Shop stops** (leave whenever you like):
   - **Repaint a face:** set any face of any owned die to Red, Blue, Green, White, or Black. Repeatable; the price rises after each purchase.
   - **Heal:** restore a fixed amount of HP for gold (not allowed at full HP).
   - **+1 dice cap:** price rises after each purchase; the cap can't go above 6.
-  - **Dice for sale:** 2 random themed dice per visit; each can be bought once and needs a free slot under the cap. The pool includes White/Black dice (e.g. Cleric: White/Red/Blue, Occult: Black/Green/Red, Monochrome: White/Black).
+  - **Dice for sale:** 2 random themed dice per visit; each can be bought once. With a free slot under the cap, it's added to your dice; you can instead **replace** one of your dice with it (the new die takes the old one's place), and with every slot full, replacing is the only way to buy. The pool includes White/Black dice (e.g. Cleric: White/Red/Blue, Occult: Black/Green/Red, Monochrome: White/Black).
 - Prices, rewards, and gold amounts live in `src/data/economy.ts`.
 
 ## 5. Balancing & Configuration Rule

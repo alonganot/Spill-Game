@@ -18,6 +18,7 @@ import {
   type EnemyState,
   type Effect,
   type MixRecipe,
+  type VictoryGold,
 } from '../engine';
 import { MIX_HINT_MAX_MIXES } from '../data/balance';
 import { enemySprite } from '../data/sprites';
@@ -34,6 +35,7 @@ import { beforeOpeningRoll, buildTimeline } from './timeline';
 import { chipsForPlan } from './mixHint';
 import { usePlayback } from './usePlayback';
 import { useDesktop, useWindowSize } from './useMediaQuery';
+import { useSettings } from './settings';
 import { DiceRack } from './DiceRack';
 import { useChipDrag } from './useDrag';
 import { BOWL_RESULT, MixingBowl, WorkbenchProvider, type Workbench } from './workbench';
@@ -44,6 +46,7 @@ import {
   EMPTY_STAGING,
   place,
   remove,
+  slotSource,
   spellReady,
   stagedIndices,
   type StageTarget,
@@ -66,6 +69,10 @@ interface BattleScreenProps {
   isFinalFight: boolean;
   /** The run's gold, shown beside the player's HP. */
   gold: number;
+  /** Settings or the menu is on top: Auto-cast waits until the player is back. */
+  paused: boolean;
+  /** What the won fight pays, shown on the Victory popup; null until it's won. */
+  reward: VictoryGold | null;
   onAction: (action: BattleAction) => void;
   onContinue: () => void;
 }
@@ -79,6 +86,8 @@ export function BattleScreen({
   actionCount,
   isFinalFight,
   gold,
+  paused,
+  reward,
   onAction,
   onContinue,
 }: BattleScreenProps) {
@@ -293,11 +302,13 @@ export function BattleScreen({
     onAction(action);
   }
 
+  const { autoCast } = useSettings();
   const workbench: Workbench = {
     pool,
     staging,
     selectedChip,
     locked,
+    autoCast,
     recipes: config.recipes,
     status: config.status,
     dropClass,
@@ -309,8 +320,10 @@ export function BattleScreen({
     fillSlot: (attackId, color) => {
       const target: StageTarget = { kind: 'spell', attackId };
       if (selectedChip !== null) return stageTo(selectedChip, target);
-      const chip = pool.findIndex((c, i) => c === color && !staged.has(i));
-      if (chip >= 0) return stageTo(chip, target);
+      // The bowl first (a drop in it, or its mix), then the pool.
+      const source = slotSource(staging, pool, color, config.recipes);
+      if (source?.kind === 'chip') return stageTo(source.chip, target);
+      if (source?.kind === 'mixed') return mixInto(target);
       // The color isn't in the pool: offer the mix that makes it.
       const plan = spells.find((s) => s.attack.id === attackId)?.plan;
       if (plan) prepareMix(plan);
@@ -329,6 +342,22 @@ export function BattleScreen({
     prepareMix,
     hint: setHintedAttack,
   };
+
+  // Auto-cast: once a spell's slots are all full, cast it on the target. Never
+  // while beats play (`locked`) or the game is paused (Settings on top), and at
+  // most once per action: the ref holds the action it cast at, so a re-render
+  // before the new state arrives can't cast twice. A slot filled by a bowl mix
+  // casts once that mix's beats finish.
+  const autoCastAt = useRef<number | null>(null);
+  const autoReady =
+    autoCast && !locked && !paused && fresh
+      ? config.attacks.find((a) => spellReady(staging, a.id, a.cost, pool))?.id
+      : undefined;
+  useEffect(() => {
+    if (autoReady === undefined || autoCastAt.current === actionCount) return;
+    autoCastAt.current = actionCount;
+    workbench.cast(autoReady);
+  });
 
   // Craftable now or after mixing; spells out of reach stay in the Spellbook.
   const craftable = [...spells.filter((s) => s.status === 'ready'), ...spells.filter((s) => s.status === 'craftable')];
@@ -605,6 +634,7 @@ export function BattleScreen({
                 ? `You won on turn ${state.turn} with ${state.player.hp} HP left.`
                 : defeatLine(state, labels)}
             </p>
+            {state.phase === 'victory' && reward && <GoldBreakdown reward={reward} />}
             <button type="button" className="btn btn-primary" onClick={onContinue}>
               {state.phase === 'defeat' ? 'See results' : isFinalFight ? 'Finish run' : 'Continue'}
             </button>
@@ -673,6 +703,30 @@ function intentPlan(
     return { intent: { ...intent, amount: attackHitDamage(intent.amount, enemy, config) }, mark: 'chilled' };
   }
   return { intent, mark: null };
+}
+
+/** The Victory popup's gold: base, the unused paint bonus (when there's paint left), and the total. */
+function GoldBreakdown({ reward }: { reward: VictoryGold }) {
+  return (
+    <dl className="gold-breakdown" aria-label="Gold earned">
+      <div className="gold-line">
+        <dt>Victory gold</dt>
+        <dd>+{reward.base}g</dd>
+      </div>
+      {reward.leftover > 0 && (
+        <div className="gold-line">
+          <dt>
+            Unused paint ({reward.leftover} {reward.leftover === 1 ? 'drop' : 'drops'} × {reward.perColor}g)
+          </dt>
+          <dd>+{reward.bonus}g</dd>
+        </div>
+      )}
+      <div className="gold-line gold-total">
+        <dt>Total</dt>
+        <dd>🪙 +{reward.total}g</dd>
+      </div>
+    </dl>
+  );
 }
 
 /** Who was still standing when the player fell. */

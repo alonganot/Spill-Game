@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 
 interface ConfirmDialogProps {
   title: string;
@@ -6,12 +6,25 @@ interface ConfirmDialogProps {
   confirmLabel: string;
   /** Styles the confirm button as destructive. */
   danger?: boolean;
+  /** Extra content between the body and the buttons (a picker, for example). */
+  children?: ReactNode;
+  /** Disables the confirm button, e.g. until something is picked. */
+  confirmDisabled?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
 /** A yes/no question over the screen. Cancel has focus first; Escape cancels. */
-export function ConfirmDialog({ title, body, confirmLabel, danger = false, onConfirm, onCancel }: ConfirmDialogProps) {
+export function ConfirmDialog({
+  title,
+  body,
+  confirmLabel,
+  danger = false,
+  children,
+  confirmDisabled = false,
+  onConfirm,
+  onCancel,
+}: ConfirmDialogProps) {
   const titleId = useId();
   const bodyId = useId();
   const boxRef = useRef<HTMLDivElement>(null);
@@ -61,11 +74,17 @@ export function ConfirmDialog({ title, body, confirmLabel, danger = false, onCon
         <p id={bodyId} className="muted">
           {body}
         </p>
+        {children}
         <div className="confirm-actions">
           <button type="button" className="btn" ref={cancelRef} onClick={onCancel}>
             Cancel
           </button>
-          <button type="button" className={`btn ${danger ? 'btn-danger' : 'btn-primary'}`} onClick={onConfirm}>
+          <button
+            type="button"
+            className={`btn ${danger ? 'btn-danger' : 'btn-primary'}`}
+            disabled={confirmDisabled}
+            onClick={onConfirm}
+          >
             {confirmLabel}
           </button>
         </div>

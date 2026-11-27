@@ -12,6 +12,8 @@ export interface DesktopBridge {
   /** Calls `listener` with whether the window is fullscreen, then on every change. Returns an unsubscribe. */
   onFullScreenChange(listener: (fullscreen: boolean) => void): () => void;
   setFullScreen(fullscreen: boolean): Promise<void>;
+  /** Closes the app (the main menu's Quit button). */
+  quit(): Promise<void>;
 }
 
 declare global {

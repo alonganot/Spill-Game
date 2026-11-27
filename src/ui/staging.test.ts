@@ -10,6 +10,7 @@ import {
   place,
   prune,
   remove,
+  slotSource,
   spellReady,
   stagedIndices,
   type Staging,
@@ -51,6 +52,27 @@ describe('the mixing bowl', () => {
     expect(bowlResult(one, pool, MIX_RECIPES).kind).toBe('waiting');
     const twoReds = placeOk(one, 3, { kind: 'bowl' });
     expect(bowlResult(twoReds, pool, MIX_RECIPES).kind).toBe('no-mix');
+  });
+});
+
+describe('where a tapped slot takes its paint from', () => {
+  it('takes a matching drop from the bowl before the pool', () => {
+    const bowl: Staging = { bowl: [3], spells: {} }; // the second red
+    expect(slotSource(bowl, pool, 'red', MIX_RECIPES)).toEqual({ kind: 'chip', chip: 3 });
+    expect(slotSource(EMPTY_STAGING, pool, 'red', MIX_RECIPES)).toEqual({ kind: 'chip', chip: 0 });
+  });
+
+  it("takes the bowl's mix when it makes that color", () => {
+    const redBlue: Staging = { bowl: [0, 1], spells: {} };
+    expect(slotSource(redBlue, pool, 'purple', MIX_RECIPES)).toEqual({ kind: 'mixed' });
+    // A drop of the color itself still wins over the mix.
+    expect(slotSource(redBlue, pool, 'red', MIX_RECIPES)).toEqual({ kind: 'chip', chip: 0 });
+  });
+
+  it('skips chips staged on spells, and finds nothing when the color is missing', () => {
+    const onSpell: Staging = { bowl: [], spells: { ember: [0] } };
+    expect(slotSource(onSpell, pool, 'red', MIX_RECIPES)).toEqual({ kind: 'chip', chip: 3 });
+    expect(slotSource(EMPTY_STAGING, pool, 'orange', MIX_RECIPES)).toBeNull();
   });
 });
 

@@ -15,6 +15,8 @@ export interface Workbench {
   /** A chip lifted by a tap (or Enter), waiting for a tap on where it goes. */
   selectedChip: number | null;
   locked: boolean;
+  /** Spells cast themselves once their slots are full, so cards show no Cast button. */
+  autoCast: boolean;
   recipes: readonly MixRecipe[];
   /** Burn damage and poison decay, for spell tooltips. */
   status: StatusConfig;
@@ -25,7 +27,7 @@ export interface Workbench {
   chipClick: (handler: () => void) => () => void;
   /** Puts the lifted chip into a target (tap-to-place). */
   placeSelected: (target: StageTarget) => void;
-  /** Fills an empty spell slot: with the lifted chip, or else the first free chip of that color. */
+  /** Fills an empty spell slot: with the lifted chip, or else that color from the bowl (a drop or its mix), or else the pool. */
   fillSlot: (attackId: string, color: Color) => void;
   /** Sends a staged chip back to the pool. */
   returnChip: (chip: number) => void;

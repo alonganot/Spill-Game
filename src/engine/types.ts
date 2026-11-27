@@ -198,6 +198,8 @@ export interface RewardAmounts {
 
 export interface EconomyConfig {
   goldPerWin: Record<StageKind, number>;
+  /** Extra gold per color still in the pool when a fight is won. */
+  leftoverColorGold: number;
   /** Reward pick amounts by the kind of fight just won. */
   rewards: Record<StageKind, RewardAmounts>;
   shop: {
@@ -234,6 +236,15 @@ export interface ShopDieOffer extends DieForSale {
 
 export type RunPhase = 'battle' | 'reward' | 'shop' | 'victory' | 'defeat';
 
+/** The gold a won fight pays: its base, plus a bonus per color left in the pool. */
+export interface VictoryGold {
+  base: number;
+  leftover: number;
+  perColor: number;
+  bonus: number;
+  total: number;
+}
+
 export interface RunState {
   stageIndex: number;
   phase: RunPhase;
@@ -261,7 +272,8 @@ export type RunAction =
   /** Leaves a finished fight: collects gold and moves to the reward pick (or ends the run). */
   | { type: 'continue' }
   | { type: 'chooseReward'; index: number; repaint?: RepaintTarget }
-  | { type: 'buyDie'; offerIndex: number }
+  /** With `replaceIndex`, the bought die takes the place of that die; without it, it needs a free slot. */
+  | { type: 'buyDie'; offerIndex: number; replaceIndex?: number }
   | { type: 'repaint'; target: RepaintTarget }
   | { type: 'buyHeal' }
   | { type: 'buyCapUpgrade' }

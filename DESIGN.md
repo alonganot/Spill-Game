@@ -201,7 +201,7 @@ The workbench is one `.px-frame-gold` panel. Sections keep their `section-head` 
 ### 6.3 Craftable spells (`SpellCard` in `Spellbook.tsx`, `.attacks`)
 - **Dark parchment cards** (`--parchment-dark` fill with a faint paper-grain texture, stepped corners) with an **element-tinted border**: the border takes the color of the spell's main cost color (set as a `--spell-color` custom property on the card).
 - **Cost sockets** (`.cost-slots .slot`): **carved stone sockets** (`.px-recess` on `--stone`) with a faint ring of the needed color. When a paint drop fills a socket it **lights up**: the socket rim glows in that color.
-- **Cast** is a chunky gold tactile button (§4.2). When every socket is full (`.attack-charged`) the card's border brightens and the Cast button glows.
+- **Cast** is a chunky gold tactile button (§4.2). When every socket is full (`.attack-charged`) the card's border brightens and the Cast button glows. With the Auto-cast setting on there's no Cast button: the spell casts itself as soon as its sockets fill.
 - **Area spells** (Splash, Miasma, anything with an `area` effect) carry a visible **"hits all" marker**: a small parchment tag with a multi-target icon (e.g. three pips) and the text `ALL`, next to the spell name. The effect line keeps "dmg all".
 - `⚗ N mixes` (`.attack-mix-tag`) is a small cauldron-icon tag; locked/dim spells look faded parchment with dark sockets and no glow.
 
@@ -218,13 +218,14 @@ The workbench is one `.px-frame-gold` panel. Sections keep their `section-head` 
 
 Every screen shares the same backdrop (nebula + stars, without the floor), frames, buttons, and type:
 
-- **Main Menu** (`MainMenu.tsx`, `menu.css`): the title scene on the nebula with the stone floor under the hero and slime; menu buttons are stacked tactile buttons (New run is primary gold).
+- **Main Menu** (`MainMenu.tsx`, `menu.css`): the title scene on the nebula with the stone floor under the hero and slime; menu buttons are stacked tactile buttons (New run is primary gold). In the Windows app a **Quit** button closes the game, last in the stack as a plain menu button; browsers don't show it.
 - **Reward cards** (`RewardScreen.tsx`, `run.css` `.choice`): three `.px-frame-gold` parchment cards; the icon sits in a recessed socket; hover/focus glows gold.
-- **Dice Shop** (`ShopScreen.tsx`): shop items are dark parchment rows/cards in bronze frames; prices in the pixel font with a gold coin glyph; Buy is primary; unaffordable items are flat and dim with their reason visible.
+- **Dice Shop** (`ShopScreen.tsx`): shop items are dark parchment rows/cards in bronze frames; prices in the pixel font with a gold coin glyph; Buy is primary; unaffordable items are flat and dim with their reason visible. With every dice slot full, a die's Buy button stays live with a "Swap a die" note and opens the **swap picker**: a confirm dialog showing the new die's faces, then your dice as selectable rows (`.swap-pick`, gold outline when picked), and **Replace · price**.
 - **Dice editor** (`DiceEditor.tsx`): faces sit in recessed stone sockets like the dice tray; color picks are glowing drops.
 - **Spellbook** (`Spellbook.tsx`): a large parchment-and-bronze sheet using the same spell cards, with every mix recipe listed under them as paint drops (`.recipe-list`). It takes the whole window height (24px margins on desktop); the title, the Unavailable-only toggle, and ✕ stay fixed at the top, and only the body (`.spellbook-body`: spells, mixes, legend) scrolls.
 - **Battle Log** (`BattleLog.tsx`): an aged scroll panel (`--parchment-dark`, bronze frame), body-font lines.
-- **Settings** (`SettingsScreen.tsx`): grouped `.px-frame` panels; the seed in the pixel font in a recessed field; danger actions use `.btn-danger`.
+- **Settings** (`SettingsScreen.tsx`): grouped `.px-frame` panels; the seed in the pixel font in a recessed field; danger actions use `.btn-danger`. Two-way choices (Display: Windowed / Fullscreen, Spells: Cast button / Auto-cast) are a row of two buttons, the chosen one primary with `aria-pressed`, plus a one-line hint.
+- **Victory popup** (the battle's result overlay): under the line about the win, a small gold list (`.gold-breakdown`): Victory gold, Unused paint (drops × gold, only when paint is left), and a ruled **Total** in gold.
 - **Run End** (`RunEndScreen.tsx`): a large gold-framed panel, Victory in gold / Defeat in `--danger`, stats in the pixel font.
 - **Dialogs and overlays** (`ConfirmDialog.tsx`, pause panel, tooltips): gold-framed panels over a `--bg-deep` scrim at ~70% opacity. Tooltips are small bronze-framed panels with body-font text.
 - **Top bar** (`run.css` `.topbar`): a dark strip with a bronze bottom rule; stage, HP, and gold in the pixel font.
