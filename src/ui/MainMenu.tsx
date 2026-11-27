@@ -3,6 +3,7 @@ import { enemySprite, HERO_SPRITE, TITLE_SPRITE } from '../data/sprites';
 import { ConfirmDialog } from './ConfirmDialog';
 import { PixelSprite } from './PixelSprite';
 import { UpdateNotice } from './UpdateNotice';
+import { APP_VERSION } from './version';
 import { useDesktop } from './useMediaQuery';
 
 interface MainMenuProps {
@@ -58,6 +59,8 @@ export function MainMenu({ canContinue, onNewRun, onContinue, onSettings }: Main
           Settings
         </button>
       </nav>
+
+      <p className="app-version muted">v{APP_VERSION}</p>
 
       {confirmingNewRun && (
         <ConfirmDialog

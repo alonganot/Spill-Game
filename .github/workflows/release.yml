@@ -1,0 +1,77 @@
+# Every push to main (a merged PR) publishes a new version of the Windows app.
+# Installed games find it on their next launch and offer the update on the main menu.
+#
+# 1. scripts/release-version.mjs picks patch / minor / major from what changed since
+#    the last v* tag (or a [major]/[minor]/[patch]/[skip release] commit marker).
+#    Docs-only or test-only changes don't release.
+# 2. Tests and the web build must pass.
+# 3. The built commit is tagged vX.Y.Z. Tags are the source of truth for the version:
+#    package.json gets it only inside this job, so nothing is committed back to main.
+# 4. electron-builder builds the NSIS installer and publishes it to the GitHub Release vX.Y.Z.
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One release at a time, in merge order.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Decide the version
+        id: version
+        shell: bash
+        run: node scripts/release-version.mjs
+
+      - name: Install
+        if: steps.version.outputs.release == 'true'
+        run: npm ci
+
+      - name: Test
+        if: steps.version.outputs.release == 'true'
+        run: npm test
+
+      - name: Set the version
+        if: steps.version.outputs.release == 'true'
+        shell: bash
+        run: npm version "${{ steps.version.outputs.version }}" --no-git-tag-version --allow-same-version
+
+      - name: Build the web game
+        if: steps.version.outputs.release == 'true'
+        run: npm run build
+
+      - name: Tag the release
+        if: steps.version.outputs.release == 'true'
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          REASON: ${{ steps.version.outputs.reason }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$VERSION" -m "Spill v$VERSION" -m "$REASON"
+          git push origin "v$VERSION"
+
+      - name: Build and publish the installer
+        if: steps.version.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win nsis --publish always

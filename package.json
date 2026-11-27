@@ -18,7 +18,6 @@
     "electron:dev": "node electron/dev.mjs",
     "electron:start": "npm run build && electron .",
     "dist:win": "npm run build && electron-builder --win nsis",
-    "release:win": "npm run build && electron-builder --win nsis --publish always",
     "icon": "node scripts/make-icon.mjs"
   },
   "dependencies": {
@@ -76,7 +75,7 @@
         "provider": "github",
         "owner": "alonganot",
         "repo": "Spill-Game",
-        "releaseType": "draft"
+        "releaseType": "release"
       }
     ]
   }

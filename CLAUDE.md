@@ -31,14 +31,19 @@ Players roll colored dice each turn, mix colors to create new colors, and combin
 - `npm run electron:dev` — the game in an Electron window, against the Vite dev server.
 - `npm run electron:start` — build, then run the production build in Electron.
 - `npm run dist:win` — build the versioned Windows installer (`release/Spill-Setup-<version>.exe`) locally, without publishing.
-- `npm run release:win` — build and upload the installer, `.blockmap`, and `latest.yml` to a draft GitHub Release (needs `GH_TOKEN`).
-
-## Releasing an update (Windows app)
-1. Bump `version` in `package.json` (installed games only update to a higher version).
-2. `$env:GH_TOKEN = "<GitHub token with repo access>"; npm run release:win` — never commit the token.
-3. On GitHub, publish the draft release. Installed games show the update notice on their next launch.
-- Testing without publishing: `npm run dist:win`, serve `release/` over HTTP, and start an installed game with `SPILL_UPDATE_URL=<that URL>`.
 - `npm run icon` — redraw `electron/icon.png` from the hero sprite.
+
+## Releases (automatic)
+Every push to `main` (a merged PR) runs `.github/workflows/release.yml`: it picks the next version, runs the tests, builds, tags `vX.Y.Z`, and publishes the Windows installer to GitHub Releases. Installed games see it on their next launch (update notice on the main menu, `src/ui/UpdateNotice.tsx`); the menu also shows the running version (`APP_VERSION`, injected from `package.json` by `vite.config.ts`).
+- **Version source of truth: the `v*` git tags.** `package.json`'s `version` is set only inside the release job and isn't committed back, so in the repo it may lag behind the latest release. Don't bump it by hand.
+- **Bump rules** (`scripts/release-version.mjs`, tested in `scripts/release-version.test.ts`), compared with the last tag:
+  - No game files changed (only docs, CI, tests): no release.
+  - **major**: the run save format changed (`SAVE_KEY` in `src/ui/runSave.ts`, old saves are dropped), or a commit says `BREAKING CHANGE`.
+  - **minor**: new files under `src/` or `electron/`, or 400+ changed lines in game files.
+  - **patch**: anything else.
+  - A commit message marker overrides it: `[major]`, `[minor]`, `[patch]`, or `[skip release]`. Put it in the PR title so the merge commit carries it.
+- If a release job fails after tagging, the next merge releases everything since (or delete the tag on GitHub and re-run the job).
+- Testing an update locally without publishing: `npm run dist:win`, serve `release/` over HTTP, and start an installed game with `SPILL_UPDATE_URL=<that URL>`.
 
 ## Engineering & Collaboration Rules
 - Read `CLAUDE.md`, `PLAN.md`, and `RULES.md` before starting work (and `DESIGN.md` before any UI work).
