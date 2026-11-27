@@ -41,7 +41,7 @@ export function floatsFor(event: BattleEvent | null, who: Who): FloatText[] {
   if (event.type === 'statusApplied' && aimsAt(event, who)) {
     return event.status === 'poison'
       ? [{ text: `☠+${event.stacks}`, kind: 'poison' }]
-      : [{ text: '🔥', kind: 'burn' }];
+      : [{ text: `🔥+${event.stacks}`, kind: 'burn' }];
   }
   return [];
 }

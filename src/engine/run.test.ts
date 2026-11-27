@@ -171,7 +171,7 @@ describe('HP and gold between fights', () => {
     run = act(run, { type: 'continue' });
     expect(run.hp).toBe(13);
     run = act(act(run, { type: 'chooseReward', index: 0 }), { type: 'leaveShop' });
-    expect(run.battle?.player).toMatchObject({ hp: 13, maxHp: 20, block: 0, statuses: { poison: 0, burn: false } });
+    expect(run.battle?.player).toMatchObject({ hp: 13, maxHp: 20, block: 0, statuses: { poison: 0, burn: 0 } });
     expect(run.battle?.pool).toEqual(['red', 'blue']);
     expect(battleConfigFor(run, config).playerStartHp).toBe(13);
   });

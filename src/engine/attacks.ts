@@ -44,7 +44,7 @@ export function applyEffect(
         return { ...enemy, statuses: { ...enemy.statuses, poison: enemy.statuses.poison + effect.stacks } };
       case 'burn':
         events.push({ type: 'statusApplied', target: 'enemy', enemy: index, status: 'burn', stacks: 1 });
-        return { ...enemy, statuses: { ...enemy.statuses, burn: true } };
+        return { ...enemy, statuses: { ...enemy.statuses, burn: enemy.statuses.burn + 1 } };
     }
   });
   return { player, enemies: next, events };

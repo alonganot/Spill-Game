@@ -53,7 +53,7 @@ export interface EnemyDefinition {
 }
 
 export interface StatusConfig {
-  /** Fixed damage dealt by Burn when it resolves (then Burn is cleared). */
+  /** Damage per Burn stack when Burn resolves (then every stack is cleared). */
   burnDamage: number;
   /** Poison stacks removed after each tick. */
   poisonDecay: number;
@@ -75,7 +75,8 @@ export interface BattleConfig {
 
 export interface Statuses {
   poison: number;
-  burn: boolean;
+  /** Burn stacks. Each deals `burnDamage` when Burn resolves; then all of them go out. */
+  burn: number;
 }
 
 export interface Combatant {

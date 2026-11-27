@@ -4,7 +4,7 @@ import type { BattleEvent, Combatant, StatusConfig, Target } from './types';
 /**
  * Resolves end-of-turn statuses on one combatant:
  * Poison deals damage equal to its stacks, then decays.
- * Burn deals fixed damage, then is cleared.
+ * Burn deals `burnDamage` per stack, then every stack is cleared.
  * For an enemy, pass its index so the events say which one was hit.
  */
 export function resolveStatuses<C extends Combatant>(
@@ -28,9 +28,9 @@ export function resolveStatuses<C extends Combatant>(
     events.push({ type: 'damaged', target, ...who, amount: dealt, blocked: 0, source: 'poison' });
   }
 
-  if (current.statuses.burn) {
-    const { combatant: hit, dealt } = loseHp(current, config.burnDamage);
-    current = { ...current, ...hit, statuses: { ...hit.statuses, burn: false } };
+  if (current.statuses.burn > 0) {
+    const { combatant: hit, dealt } = loseHp(current, config.burnDamage * current.statuses.burn);
+    current = { ...current, ...hit, statuses: { ...hit.statuses, burn: 0 } };
     events.push({ type: 'damaged', target, ...who, amount: dealt, blocked: 0, source: 'burn' });
   }
 

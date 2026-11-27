@@ -18,9 +18,10 @@ describe('status tooltips', () => {
   });
 
   it('explains burn with the configured damage', () => {
-    expect(burnTip(enemy, { ...status, burnDamage: 6 })).toBe(
-      "Burn: Ink Blob takes 6 damage at the end of the turn, then it goes out. Ignores Block. Doesn't stack.",
+    expect(burnTip(1, enemy, { ...status, burnDamage: 6 })).toBe(
+      'Burn 1: Ink Blob takes 6 damage at the end of the turn, then it goes out. Ignores Block. Burning again adds a stack.',
     );
+    expect(burnTip(3, enemy, { ...status, burnDamage: 6 })).toContain('takes 18 damage (6 per stack)');
   });
 
   it('says how long block lasts for each side', () => {

@@ -65,12 +65,21 @@ describe('player actions', () => {
     expect(events).toContainEqual({ type: 'blockGained', target: 'player', amount: 4 });
   });
 
+  it('burning an enemy twice stacks, and both stacks hit when Burn resolves', () => {
+    let s = withState(start(), { pool: ['red', 'red', 'red', 'red'] });
+    s = act(s, { type: 'trigger', attackId: 'scorch' }).state;
+    s = act(s, { type: 'trigger', attackId: 'scorch' }).state;
+    expect(s.enemies[0]!.statuses.burn).toBe(2);
+    const { state } = act(s, { type: 'endTurn' });
+    expect(state.enemies[0]!).toMatchObject({ hp: 30 - 2 * 4, statuses: { burn: 0 } });
+  });
+
   it('status attacks apply poison stacks and burn to the enemy', () => {
     let s = withState(start(), { pool: ['green', 'green', 'red', 'red'] });
     s = act(s, { type: 'trigger', attackId: 'venom' }).state;
     s = act(s, { type: 'trigger', attackId: 'venom' }).state;
     s = act(s, { type: 'trigger', attackId: 'scorch' }).state;
-    expect(s.enemies[0]!.statuses).toEqual({ poison: 6, burn: true });
+    expect(s.enemies[0]!.statuses).toEqual({ poison: 6, burn: 1 });
     expect(s.pool).toEqual([]);
   });
 
@@ -141,17 +150,17 @@ describe('end of turn', () => {
 
   it('resolves in order: statuses, enemy action, next roll', () => {
     const s = start();
-    const poisoned = patchEnemy(s, { statuses: { poison: 2, burn: true } });
+    const poisoned = patchEnemy(s, { statuses: { poison: 2, burn: 1 } });
     const { events } = act(poisoned, { type: 'endTurn' });
     expect(events.map((e) => e.type)).toEqual(['damaged', 'damaged', 'enemyIntent', 'damaged', 'rolled']);
   });
 
   it('ticks poison and burn on the enemy', () => {
     const s = start();
-    const poisoned = patchEnemy(s, { statuses: { poison: 3, burn: true } });
+    const poisoned = patchEnemy(s, { statuses: { poison: 3, burn: 1 } });
     const { state } = act(poisoned, { type: 'endTurn' });
     expect(state.enemies[0]!.hp).toBe(30 - 3 - 4);
-    expect(state.enemies[0]!.statuses).toEqual({ poison: 2, burn: false });
+    expect(state.enemies[0]!.statuses).toEqual({ poison: 2, burn: 0 });
   });
 
   it('enemy attacks hit player block first', () => {
@@ -209,7 +218,7 @@ describe('victory and defeat', () => {
 
   it('wins from status damage before the enemy can act', () => {
     const s = start();
-    const dying = patchEnemy(s, { hp: 2, statuses: { poison: 2, burn: false } });
+    const dying = patchEnemy(s, { hp: 2, statuses: { poison: 2, burn: 0 } });
     const { state, events } = act(dying, { type: 'endTurn' });
     expect(state.phase).toBe('victory');
     expect(state.player.hp).toBe(20);
@@ -228,7 +237,7 @@ describe('victory and defeat', () => {
 
   it('loses from player status damage before the enemy acts', () => {
     const s = start();
-    const weak = withState(s, { player: { ...s.player, hp: 3, statuses: { poison: 0, burn: true } } });
+    const weak = withState(s, { player: { ...s.player, hp: 3, statuses: { poison: 0, burn: 1 } } });
     const { state, events } = act(weak, { type: 'endTurn' });
     expect(state.phase).toBe('defeat');
     expect(events.map((e) => e.type)).not.toContain('enemyIntent');
@@ -287,14 +296,14 @@ describe('several enemies', () => {
 
     const cloud = act(splash.state, { type: 'trigger', attackId: 'cloud' }, three);
     expect(cloud.state.enemies.map((e) => e.statuses)).toEqual([
-      { poison: 2, burn: true },
-      { poison: 2, burn: true },
-      { poison: 0, burn: false },
+      { poison: 2, burn: 1 },
+      { poison: 2, burn: 1 },
+      { poison: 0, burn: 0 },
     ]);
   });
 
   it('every living enemy ticks statuses, then acts in order; defeated enemies do nothing', () => {
-    let s = patchEnemy(begin(), { statuses: { poison: 1, burn: false } }, 1);
+    let s = patchEnemy(begin(), { statuses: { poison: 1, burn: 0 } }, 1);
     const { state, events } = go(s, { type: 'endTurn' });
     expect(events.map((e) => [e.type, 'enemy' in e ? e.enemy : 'player'])).toEqual([
       ['damaged', 1],
@@ -368,11 +377,11 @@ describe('enemy intents', () => {
     const config = withIntents({ type: 'poison', stacks: 3 }, { type: 'burn' });
     let { state, events } = act(start(config), { type: 'endTurn' }, config);
     expect(events).toContainEqual({ type: 'statusApplied', target: 'player', status: 'poison', stacks: 3 });
-    expect(state.player).toMatchObject({ hp: 20, statuses: { poison: 3, burn: false } });
+    expect(state.player).toMatchObject({ hp: 20, statuses: { poison: 3, burn: 0 } });
 
     ({ state, events } = act(state, { type: 'endTurn' }, config));
     expect(events).toContainEqual({ type: 'statusApplied', target: 'player', status: 'burn', stacks: 1 });
-    expect(state.player).toMatchObject({ hp: 17, statuses: { poison: 2, burn: true } });
+    expect(state.player).toMatchObject({ hp: 17, statuses: { poison: 2, burn: 1 } });
 
     ({ state } = act(state, { type: 'endTurn' }, config));
     expect(state.player.hp).toBe(17 - 2 - 4);

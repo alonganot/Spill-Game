@@ -21,7 +21,7 @@
   - **Targeting:** the player picks which living enemy a spell is aimed at (by default, the first living one). Aiming at a defeated or missing enemy is invalid.
   - **Area spells** (e.g. Splash, Miasma) apply their Damage, Poison, or Burn to **every living enemy** instead.
   - Attacks can be triggered any number of times per turn while colors remain.
-  - Poison stacks add up. Burn doesn't stack: applying it again while burning has no extra effect.
+  - Poison stacks add up. **Burn stacks add up too:** each application adds 1 Burn stack.
   - Enemies are checked for defeat right after each attack. A defeated enemy stays in its place at 0 HP and does nothing more.
 - Invalid actions (unknown attack, missing colors, no recipe, invalid target, battle already over) change nothing.
 
@@ -31,13 +31,13 @@
 3. **End of Turn / Status & Enemy Phase:**
    - Resolve status effects (each living enemy in order, then the player; Poison before Burn):
      - **Poison:** Deals damage equal to current stack count, then decreases stacks by `1` (removed when reaching `0`).
-     - **Burn:** Deals fixed configured damage, then is immediately **removed** (cleared).
+     - **Burn:** Deals the configured burn damage **per stack** (e.g. 2 stacks × 4 = 8), then every stack is **removed** (cleared).
      - Status damage **ignores Block** and goes straight to HP.
    - Each living enemy acts in order, left to right, on its own intent:
      - **Attack:** deals damage `hits` times (default once). Each hit reduces **Block** first, then **HP**; hits stop once the player is down.
      - **Block:** the enemy gains Block.
      - **Poison:** adds Poison stacks to the player.
-     - **Burn:** sets the player on fire.
+     - **Burn:** adds 1 Burn stack to the player.
      - Each enemy's intents run in their listed order and loop. Every enemy's next intent is shown to the player.
      - An enemy's own Block resets right before it acts, so Block it gains lasts through the player's next turn.
    - Check victory/defeat conditions after each resolution step. The battle is won the moment **every** enemy is defeated. If the player is defeated, no new turn starts.

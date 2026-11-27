@@ -54,7 +54,7 @@ export function buildTimeline(
             source === 'poison'
               ? { ...v.statuses, poison: Math.max(0, v.statuses.poison - status.poisonDecay) }
               : source === 'burn'
-                ? { ...v.statuses, burn: false }
+                ? { ...v.statuses, burn: 0 }
                 : v.statuses,
         });
         update(event.target, event.enemy, hit);
@@ -69,7 +69,7 @@ export function buildTimeline(
           statuses:
             event.status === 'poison'
               ? { ...v.statuses, poison: v.statuses.poison + event.stacks }
-              : { ...v.statuses, burn: true },
+              : { ...v.statuses, burn: v.statuses.burn + event.stacks },
         });
         update(event.target, event.enemy, apply);
         break;

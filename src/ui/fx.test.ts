@@ -69,7 +69,7 @@ describe('stageFxFor', () => {
     expect(floatsFor(poisoned, 'player')).toEqual([{ text: '☠+3', kind: 'poison' }]);
     expect(stageFxFor(poisoned, 'player')).toBe('poison');
     expect(floatsFor(poisoned, 0)).toEqual([]);
-    expect(floatsFor(burning, 1)).toEqual([{ text: '🔥', kind: 'burn' }]);
+    expect(floatsFor(burning, 1)).toEqual([{ text: '🔥+1', kind: 'burn' }]);
     expect(stageFxFor(burning, 1)).toBe('burn');
     expect(stageFxFor(burning, 0)).toBeNull();
   });

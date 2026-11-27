@@ -124,9 +124,10 @@ export function poisonTip(stacks: number, owner: Owner, status: StatusConfig): s
   return `Poison ${stacks}: ${who} ${stacks} damage at the end of each turn, then it loses ${plural(status.poisonDecay, 'stack')}. Ignores Block.`;
 }
 
-export function burnTip(owner: Owner, status: StatusConfig): string {
+export function burnTip(stacks: number, owner: Owner, status: StatusConfig): string {
   const who = owner.kind === 'player' ? 'You take' : `${owner.name} takes`;
-  return `Burn: ${who} ${status.burnDamage} damage at the end of the turn, then it goes out. Ignores Block. Doesn't stack.`;
+  const each = stacks > 1 ? ` (${status.burnDamage} per stack)` : '';
+  return `Burn ${stacks}: ${who} ${status.burnDamage * stacks} damage${each} at the end of the turn, then it goes out. Ignores Block. Burning again adds a stack.`;
 }
 
 export function blockTip(amount: number, owner: Owner): string {
@@ -149,7 +150,7 @@ export function intentTip(intent: EnemyIntent, enemyName: string, status: Status
     case 'poison':
       return `${when} poisons you for ${intent.stacks}: damage equal to the stacks at the end of each turn, falling by ${status.poisonDecay}. Ignores Block.`;
     case 'burn':
-      return `${when} sets you on fire: ${status.burnDamage} damage at the end of your next turn. Ignores Block.`;
+      return `${when} sets you on fire (+1 Burn): ${status.burnDamage} damage per stack at the end of your next turn. Ignores Block.`;
   }
 }
 
@@ -163,7 +164,7 @@ export function effectSentence(effect: Effect, status: StatusConfig): string {
     case 'poison':
       return `Poisons ${effect.area ? 'every enemy ' : ''}for ${effect.stacks} (${effect.stacks} damage per turn, falling by ${status.poisonDecay})`;
     case 'burn':
-      return `Sets ${effect.area ? 'every enemy' : 'the enemy'} on fire (${status.burnDamage} damage at the end of the turn)`;
+      return `Sets ${effect.area ? 'every enemy' : 'the enemy'} on fire (+1 Burn: ${status.burnDamage} damage per stack at the end of the turn)`;
   }
 }
 

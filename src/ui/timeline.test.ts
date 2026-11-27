@@ -59,7 +59,7 @@ describe('buildTimeline', () => {
 
   it('applies and uses up statuses beat by beat', () => {
     const base = battle();
-    const before = { ...base, enemies: [{ ...base.enemies[0]!, statuses: { poison: 3, burn: true } }] };
+    const before = { ...base, enemies: [{ ...base.enemies[0]!, statuses: { poison: 3, burn: 1 } }] };
     const events: BattleEvent[] = [
       { type: 'damaged', target: 'enemy', enemy: 0, amount: 3, blocked: 0, source: 'poison' },
       { type: 'damaged', target: 'enemy', enemy: 0, amount: 4, blocked: 0, source: 'burn' },
@@ -69,10 +69,10 @@ describe('buildTimeline', () => {
     ];
     const steps = buildTimeline(before, events, before, { ...STATUS_CONFIG, poisonDecay: 1 });
     expect(steps.slice(0, -1).map((s) => s.enemies[0]!.statuses)).toEqual([
-      { poison: 2, burn: true },
-      { poison: 2, burn: false },
-      { poison: 4, burn: false },
-      { poison: 4, burn: true },
+      { poison: 2, burn: 1 },
+      { poison: 2, burn: 0 },
+      { poison: 4, burn: 0 },
+      { poison: 4, burn: 1 },
     ]);
   });
 

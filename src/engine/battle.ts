@@ -152,7 +152,7 @@ function performIntent(state: BattleState, index: number, intent: EnemyIntent, e
     }
     case 'burn':
       events.push({ type: 'statusApplied', target: 'player', status: 'burn', stacks: 1 });
-      return { ...state, player: { ...state.player, statuses: { ...state.player.statuses, burn: true } } };
+      return { ...state, player: { ...state.player, statuses: { ...state.player.statuses, burn: state.player.statuses.burn + 1 } } };
   }
 }
 
