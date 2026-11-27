@@ -1,4 +1,5 @@
 // A simple greedy bot for simulation tests. Not part of the game.
+import { isAreaEffect } from './attacks';
 import { firstLivingEnemy, getEnemyIntent } from './battle';
 import { isDefeated } from './combat';
 import { findMixPlan } from './mixing';
@@ -23,7 +24,7 @@ function score(attack: AttackDefinition, state: BattleState, config: BattleConfi
   const uncoveredHit = Math.max(0, incomingDamage(state, config) - state.player.block);
   let value = 0;
   for (const effect of attack.effects) {
-    const targets = effect.type !== 'block' && effect.area ? living : 1;
+    const targets = isAreaEffect(effect) ? living : 1;
     if (effect.type === 'damage') value += effect.amount * targets;
     else if (effect.type === 'poison') value += effect.stacks * 2 * targets;
     else if (effect.type === 'burn') value += config.status.burnDamage * targets;

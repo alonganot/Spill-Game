@@ -10,7 +10,7 @@ import {
   type RunAction,
   type RunState,
 } from '../engine';
-import { clearRun, loadRun, parseSave, replayRun, SAVE_KEY, saveRun, type RunSave } from './runSave';
+import { clearRun, loadRun, OLD_SAVE_KEYS, parseSave, replayRun, SAVE_KEY, saveRun, type RunSave } from './runSave';
 
 const config = defaultRunConfig();
 
@@ -138,6 +138,13 @@ describe('save storage', () => {
     expect(loadRun()).toEqual(save);
     clearRun();
     expect(loadRun()).toBeNull();
+  });
+
+  it('deletes saves from earlier versions when loading', () => {
+    const items = stubStorage();
+    for (const key of OLD_SAVE_KEYS) items.set(key, '{"version":1,"seed":3,"seeded":false,"actions":[]}');
+    expect(loadRun()).toBeNull();
+    for (const key of OLD_SAVE_KEYS) expect(items.has(key)).toBe(false);
   });
 
   it('ignores a corrupted save', () => {

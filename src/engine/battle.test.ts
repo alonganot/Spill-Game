@@ -323,6 +323,15 @@ describe('several enemies', () => {
     expect(last.events.at(-1)).toEqual({ type: 'victory' });
   });
 
+  it('an enemy with no intents does nothing, and keeps its block', () => {
+    const idle = { id: 'idle', name: 'Idle', maxHp: 10, intents: [] };
+    const cfg = testConfig({ enemies: [idle, DUMMY] });
+    const s = patchEnemy(start(cfg), { block: 6 }, 0);
+    const { state, events } = act(s, { type: 'endTurn' }, cfg);
+    expect(state.enemies[0]).toMatchObject({ block: 6, intentIndex: 0 });
+    expect(events.filter((e) => e.type === 'enemyIntent').map((e) => 'enemy' in e && e.enemy)).toEqual([1]);
+  });
+
   it('stops the enemy phase as soon as the player falls', () => {
     const s = withState(begin(), { player: { ...begin().player, hp: 2 } });
     const { state, events } = go(s, { type: 'endTurn' });

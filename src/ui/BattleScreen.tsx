@@ -2,6 +2,7 @@ import { createRef, useCallback, useEffect, useMemo, useRef, useState, type CSSP
 import {
   canAfford,
   firstLivingEnemy,
+  isAreaSpell,
   mixColors,
   findMixPlan,
   getEnemyIntent,
@@ -22,7 +23,7 @@ import { chipPopMs, useReducedMotion } from './anim';
 import { RollStage, TrayDie } from './PixelDie';
 import { EnemyStage, HeroStage, Projectile } from './Fighters';
 import { COLOR_HEX, floatsFor, stageFxFor } from './fx';
-import { COLOR_LABEL, describeIntent, enemyLabels, formatEvent, intentTip, isAreaSpell } from './format';
+import { COLOR_LABEL, describeIntent, enemyLabels, formatEvent, intentTip } from './format';
 import { Tip } from './Tooltip';
 import { beforeOpeningRoll, buildTimeline } from './timeline';
 import { chipsForPlan } from './mixHint';
@@ -132,7 +133,7 @@ export function BattleScreen({
   const locked = isOver || playing;
   // The fight's log: every earlier action, plus this action up to the current beat.
   const toLines = (evs: readonly BattleEvent[]) =>
-    evs.map((e) => formatEvent(e, config)).filter((line): line is string => line !== null);
+    evs.map((e) => formatEvent(e, config, labels)).filter((line): line is string => line !== null);
   const [history, setHistory] = useState({ count: actionCount, past: [] as string[], latest: events });
   if (history.count !== actionCount) {
     setHistory({ count: actionCount, past: [...history.past, ...toLines(history.latest)].slice(-200), latest: events });
@@ -381,7 +382,7 @@ export function BattleScreen({
           const down = enemy.hp === 0;
           const intent = down ? undefined : getEnemyIntent(playing ? before : state, config, i);
           const targeted = choosing && i === target && !down;
-          const stage = art && (
+          const stage = art ? (
             <EnemyStage
               ref={enemyStageRefs[i]}
               sprite={art}
@@ -392,13 +393,15 @@ export function BattleScreen({
               defeated={down}
               size={enemySize}
             />
+          ) : (
+            // No art yet: keep a sprite-sized box so the target button still has something to press.
+            <div className="sprite-stage sprite-missing" ref={enemyStageRefs[i]} style={{ width: enemySize, height: enemySize }} aria-hidden="true">
+              ?
+            </div>
           );
+          // Only the sprite is the target button, so tapping a tooltip (intent, badges) never retargets.
           return (
-            <section
-              key={i}
-              className={`card enemy with-sprite${targeted ? ' targeted' : ''}${down ? ' down' : ''}`}
-              onClick={choosing && !down ? () => setPicked(i) : undefined}
-            >
+            <section key={i} className={`card enemy with-sprite${targeted ? ' targeted' : ''}${down ? ' down' : ''}`}>
               {choosing ? (
                 <button
                   type="button"

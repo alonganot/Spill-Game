@@ -1,5 +1,15 @@
 import { gainBlock, isDefeated, takeDamage } from './combat';
-import type { BattleEvent, Combatant, Effect, EnemyState } from './types';
+import type { AttackDefinition, BattleEvent, Combatant, Effect, EnemyState } from './types';
+
+/** Whether an effect hits every living enemy instead of just the target. */
+export function isAreaEffect(effect: Effect): boolean {
+  return effect.type !== 'block' && effect.area === true;
+}
+
+/** Whether a spell has any effect that hits every living enemy. */
+export function isAreaSpell(attack: AttackDefinition): boolean {
+  return attack.effects.some(isAreaEffect);
+}
 
 /**
  * Applies one attack effect. Damage and statuses hit enemy `target`, or every
@@ -21,7 +31,7 @@ export function applyEffect(
 
   const events: BattleEvent[] = [];
   const next = enemies.map((enemy, index) => {
-    const hit = effect.area ? !isDefeated(enemy) : index === target;
+    const hit = isAreaEffect(effect) ? !isDefeated(enemy) : index === target;
     if (!hit) return enemy;
     switch (effect.type) {
       case 'damage': {

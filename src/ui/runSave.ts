@@ -21,6 +21,8 @@ export interface RunSave {
 }
 
 export const SAVE_KEY = 'spill.run.v2';
+/** Saves from earlier versions, which can't be replayed by this engine. */
+export const OLD_SAVE_KEYS = ['spill.run.v1'] as const;
 
 const ACTION_TYPES = new Set<RunAction['type']>([
   'battle',
@@ -92,6 +94,7 @@ export function saveRun(save: RunSave): void {
 
 export function loadRun(): RunSave | null {
   try {
+    for (const key of OLD_SAVE_KEYS) localStorage.removeItem(key);
     return parseSave(localStorage.getItem(SAVE_KEY));
   } catch {
     return null;

@@ -114,9 +114,9 @@ function endTurn(state: BattleState, config: BattleConfig, rng: Rng): ActionResu
   // 2. Each living enemy acts in order. Its own block lasts until its next action.
   for (let i = 0; i < current.enemies.length; i++) {
     if (isDefeated(current.enemies[i]!)) continue;
-    current = withEnemy(current, i, { ...current.enemies[i]!, block: 0 });
     const intent = getEnemyIntent(current, config, i);
     if (!intent) continue;
+    current = withEnemy(current, i, { ...current.enemies[i]!, block: 0 });
     events.push({ type: 'enemyIntent', enemy: i, intent });
     current = performIntent(current, i, intent, events);
     const acted = current.enemies[i]!;

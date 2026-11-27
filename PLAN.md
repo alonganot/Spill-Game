@@ -57,7 +57,7 @@
 - [x] Run flow: a free reward and then a shop after every fight. Saves moved to `spill.run.v2`.
 - [x] Battle screen with 1–3 enemies: a row of enemy cards, click/tap/Enter to target, per-enemy playback, floats, bolts, log lines, and tooltips.
 - [x] Content: 7 new enemies with their own sprites (Drip, Mold Puff, Cinder Imp, Gnat Swarm, Varnish Shell, Smear Knight, Grand Smudge); 15 stages in 3 acts (`src/data/run.ts`, act 3 via `toughened`); area spells Splash and Miasma.
-- [x] Balance pass: leaner economy for 15 stops. The greedy bot (`src/engine/testBot.ts`: targets the weakest enemy, prefers area spells, mixes, blocks) wins about 11% of 200 seeded runs, with losses spread over fights 9–15 (`src/engine/balance.test.ts`, which asserts a 5–35% band).
+- [x] Balance pass: leaner economy for 15 stops. The greedy bot (`src/engine/testBot.ts`: targets the weakest enemy, prefers area spells, mixes, blocks) wins about 11% of 200 seeded runs, with losses spread over fights 9–15 (`src/engine/balance.sim.test.ts`, run with `npm run test:balance`; it asserts a 5–35% band).
 - [ ] Windows desktop app with Electron: the web build in a window with an app icon, title, and minimum size, plus a versioned installer (electron-builder, NSIS).
 - [ ] Final bug sweep and docs update.
 

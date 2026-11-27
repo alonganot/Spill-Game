@@ -38,6 +38,11 @@ export function floatsFor(event: BattleEvent | null, who: Who): FloatText[] {
   if (event.type === 'blockGained' && aimsAt(event, who)) {
     return [{ text: `🛡+${event.amount}`, kind: 'block' }];
   }
+  if (event.type === 'statusApplied' && aimsAt(event, who)) {
+    return event.status === 'poison'
+      ? [{ text: `☠+${event.stacks}`, kind: 'poison' }]
+      : [{ text: '🔥', kind: 'burn' }];
+  }
   return [];
 }
 
@@ -52,6 +57,8 @@ export function stageFxFor(event: BattleEvent | null, who: Who): StageFx | null 
       return event.source === 'attack' ? 'hit' : event.source;
     case 'blockGained':
       return aimsAt(event, who) ? 'guard' : null;
+    case 'statusApplied':
+      return aimsAt(event, who) ? event.status : null;
     case 'enemyIntent':
       // Attackers lunge; poisoners and burners lunge too, since they reach the player.
       return event.enemy === who && event.intent.type !== 'block' ? 'lunge' : null;

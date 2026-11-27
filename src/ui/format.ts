@@ -1,4 +1,14 @@
-import type { AttackDefinition, BattleConfig, BattleEvent, Color, Effect, EnemyIntent, MixRecipe, StatusConfig } from '../engine';
+import {
+  isAreaSpell,
+  type AttackDefinition,
+  type BattleConfig,
+  type BattleEvent,
+  type Color,
+  type Effect,
+  type EnemyIntent,
+  type MixRecipe,
+  type StatusConfig,
+} from '../engine';
 
 export const COLOR_LABEL: Record<Color, string> = {
   red: 'Red',
@@ -20,11 +30,6 @@ export function describeEffect(effect: Effect): string {
     case 'burn':
       return effect.area ? 'burn all' : 'burn';
   }
-}
-
-/** Whether a spell has any effect that hits every enemy. */
-export function isAreaSpell(attack: AttackDefinition): boolean {
-  return attack.effects.some((e) => e.type !== 'block' && e.area === true);
 }
 
 export function describeIntent(intent: EnemyIntent): string {
@@ -55,9 +60,15 @@ export function enemyLabels(config: Pick<BattleConfig, 'enemies'>): string[] {
   });
 }
 
-/** One log line per event, or null for events that don't need a line. */
-export function formatEvent(event: BattleEvent, config: BattleConfig): string | null {
-  const labels = enemyLabels(config);
+/**
+ * One log line per event, or null for events that don't need a line.
+ * Pass `labels` (from `enemyLabels`) when formatting many events, so they're built once.
+ */
+export function formatEvent(
+  event: BattleEvent,
+  config: BattleConfig,
+  labels: readonly string[] = enemyLabels(config),
+): string | null {
   const name = (index: number | undefined) => labels[index ?? 0] ?? 'Enemy';
   switch (event.type) {
     case 'rolled': {
@@ -85,7 +96,7 @@ export function formatEvent(event: BattleEvent, config: BattleConfig): string | 
     case 'blockGained':
       return event.target === 'player' ? `You gain ${event.amount} block` : `${name(event.enemy)} gains ${event.amount} block`;
     case 'statusApplied': {
-      const who = event.target === 'enemy' ? name(event.enemy) : 'You';
+      const who = event.target === 'enemy' ? name(event.enemy) : 'You are';
       return event.status === 'poison' ? `${who} poisoned (+${event.stacks})` : `${who} set on fire`;
     }
     case 'enemyIntent':

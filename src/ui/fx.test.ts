@@ -63,6 +63,17 @@ describe('stageFxFor', () => {
     expect(stageFxFor({ type: 'blockGained', target: 'enemy', enemy: 0, amount: 4 }, 0)).toBe('guard');
   });
 
+  it('shows statuses landing on whoever they hit', () => {
+    const poisoned: BattleEvent = { type: 'statusApplied', target: 'player', status: 'poison', stacks: 3 };
+    const burning: BattleEvent = { type: 'statusApplied', target: 'enemy', enemy: 1, status: 'burn', stacks: 1 };
+    expect(floatsFor(poisoned, 'player')).toEqual([{ text: '☠+3', kind: 'poison' }]);
+    expect(stageFxFor(poisoned, 'player')).toBe('poison');
+    expect(floatsFor(poisoned, 0)).toEqual([]);
+    expect(floatsFor(burning, 1)).toEqual([{ text: '🔥', kind: 'burn' }]);
+    expect(stageFxFor(burning, 1)).toBe('burn');
+    expect(stageFxFor(burning, 0)).toBeNull();
+  });
+
   it('only reacts on the enemy the event names', () => {
     expect(stageFxFor(hit(3, 0), 1)).toBeNull();
     expect(floatsFor(hit(3, 0), 1)).toEqual([]);
