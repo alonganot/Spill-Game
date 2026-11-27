@@ -6,6 +6,7 @@ export const ECONOMY: EconomyConfig = {
   rewards: {
     normal: { gold: 20, heal: 8 },
     elite: { gold: 35, heal: 14 },
+    boss: { gold: 40, heal: 16 },
   },
   shop: {
     repaintPrice: 15,

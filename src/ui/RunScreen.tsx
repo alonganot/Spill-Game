@@ -34,7 +34,8 @@ function stageLabel(run: RunState, config: RunConfig): string {
   if (run.phase === 'victory' || run.phase === 'defeat') return 'Run end';
   const stage = currentStage(run, config);
   const kind = stage?.kind === 'boss' ? ' · Boss' : stage?.kind === 'elite' ? ' · Elite' : '';
-  return `Fight ${run.stageIndex + 1}/${total}${kind}`;
+  const act = stage ? ` · Act ${stage.act}` : '';
+  return `Fight ${run.stageIndex + 1}/${total}${act}${kind}`;
 }
 
 interface RunScreenProps {
@@ -112,7 +113,7 @@ export function RunScreen({
           config={battleConfigFor(run, config)}
           events={view.events}
           actionCount={view.actionCount}
-          isFinalFight={currentStage(run, config)?.after === 'end'}
+          isFinalFight={run.stageIndex === config.stages.length - 1}
           onAction={(action) => dispatch({ type: 'battle', action })}
           onContinue={() => dispatch({ type: 'continue' })}
         />

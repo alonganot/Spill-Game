@@ -22,8 +22,15 @@ function battle(overrides: Partial<BattleState> = {}): BattleState {
 }
 
 function withVitals(state: BattleState, who: 'player' | 'enemy', hp: number, block: number): BattleState {
-  return { ...state, [who]: { ...state[who], hp, block } };
+  if (who === 'player') return { ...state, player: { ...state.player, hp, block } };
+  return { ...state, enemies: state.enemies.map((e, i) => (i === 0 ? { ...e, hp, block } : e)) };
 }
+
+const vitalsOf = (c: { hp: number; block: number; statuses: BattleState['player']['statuses'] }) => ({
+  hp: c.hp,
+  block: c.block,
+  statuses: c.statuses,
+});
 
 describe('buildTimeline', () => {
   it('returns one beat of the final state when there are no events', () => {
@@ -37,9 +44,9 @@ describe('buildTimeline', () => {
   it('lets block absorb damage before HP drops', () => {
     const before = withVitals(battle(), 'player', 30, 5);
     const events: BattleEvent[] = [
-      { type: 'enemyIntent', intent: { type: 'attack', amount: 8 } },
+      { type: 'enemyIntent', enemy: 0, intent: { type: 'attack', amount: 8 } },
       { type: 'damaged', target: 'player', amount: 3, blocked: 5, source: 'attack' },
-      { type: 'statusApplied', target: 'enemy', status: 'poison', stacks: 1 },
+      { type: 'statusApplied', target: 'enemy', enemy: 0, status: 'poison', stacks: 1 },
     ];
     const after = withVitals(before, 'player', 27, 0);
     const steps = buildTimeline(before, events, after, STATUS_CONFIG);
@@ -52,16 +59,16 @@ describe('buildTimeline', () => {
 
   it('applies and uses up statuses beat by beat', () => {
     const base = battle();
-    const before = { ...base, enemy: { ...base.enemy, statuses: { poison: 3, burn: true } } };
+    const before = { ...base, enemies: [{ ...base.enemies[0]!, statuses: { poison: 3, burn: true } }] };
     const events: BattleEvent[] = [
-      { type: 'damaged', target: 'enemy', amount: 3, blocked: 0, source: 'poison' },
-      { type: 'damaged', target: 'enemy', amount: 4, blocked: 0, source: 'burn' },
-      { type: 'statusApplied', target: 'enemy', status: 'poison', stacks: 2 },
-      { type: 'statusApplied', target: 'enemy', status: 'burn', stacks: 1 },
-      { type: 'enemyIntent', intent: { type: 'block', amount: 1 } },
+      { type: 'damaged', target: 'enemy', enemy: 0, amount: 3, blocked: 0, source: 'poison' },
+      { type: 'damaged', target: 'enemy', enemy: 0, amount: 4, blocked: 0, source: 'burn' },
+      { type: 'statusApplied', target: 'enemy', enemy: 0, status: 'poison', stacks: 2 },
+      { type: 'statusApplied', target: 'enemy', enemy: 0, status: 'burn', stacks: 1 },
+      { type: 'enemyIntent', enemy: 0, intent: { type: 'block', amount: 1 } },
     ];
     const steps = buildTimeline(before, events, before, { ...STATUS_CONFIG, poisonDecay: 1 });
-    expect(steps.slice(0, -1).map((s) => s.enemy.statuses)).toEqual([
+    expect(steps.slice(0, -1).map((s) => s.enemies[0]!.statuses)).toEqual([
       { poison: 2, burn: true },
       { poison: 2, burn: false },
       { poison: 4, burn: false },
@@ -72,21 +79,21 @@ describe('buildTimeline', () => {
   it('steps poison and burn ticks one at a time', () => {
     const before = withVitals(battle(), 'enemy', 20, 0);
     const events: BattleEvent[] = [
-      { type: 'damaged', target: 'enemy', amount: 3, blocked: 0, source: 'poison' },
-      { type: 'damaged', target: 'enemy', amount: 4, blocked: 0, source: 'burn' },
+      { type: 'damaged', target: 'enemy', enemy: 0, amount: 3, blocked: 0, source: 'poison' },
+      { type: 'damaged', target: 'enemy', enemy: 0, amount: 4, blocked: 0, source: 'burn' },
     ];
     const steps = buildTimeline(before, events, withVitals(before, 'enemy', 13, 0), STATUS_CONFIG);
-    expect(steps.map((s) => s.enemy.hp)).toEqual([17, 13]);
+    expect(steps.map((s) => s.enemies[0]!.hp)).toEqual([17, 13]);
   });
 
   it("drops the enemy's old block when it acts, then adds new block", () => {
     const before = withVitals(battle(), 'enemy', 20, 6);
     const events: BattleEvent[] = [
-      { type: 'enemyIntent', intent: { type: 'block', amount: 4 } },
-      { type: 'blockGained', target: 'enemy', amount: 4 },
+      { type: 'enemyIntent', enemy: 0, intent: { type: 'block', amount: 4 } },
+      { type: 'blockGained', target: 'enemy', enemy: 0, amount: 4 },
     ];
     const steps = buildTimeline(before, events, withVitals(before, 'enemy', 20, 4), STATUS_CONFIG);
-    expect(steps.map((s) => s.enemy.block)).toEqual([0, 4]);
+    expect(steps.map((s) => s.enemies[0]!.block)).toEqual([0, 4]);
   });
 
   it('keeps the old pool until the dice land', () => {
@@ -139,7 +146,9 @@ describe('buildTimeline against the engine', () => {
     let actionsChecked = 0;
     for (let seed = 1; seed <= 60; seed++) {
       const rng = createSeededRng(seed);
-      const config = defaultBattleConfig(enemies[seed % enemies.length]!);
+      // One, two, or three enemies, so events land on different indexes.
+      const count = 1 + (seed % 3);
+      const config = defaultBattleConfig(Array.from({ length: count }, (_, k) => enemies[(seed + k) % enemies.length]!));
       const opening = createBattle(config, rng);
       let state = opening.state;
 
@@ -153,17 +162,17 @@ describe('buildTimeline against the engine', () => {
         const steps = buildTimeline(state, result.events, result.state, config.status);
         const last = steps.at(-1)!;
         expect(last.player).toEqual({ hp: result.state.player.hp, block: result.state.player.block, statuses: result.state.player.statuses });
-        expect(last.enemy).toEqual({ hp: result.state.enemy.hp, block: result.state.enemy.block, statuses: result.state.enemy.statuses });
+        expect(last.enemies).toEqual(result.state.enemies.map(vitalsOf));
         expect(last.pool).toEqual(result.state.pool);
         // Replaying forward should already land on the real numbers before the final snap.
         const replayed = buildTimeline(state, [...result.events, { type: 'victory' }], result.state, config.status).at(-2)!;
         expect(replayed.player.hp).toBe(result.state.player.hp);
-        expect(replayed.enemy.hp).toBe(result.state.enemy.hp);
+        expect(replayed.enemies.map((e) => e.hp)).toEqual(result.state.enemies.map((e) => e.hp));
         expect(replayed.player.statuses).toEqual(result.state.player.statuses);
-        expect(replayed.enemy.statuses).toEqual(result.state.enemy.statuses);
+        expect(replayed.enemies.map((e) => e.statuses)).toEqual(result.state.enemies.map((e) => e.statuses));
         for (const step of steps) {
           expect(step.player.hp).toBeGreaterThanOrEqual(0);
-          expect(step.enemy.hp).toBeGreaterThanOrEqual(0);
+          for (const enemy of step.enemies) expect(enemy.hp).toBeGreaterThanOrEqual(0);
           expect(step.player.block).toBeGreaterThanOrEqual(0);
         }
         state = result.state;

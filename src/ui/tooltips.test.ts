@@ -29,10 +29,13 @@ describe('status tooltips', () => {
   });
 
   it('describes the enemy intent', () => {
-    expect(intentTip({ type: 'attack', amount: 6 }, 'Ink Blob')).toBe(
+    expect(intentTip({ type: 'attack', amount: 6 }, 'Ink Blob', status)).toBe(
       'When you end your turn, Ink Blob attacks for 6. Your Block absorbs it first.',
     );
-    expect(intentTip({ type: 'block', amount: 5 }, 'Ink Blob')).toContain('gains 5 Block');
+    expect(intentTip({ type: 'attack', amount: 3, hits: 2 }, 'Ink Blob', status)).toContain('attacks 2 times for 3 each (6 total)');
+    expect(intentTip({ type: 'block', amount: 5 }, 'Ink Blob', status)).toContain('gains 5 Block');
+    expect(intentTip({ type: 'poison', stacks: 3 }, 'Ink Blob', status)).toContain('poisons you for 3');
+    expect(intentTip({ type: 'burn' }, 'Ink Blob', { ...status, burnDamage: 6 })).toContain('6 damage');
   });
 });
 

@@ -67,12 +67,12 @@ describe('replayRun', () => {
         furthestStage = Math.max(furthestStage, run.stageIndex);
 
         if (n % 25 === 0) {
-          const replayed = replayRun({ version: 1, seed, seeded: false, actions: [...actions] }, config);
+          const replayed = replayRun({ version: 2, seed, seeded: false, actions: [...actions] }, config);
           expect(replayed?.run).toEqual(run);
           replays++;
         }
       }
-      const final = replayRun({ version: 1, seed, seeded: false, actions }, config);
+      const final = replayRun({ version: 2, seed, seeded: false, actions }, config);
       expect(final?.run).toEqual(run);
       // The replayed rng carries on exactly where the live one is.
       expect(final?.rng()).toBe(rng());
@@ -85,13 +85,13 @@ describe('replayRun', () => {
   });
 
   it('returns null when a saved action no longer applies', () => {
-    const save: RunSave = { version: 1, seed: 5, seeded: false, actions: [{ type: 'leaveShop' }] };
+    const save: RunSave = { version: 2, seed: 5, seeded: false, actions: [{ type: 'leaveShop' }] };
     expect(replayRun(save, config)).toBeNull();
   });
 });
 
 describe('parseSave', () => {
-  const good: RunSave = { version: 1, seed: 42, seeded: true, actions: [{ type: 'battle', action: { type: 'endTurn' } }] };
+  const good: RunSave = { version: 2, seed: 42, seeded: true, actions: [{ type: 'battle', action: { type: 'endTurn' } }] };
 
   it('reads back a saved run', () => {
     expect(parseSave(JSON.stringify(good))).toEqual(good);
@@ -104,7 +104,7 @@ describe('parseSave', () => {
       '{not json',
       'null',
       '42',
-      JSON.stringify({ ...good, version: 2 }),
+      JSON.stringify({ ...good, version: 1 }),
       JSON.stringify({ ...good, seed: -1 }),
       JSON.stringify({ ...good, seed: 1.5 }),
       JSON.stringify({ ...good, seed: '42' }),
@@ -132,7 +132,7 @@ describe('save storage', () => {
 
   it('saves, loads, and clears a run', () => {
     const items = stubStorage();
-    const save: RunSave = { version: 1, seed: 7, seeded: false, actions: [] };
+    const save: RunSave = { version: 2, seed: 7, seeded: false, actions: [] };
     saveRun(save);
     expect(items.has(SAVE_KEY)).toBe(true);
     expect(loadRun()).toEqual(save);
@@ -141,7 +141,7 @@ describe('save storage', () => {
   });
 
   it('ignores a corrupted save', () => {
-    stubStorage().set(SAVE_KEY, '{"version":1,"seed":');
+    stubStorage().set(SAVE_KEY, '{"version":2,"seed":');
     expect(loadRun()).toBeNull();
   });
 
@@ -150,7 +150,7 @@ describe('save storage', () => {
       throw new Error('blocked');
     };
     vi.stubGlobal('localStorage', { getItem: fail, setItem: fail, removeItem: fail });
-    expect(() => saveRun({ version: 1, seed: 1, seeded: false, actions: [] })).not.toThrow();
+    expect(() => saveRun({ version: 2, seed: 1, seeded: false, actions: [] })).not.toThrow();
     expect(loadRun()).toBeNull();
     expect(() => clearRun()).not.toThrow();
   });

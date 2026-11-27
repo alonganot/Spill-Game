@@ -10,13 +10,13 @@ export const STARTING_GOLD = 0;
 export const STARTING_DICE_CAP = 3;
 export const MAX_DICE_CAP = 6;
 
-/** Fight 1 → Reward → Fight 2 → Shop → Elite → Reward → Fight 4 → Shop → Boss. */
+/** Every fight but the last is followed by a reward pick, then a shop. */
 export const RUN_STAGES: readonly StageDefinition[] = [
-  { enemy: ENEMIES.puddleSlime, kind: 'normal', after: 'reward' },
-  { enemy: ENEMIES.thornSprite, kind: 'normal', after: 'shop' },
-  { enemy: ENEMIES.inkBlob, kind: 'elite', after: 'reward' },
-  { enemy: ENEMIES.rustGolem, kind: 'normal', after: 'shop' },
-  { enemy: ENEMIES.theBlot, kind: 'boss', after: 'end' },
+  { enemies: [ENEMIES.puddleSlime], kind: 'normal', act: 1 },
+  { enemies: [ENEMIES.thornSprite], kind: 'normal', act: 1 },
+  { enemies: [ENEMIES.inkBlob], kind: 'elite', act: 1 },
+  { enemies: [ENEMIES.rustGolem], kind: 'normal', act: 1 },
+  { enemies: [ENEMIES.theBlot], kind: 'boss', act: 1 },
 ];
 
 export function defaultRunConfig(): RunConfig {

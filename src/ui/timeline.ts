@@ -12,7 +12,8 @@ export interface Step {
   /** Null only for an action that produced no events. */
   event: BattleEvent | null;
   player: Vitals;
-  enemy: Vitals;
+  /** One per enemy, same order as `BattleState.enemies`. */
+  enemies: Vitals[];
   pool: readonly Color[];
 }
 
@@ -32,9 +33,14 @@ export function buildTimeline(
   status: StatusConfig,
 ): Step[] {
   let player = vitals(before.player);
-  let enemy = vitals(before.enemy);
+  let enemies = before.enemies.map(vitals);
   let pool: readonly Color[] = before.pool;
   const steps: Step[] = [];
+  /** Applies `change` to the player, or to the enemy the event names. */
+  const update = (target: 'player' | 'enemy', index: number | undefined, change: (v: Vitals) => Vitals) => {
+    if (target === 'player') player = change(player);
+    else enemies = enemies.map((v, i) => (i === index ? change(v) : v));
+  };
 
   for (const event of events) {
     switch (event.type) {
@@ -51,13 +57,11 @@ export function buildTimeline(
                 ? { ...v.statuses, burn: false }
                 : v.statuses,
         });
-        if (event.target === 'player') player = hit(player);
-        else enemy = hit(enemy);
+        update(event.target, event.enemy, hit);
         break;
       }
       case 'blockGained':
-        if (event.target === 'player') player = { ...player, block: player.block + event.amount };
-        else enemy = { ...enemy, block: enemy.block + event.amount };
+        update(event.target, event.enemy, (v) => ({ ...v, block: v.block + event.amount }));
         break;
       case 'statusApplied': {
         const apply = (v: Vitals): Vitals => ({
@@ -67,13 +71,12 @@ export function buildTimeline(
               ? { ...v.statuses, poison: v.statuses.poison + event.stacks }
               : { ...v.statuses, burn: true },
         });
-        if (event.target === 'player') player = apply(player);
-        else enemy = apply(enemy);
+        update(event.target, event.enemy, apply);
         break;
       }
       case 'enemyIntent':
         // The enemy's old block expires right before it acts.
-        enemy = { ...enemy, block: 0 };
+        update('enemy', event.enemy, (v) => ({ ...v, block: 0 }));
         break;
       case 'rolled':
         // A new player turn: player block expires and the dice land in the pool.
@@ -89,10 +92,15 @@ export function buildTimeline(
       case 'defeat':
         break;
     }
-    steps.push({ event, player, enemy, pool });
+    steps.push({ event, player, enemies, pool });
   }
 
-  const final: Step = { event: steps.at(-1)?.event ?? null, player: vitals(after.player), enemy: vitals(after.enemy), pool: after.pool };
+  const final: Step = {
+    event: steps.at(-1)?.event ?? null,
+    player: vitals(after.player),
+    enemies: after.enemies.map(vitals),
+    pool: after.pool,
+  };
   if (steps.length === 0) return [final];
   steps[steps.length - 1] = final;
   return steps;

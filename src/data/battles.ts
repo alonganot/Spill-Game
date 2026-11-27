@@ -6,7 +6,7 @@ import { STARTING_DICE } from './dice';
 import { ENEMIES } from './enemies';
 
 /** Default battle setup used by the prototype. */
-export function defaultBattleConfig(enemy: EnemyDefinition = ENEMIES.inkBlob): BattleConfig {
+export function defaultBattleConfig(enemies: readonly EnemyDefinition[] = [ENEMIES.inkBlob]): BattleConfig {
   return {
     maxPoolSize: MAX_POOL_SIZE,
     playerMaxHp: PLAYER_MAX_HP,
@@ -14,6 +14,6 @@ export function defaultBattleConfig(enemy: EnemyDefinition = ENEMIES.inkBlob): B
     recipes: MIX_RECIPES,
     attacks: STARTING_ATTACKS,
     status: STATUS_CONFIG,
-    enemy,
+    enemies,
   };
 }

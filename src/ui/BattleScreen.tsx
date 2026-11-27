@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { createRef, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import {
   canAfford,
+  firstLivingEnemy,
   mixColors,
   findMixPlan,
   getEnemyIntent,
@@ -9,6 +10,7 @@ import {
   type BattleEvent,
   type BattleState,
   type Color,
+  type EnemyIntent,
   type MixRecipe,
 } from '../engine';
 import { MIX_HINT_MAX_MIXES } from '../data/balance';
@@ -20,7 +22,7 @@ import { chipPopMs, useReducedMotion } from './anim';
 import { RollStage, TrayDie } from './PixelDie';
 import { EnemyStage, HeroStage, Projectile } from './Fighters';
 import { COLOR_HEX, floatsFor, stageFxFor } from './fx';
-import { COLOR_LABEL, describeIntent, formatEvent, intentTip } from './format';
+import { COLOR_LABEL, describeIntent, enemyLabels, formatEvent, intentTip, isAreaSpell } from './format';
 import { Tip } from './Tooltip';
 import { beforeOpeningRoll, buildTimeline } from './timeline';
 import { chipsForPlan } from './mixHint';
@@ -84,33 +86,46 @@ export function BattleScreen({
   const reducedMotion = useReducedMotion();
   const onStage = rolling && !reducedMotion && rollEvent !== undefined;
   const trayRef = useRef<HTMLDivElement>(null);
-  // Desktop shows both fighters at one pixel scale (22px enemy, 16px hero): 10×, or 13× on big screens.
+  // Desktop shows the fighters at one pixel scale (22px enemy, 16px hero): 10×, or 13× on big screens.
+  // Two or three enemies share the arena, so they're drawn smaller.
   const desktop = useDesktop();
   const large = useLargeDesktop();
   const pixel = large ? 13 : 10;
-  const enemySize = desktop ? 22 * pixel : 88;
+  const enemyCount = config.enemies.length;
+  const crowd = enemyCount >= 3 ? 0.5 : enemyCount === 2 ? 0.7 : 1;
+  const enemySize = desktop ? 22 * Math.max(4, Math.round(pixel * crowd)) : enemyCount >= 3 ? 56 : enemyCount === 2 ? 68 : 88;
   const heroSize = desktop ? 16 * pixel : 48;
   const keptCount = shownRoll ? shownRoll.colors.length - shownRoll.discarded.length : 0;
 
   // While the beats play, show the numbers of the current beat, not the final ones.
   const player = { ...state.player, ...step.player };
-  const enemy = { ...state.enemy, ...step.enemy };
+  const enemies = state.enemies.map((e, i) => ({ ...e, ...step.enemies[i] }));
   const pool = step.pool;
+  const labels = useMemo(() => enemyLabels(config), [config]);
 
-  const intent = getEnemyIntent(playing ? before : state, config);
-  const enemyArt = enemySprite(config.enemy.id);
+  // The enemy single-target spells hit. It moves on to the next living enemy when it falls.
+  const [picked, setPicked] = useState(0);
+  const target = state.enemies[picked] && state.enemies[picked]!.hp > 0 ? picked : Math.max(0, firstLivingEnemy(state));
+  const choosing = enemyCount > 1 && state.phase === 'player';
+
   // Effects only play while the beats run; once settled, the sprites rest.
   const beatEvent = playing ? step.event : null;
   const beatKey = `${actionCount}-${index}`;
-  const enemyStageRef = useRef<HTMLDivElement>(null);
+  const enemyStageRefs = useMemo(() => config.enemies.map(() => createRef<HTMLDivElement>()), [config.enemies]);
   const heroStageRef = useRef<HTMLDivElement>(null);
   const poolRef = useRef<HTMLElement>(null);
-  // A spell that harms the enemy sends a bolt of its first cost color.
+  // A spell that harms enemies sends a bolt of its first cost color: to its target, or to every living enemy.
   const castAttack =
     beatEvent?.type === 'triggered' ? config.attacks.find((x) => x.id === beatEvent.attackId) : undefined;
   const castColor = castAttack && (Object.keys(castAttack.cost)[0] as Color | undefined);
   const boltColor =
     castAttack && castColor && castAttack.effects.some((e) => e.type !== 'block') ? COLOR_HEX[castColor] : null;
+  const boltTargets =
+    beatEvent?.type !== 'triggered' || !castAttack
+      ? []
+      : isAreaSpell(castAttack)
+        ? before.enemies.flatMap((e, i) => (e.hp > 0 ? [i] : []))
+        : [beatEvent.target];
   // A mix appends its output to the pool, so the splash goes on the last chip.
   const splashColor = beatEvent?.type === 'mixed' ? COLOR_HEX[beatEvent.output] : null;
   const isOver = state.phase !== 'player';
@@ -281,7 +296,7 @@ export function BattleScreen({
       const cost = costs[attackId];
       if (!cost || !spellReady(staging, attackId, cost, pool)) return;
       closeBook();
-      act({ type: 'trigger', attackId });
+      act({ type: 'trigger', attackId, target });
     },
     prepareMix,
     hint: setHintedAttack,
@@ -357,35 +372,66 @@ export function BattleScreen({
     <WorkbenchProvider value={workbench}>
       {/* On phones these wrappers are display: contents, so it's one column; on desktop, an arena and a side panel. */}
       <div className="battle-layout">
-      <div className="arena">
-      <section className="card enemy with-sprite">
-        {enemyArt && (
-          <EnemyStage
-            ref={enemyStageRef}
-            sprite={enemyArt}
-            name={config.enemy.name}
-            fx={beatEvent ? stageFxFor(beatEvent, 'enemy') : null}
-            floats={floatsFor(beatEvent, 'enemy')}
-            beatKey={beatKey}
-            defeated={enemy.hp === 0}
-            size={enemySize}
-          />
-        )}
-        <div className="card-body">
-          <div className="card-title">
-            <h2>{config.enemy.name}</h2>
-            <Badges combatant={enemy} owner={{ kind: 'enemy', name: config.enemy.name }} status={config.status} />
-          </div>
-          {intent && !isOver && (
-            <Tip text={intentTip(intent, config.enemy.name)} focusable>
-              <span className={`intent intent-${intent.type}`} aria-label="Enemy intent">
-                {intent.type === 'attack' ? '⚔' : '🛡'} {describeIntent(intent)}
-              </span>
-            </Tip>
-          )}
-          <HpBar combatant={enemy} />
-        </div>
-      </section>
+      <div className={`arena${enemyCount > 1 ? ' arena-crowd' : ''}`}>
+      <div className={`enemy-row enemies-${enemyCount}`}>
+        {config.enemies.map((def, i) => {
+          const enemy = enemies[i]!;
+          const label = labels[i]!;
+          const art = enemySprite(def.id);
+          const down = enemy.hp === 0;
+          const intent = down ? undefined : getEnemyIntent(playing ? before : state, config, i);
+          const targeted = choosing && i === target && !down;
+          const stage = art && (
+            <EnemyStage
+              ref={enemyStageRefs[i]}
+              sprite={art}
+              name={label}
+              fx={beatEvent ? stageFxFor(beatEvent, i) : null}
+              floats={floatsFor(beatEvent, i)}
+              beatKey={beatKey}
+              defeated={down}
+              size={enemySize}
+            />
+          );
+          return (
+            <section
+              key={i}
+              className={`card enemy with-sprite${targeted ? ' targeted' : ''}${down ? ' down' : ''}`}
+              onClick={choosing && !down ? () => setPicked(i) : undefined}
+            >
+              {choosing ? (
+                <button
+                  type="button"
+                  className="target-btn"
+                  onClick={() => setPicked(i)}
+                  disabled={down}
+                  aria-pressed={targeted}
+                  aria-label={`Target ${label}`}
+                >
+                  {stage}
+                </button>
+              ) : (
+                stage
+              )}
+              <div className="card-body">
+                <div className="card-title">
+                  <h2>{label}</h2>
+                  <Badges combatant={enemy} owner={{ kind: 'enemy', name: label }} status={config.status} />
+                </div>
+                {intent && !isOver && (
+                  <Tip text={intentTip(intent, label, config.status)} focusable>
+                    <span className={`intent intent-${intent.type}`} aria-label={`${label} intent`}>
+                      {INTENT_ICON[intent.type]} {describeIntent(intent)}
+                    </span>
+                  </Tip>
+                )}
+                <HpBar combatant={enemy} />
+              </div>
+              {targeted && <span className="target-tag">Target</span>}
+            </section>
+          );
+        })}
+      </div>
 
       <BattleLog lines={logLines} />
 
@@ -500,7 +546,10 @@ export function BattleScreen({
         />
       )}
 
-      {boltColor && <Projectile key={beatKey} from={heroStageRef} to={enemyStageRef} color={boltColor} />}
+      {boltColor &&
+        boltTargets.map((i) => (
+          <Projectile key={`${beatKey}-${i}`} from={heroStageRef} to={enemyStageRefs[i]!} color={boltColor} />
+        ))}
 
       {playing && <button type="button" className="skip-layer" aria-label="Skip animation" onClick={skip} />}
 
@@ -512,8 +561,8 @@ export function BattleScreen({
             </h2>
             <p className="muted">
               {state.phase === 'victory'
-                ? `You beat ${config.enemy.name} on turn ${state.turn} with ${state.player.hp} HP left.`
-                : `${config.enemy.name} had ${state.enemy.hp} HP left.`}
+                ? `You won on turn ${state.turn} with ${state.player.hp} HP left.`
+                : defeatLine(state, labels)}
             </p>
             <button type="button" className="btn btn-primary" onClick={onContinue}>
               {state.phase === 'defeat' ? 'See results' : isFinalFight ? 'Finish run' : 'Continue'}
@@ -529,4 +578,12 @@ export function BattleScreen({
       )}
     </WorkbenchProvider>
   );
+}
+
+const INTENT_ICON: Record<EnemyIntent['type'], string> = { attack: '⚔', block: '🛡', poison: '☠', burn: '🔥' };
+
+/** Who was still standing when the player fell. */
+function defeatLine(state: BattleState, labels: readonly string[]): string {
+  const standing = state.enemies.flatMap((e, i) => (e.hp > 0 ? [`${labels[i]} (${e.hp} HP)`] : []));
+  return standing.length === 1 ? `${standing[0]} was still standing.` : `Still standing: ${standing.join(', ')}.`;
 }
