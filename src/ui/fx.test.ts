@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { BattleEvent } from '../engine';
-import { floatsFor, stageFxFor } from './fx';
+import { BLACK_RIM, COLOR_HEX, floatsFor, glowHex, stageFxFor } from './fx';
 
 const hit = (amount: number, blocked: number, source: 'attack' | 'poison' | 'burn' = 'attack', enemy = 0): BattleEvent => ({
   type: 'damaged',
@@ -111,5 +111,12 @@ describe('White, Pink, and Black effects', () => {
     expect(floatsFor(skipped, 0)).toEqual([{ text: '🤐 Skips', kind: 'silence' }]);
     expect(stageFxFor(skipped, 0)).toBe('silence');
     expect(stageFxFor(skipped, 'player')).toBeNull();
+  });
+});
+
+describe('glowHex', () => {
+  it('shows Black paint as its light rim, so a Black bolt stays visible', () => {
+    expect(glowHex('black')).toBe(BLACK_RIM);
+    expect(glowHex('red')).toBe(COLOR_HEX.red);
   });
 });

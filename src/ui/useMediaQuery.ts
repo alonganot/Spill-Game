@@ -20,17 +20,9 @@ export function useMediaQuery(query: string): boolean {
   return useSyncExternalStore(subscribe, matches, () => false);
 }
 
-/** Big desktop windows (about 1080p and up), where the fighters scale up another step. */
-export const LARGE_QUERY = '(min-width: 1500px) and (min-height: 960px)';
-
 /** True on desktop-sized windows. */
 export function useDesktop(): boolean {
   return useMediaQuery(DESKTOP_QUERY);
-}
-
-/** True on large desktop windows. */
-export function useLargeDesktop(): boolean {
-  return useMediaQuery(LARGE_QUERY);
 }
 
 function subscribeResize(onChange: () => void) {

@@ -4,6 +4,7 @@ import {
   firstLivingEnemy,
   isAreaSpell,
   mixColors,
+  mixCost,
   findMixPlan,
   spendColors,
   getEnemyIntent,
@@ -26,7 +27,7 @@ import { SpellCard, Spellbook, type Spell } from './Spellbook';
 import { chipPopMs, useReducedMotion } from './anim';
 import { RollStage, TrayDie } from './PixelDie';
 import { EnemyStage, HeroStage, Projectile } from './Fighters';
-import { COLOR_HEX, floatsFor, stageFxFor } from './fx';
+import { COLOR_HEX, floatsFor, glowHex, stageFxFor } from './fx';
 import { COLOR_LABEL, describeIntent, enemyLabels, formatEvent, intentTip, type IntentMark } from './format';
 import { Tip } from './Tooltip';
 import { beforeOpeningRoll, buildTimeline } from './timeline';
@@ -99,9 +100,9 @@ export function BattleScreen({
   const onStage = rolling && !reducedMotion && rollEvent !== undefined;
   const trayRef = useRef<HTMLDivElement>(null);
   const desktop = useDesktop();
-  const { width: windowWidth } = useWindowSize();
+  const { width: windowWidth, height: windowHeight } = useWindowSize();
   const enemyCount = config.enemies.length;
-  const pixel = fighterPixel(windowWidth);
+  const pixel = fighterPixel(windowWidth, windowHeight, config.dice.length);
   const crowd = enemyCount >= 3 ? CROWD_SCALE[3] : enemyCount === 2 ? CROWD_SCALE[2] : 1;
   const enemySize = desktop ? 22 * Math.max(3, Math.floor(pixel * crowd)) : enemyCount >= 3 ? 56 : enemyCount === 2 ? 68 : 88;
   const heroSize = desktop ? 16 * pixel : 48;
@@ -123,14 +124,13 @@ export function BattleScreen({
   const beatKey = `${actionCount}-${index}`;
   const enemyStageRefs = useMemo(() => config.enemies.map(() => createRef<HTMLDivElement>()), [config.enemies]);
   const heroStageRef = useRef<HTMLDivElement>(null);
-  const poolRef = useRef<HTMLElement>(null);
   // A spell that reaches enemies sends a bolt of its first cost color: to its target, or to every living enemy.
   // Spells that only touch the player (Block, Heal, Cleanse) send none.
   const castAttack =
     beatEvent?.type === 'triggered' ? config.attacks.find((x) => x.id === beatEvent.attackId) : undefined;
   const castColor = castAttack && (Object.keys(castAttack.cost)[0] as Color | undefined);
   const boltColor =
-    castAttack && castColor && castAttack.effects.some((e) => !PLAYER_EFFECTS.has(e.type)) ? COLOR_HEX[castColor] : null;
+    castAttack && castColor && castAttack.effects.some((e) => !PLAYER_EFFECTS.has(e.type)) ? glowHex(castColor) : null;
   const boltTargets =
     beatEvent?.type !== 'triggered' || !castAttack
       ? []
@@ -227,7 +227,7 @@ export function BattleScreen({
   /** What stays staged once the bowl is mixed. */
   const afterMix =
     bowl.kind === 'mix' && mixedPool
-      ? carryStaging(staging, pool, { [bowl.inputs[0]]: 1, [bowl.inputs[1]]: 1 }, mixedPool, { kind: 'bowl' })
+      ? carryStaging(staging, pool, mixCost(bowl.inputs[0], bowl.inputs[1]), mixedPool, { kind: 'bowl' })
       : null;
 
   /** Where the bowl's new color could go on a spell, after the mix. */
@@ -339,7 +339,7 @@ export function BattleScreen({
   // The color pool: on phones it sits above the spells, so it never scrolls
   // out of reach; on PC it's the bottom of the workbench.
   const poolSection = (
-      <section className={`pool-section${dropClass('pool')}`} ref={poolRef} data-drop="pool">
+      <section className={`pool-section${dropClass('pool')}`} data-drop="pool">
         <div className="section-head">
           <h3>Color pool</h3>
           <span className="muted">
@@ -554,7 +554,6 @@ export function BattleScreen({
           unavailableOnly={unavailableOnly}
           onToggleUnavailableOnly={() => setUnavailableOnly((v) => !v)}
           onClose={closeBook}
-          keepVisibleRef={poolRef}
         />
       )}
 
@@ -625,18 +624,31 @@ export function BattleScreen({
 /** How much smaller each enemy is drawn in a fight with two or three of them. */
 const CROWD_SCALE = { 2: 0.8, 3: 0.6 } as const;
 
+/** Arena height that isn't the fighters' sprites: page padding, top bar, row gaps, the name/intent/HP under each sprite, and the log button. */
+const ARENA_CHROME_HEIGHT = 28 + 56 + 32 + 130 + 44 + 16;
+/** The dice rack: its first row (with the heading), then each extra row. */
+const DICE_FIRST_ROW = 90;
+const DICE_EXTRA_ROW = 60;
+const DICE_MIN_WIDTH = 136;
+
 /**
  * Desktop fighters' pixel scale (hero 16px, enemy 22px of art). The arena is
- * half the window, so this follows the window width, and it's the same in
- * every fight: picked so the hero plus three crowd-sized enemies fit, so the
- * hero never changes size when more enemies appear.
+ * half the window, so this follows the window size, and it's the same in
+ * every fight: picked so the hero plus three crowd-sized enemies fit across,
+ * and a lone enemy fits under the top bar and dice, so the hero never changes
+ * size when more enemies appear.
  */
-export function fighterPixel(windowWidth: number): number {
+export function fighterPixel(windowWidth: number, windowHeight: number, diceCount: number): number {
   // Half the window, less the page padding (24px each side), the 20px gap, and the arena's own padding.
   const arena = (windowWidth - 68) / 2 - 32;
-  // Hero (16) + three enemies (22 × 0.6 each) in pixels, plus about 48px of gaps and card padding.
-  const perPixel = 16 + 3 * 22 * CROWD_SCALE[3];
-  return Math.max(4, Math.min(14, Math.floor((arena - 48) / perPixel)));
+  // Across: hero (16) + three enemies (22 × 0.6 each) in pixels, plus about 48px of gaps and card padding.
+  const byWidth = Math.floor((arena - 48) / (16 + 3 * 22 * CROWD_SCALE[3]));
+  // Down: a lone enemy (22) has to fit what the rest of the arena leaves.
+  const perRow = Math.max(1, Math.floor(arena / DICE_MIN_WIDTH));
+  const diceRows = Math.max(1, Math.ceil(diceCount / perRow));
+  const dice = DICE_FIRST_ROW + (diceRows - 1) * DICE_EXTRA_ROW;
+  const byHeight = Math.floor((windowHeight - ARENA_CHROME_HEIGHT - dice) / 22);
+  return Math.max(4, Math.min(14, byWidth, byHeight));
 }
 
 function samePool(a: readonly Color[], b: readonly Color[]): boolean {

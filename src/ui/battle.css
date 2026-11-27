@@ -820,16 +820,18 @@
   animation: fadein 0.2s ease both;
 }
 
-/* Slides up over the spell area, leaving the pool visible for mix hints. */
+/*
+ * Slides up and takes the whole window height. The title and buttons stay put;
+ * only the body (spells, mixes, legend) scrolls.
+ */
 .spellbook {
   position: fixed;
   left: 50%;
+  top: max(12px, env(safe-area-inset-top));
   bottom: 0;
   z-index: 12;
   width: min(480px, 100%);
-  /* Set from the pool's position so the sheet stops below the chips it highlights. */
-  max-height: var(--sheet-max, 55dvh);
-  overflow-y: auto;
+  overflow: hidden;
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
@@ -853,9 +855,24 @@
 }
 
 .spellbook-head {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.spellbook-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  /* Keeps absolutely placed bits (screen-reader labels) inside the scrolling list. */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* Room for focus rings and card glows at the scroll edges. */
+  margin: 0 -6px;
+  padding: 2px 6px;
 }
 
 .spellbook-head h3 {
@@ -1142,6 +1159,7 @@
   .spellbook {
     width: min(760px, calc(100% - 48px));
     border-bottom: 1px solid var(--border);
+    top: 24px;
     bottom: 24px;
     border-radius: 18px;
   }

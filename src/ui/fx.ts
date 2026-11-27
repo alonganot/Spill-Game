@@ -25,6 +25,14 @@ export const COLOR_HEX: Record<Color, string> = {
   frost: '#a6ecff',
 };
 
+/** Black paint's light rim (`--black-rim`): its drop outline, and its glow where plain Black would vanish on the dark UI. */
+export const BLACK_RIM = '#8f86a8';
+
+/** A color's paint as a glowing effect (paint bolts): Black shows as its rim so it stays visible. */
+export function glowHex(color: Color): string {
+  return color === 'black' ? BLACK_RIM : COLOR_HEX[color];
+}
+
 export type FloatKind =
   | 'damage'
   | 'poison'

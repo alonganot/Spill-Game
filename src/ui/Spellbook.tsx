@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, type RefObject } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import type { AttackDefinition, Color, MixRecipe } from '../engine';
 import { PaintDrop } from './PaintDrop';
 import { COLOR_LABEL, describeEffect, spellTip } from './format';
@@ -128,13 +128,7 @@ interface SpellbookProps {
   unavailableOnly: boolean;
   onToggleUnavailableOnly: () => void;
   onClose: () => void;
-  /** The sheet sits just above this element (the color pool). */
-  keepVisibleRef: RefObject<HTMLElement | null>;
 }
-
-/** Never shrink the sheet below this, even when the pool is very tall. */
-const MIN_SHEET_PX = 200;
-const SHEET_GAP_PX = 8;
 
 /** Every spell, ready or not, in a sheet that slides up over the spell area. */
 export function Spellbook({
@@ -143,27 +137,10 @@ export function Spellbook({
   unavailableOnly,
   onToggleUnavailableOnly,
   onClose,
-  keepVisibleRef,
 }: SpellbookProps) {
   const titleId = useId();
   const sheetRef = useRef<HTMLElement>(null);
   const shown = unavailableOnly ? spells.filter((s) => s.status !== 'ready') : spells;
-
-  // Sit just above the pool, so the colors you have (and the chips a hint
-  // highlights) stay in view while the book is open.
-  useLayoutEffect(() => {
-    const fit = () => {
-      const top = keepVisibleRef.current?.getBoundingClientRect().top;
-      const sheet = sheetRef.current;
-      if (top === undefined || !sheet) return;
-      const bottom = Math.max(0, window.innerHeight - top + SHEET_GAP_PX);
-      sheet.style.bottom = `${bottom}px`;
-      sheet.style.setProperty('--sheet-max', `${Math.max(MIN_SHEET_PX, top - SHEET_GAP_PX * 2)}px`);
-    };
-    fit();
-    window.addEventListener('resize', fit);
-    return () => window.removeEventListener('resize', fit);
-  }, [keepVisibleRef]);
 
   // Move focus into the sheet, keep Tab inside it, and hand focus back on close.
   useEffect(() => {
@@ -223,6 +200,8 @@ export function Spellbook({
             ✕
           </button>
         </div>
+        {/* Only the spells, mixes, and legend scroll; the title and buttons above stay put. */}
+        <div className="spellbook-body">
         {shown.length === 0 ? (
           <p className="muted spellbook-empty">Every spell is ready to cast.</p>
         ) : (
@@ -248,6 +227,7 @@ export function Spellbook({
         <p className="spellbook-legend muted">
           Tap an empty slot to fill it from your pool, then Cast. <span className="legend-craftable">⚗ Mix first</span> puts the colors to mix in the bowl. Dim spells need colors you don't have.
         </p>
+        </div>
       </section>
     </>
   );

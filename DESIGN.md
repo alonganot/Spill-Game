@@ -80,7 +80,7 @@ The six original paint colors get a small boost in brightness and saturation so 
 | `--burn` | `var(--orange)` | Burn badges and intents. |
 | `--danger` | `#e8484a` | Attack intents, destructive buttons. |
 | `--glow-size` | `6px` | Default glow radius; doubled on hover/drag. |
-| `--px` | `2px` | The UI "pixel": border and bevel thickness. `3px` at the large-desktop size is allowed. |
+| `--px` | `2px` | The UI "pixel": border and bevel thickness. `3px` on big desktop windows is allowed. |
 
 ### 2.3 Glows
 
@@ -170,7 +170,7 @@ Variants:
 
 ## 5. Battle Arena (left on desktop, top on phones)
 
-**Desktop proportions:** the battle screen is a fixed **50/50** two-column grid (`.run-screen.in-battle`): the arena on the left, the workbench on the right, both running the full window height, and neither changes size with the number of enemies. The top bar (☰, Spill, fight and act) sits **inside the top of the arena**, above the dice rack. Fighters scale with the window width (`fighterPixel` in `BattleScreen.tsx`, 4×–14×) at one size for every fight, picked so the hero plus three crowd-sized enemies always fit; the hero's column is only as wide as its sprite, and the hero and the enemies sit between equal spacers, so they're always centered in the arena and evenly spaced (the spacers shrink first when room is tight). During a fight, **gold** sits in the player's card beside their name and turn, above the HP bar (`.card-meta`), not in the top bar.
+**Desktop proportions:** the battle screen is a fixed **50/50** two-column grid (`.run-screen.in-battle`): the arena on the left, the workbench on the right, both running the full window height, and neither changes size with the number of enemies. The top bar (☰, Spill, fight and act) sits **inside the top of the arena**, above the dice rack. Fighters scale with the window (`fighterPixel` in `BattleScreen.tsx`, 4×–14×) at one size for every fight, picked so the hero plus three crowd-sized enemies fit across and a lone enemy fits under the top bar and dice rack; the hero's column is only as wide as its sprite, and the hero and the enemies sit between equal spacers, so they're always centered in the arena and evenly spaced (the spacers shrink first when room is tight). During a fight, **gold** sits in the player's card beside their name and turn, above the HP bar (`.card-meta`), not in the top bar.
 
 - **Backdrop:** a cosmic starry sky. Layer, back to front: `--bg-deep` → soft nebula clouds (`radial-gradient`s of `--nebula-1/2/3` at 15–30% opacity) → sparse star pixels (a repeating background of 1–2px `--star` dots, or a small tiled pixel sprite). An optional slow twinkle (opacity, ≥4s period) is turned off under `prefers-reduced-motion`.
 - **Floor:** an ancient stone-tile floor along the bottom third of the arena: rows of `--stone`/`--stone-dark` tiles with 1px `--bg-deep` grout and a few `--stone-light` chips, slightly darker toward the back. The hero and every enemy stand on the floor (their sprite's feet line up with the tile row). Can be CSS gradients or a tiled code-drawn sprite.
@@ -222,7 +222,7 @@ Every screen shares the same backdrop (nebula + stars, without the floor), frame
 - **Reward cards** (`RewardScreen.tsx`, `run.css` `.choice`): three `.px-frame-gold` parchment cards; the icon sits in a recessed socket; hover/focus glows gold.
 - **Dice Shop** (`ShopScreen.tsx`): shop items are dark parchment rows/cards in bronze frames; prices in the pixel font with a gold coin glyph; Buy is primary; unaffordable items are flat and dim with their reason visible.
 - **Dice editor** (`DiceEditor.tsx`): faces sit in recessed stone sockets like the dice tray; color picks are glowing drops.
-- **Spellbook** (`Spellbook.tsx`): a large parchment-and-bronze sheet over the workbench, using the same spell cards, with every mix recipe listed under them as paint drops (`.recipe-list`).
+- **Spellbook** (`Spellbook.tsx`): a large parchment-and-bronze sheet using the same spell cards, with every mix recipe listed under them as paint drops (`.recipe-list`). It takes the whole window height (24px margins on desktop); the title, the Unavailable-only toggle, and ✕ stay fixed at the top, and only the body (`.spellbook-body`: spells, mixes, legend) scrolls.
 - **Battle Log** (`BattleLog.tsx`): an aged scroll panel (`--parchment-dark`, bronze frame), body-font lines.
 - **Settings** (`SettingsScreen.tsx`): grouped `.px-frame` panels; the seed in the pixel font in a recessed field; danger actions use `.btn-danger`.
 - **Run End** (`RunEndScreen.tsx`): a large gold-framed panel, Victory in gold / Defeat in `--danger`, stats in the pixel font.
@@ -235,7 +235,7 @@ Every screen shares the same backdrop (nebula + stars, without the floor), frame
 - Every frame in a sheet is a rectangle of the same size (`src/data/sprites.test.ts` checks this); add new sheets to that test.
 - New UI sprites for this theme: **cauldron**, **potion vial** (empty / filled / cracked), **target ring**, **area ("hits all") icon**, **coin**, intent/badge icons where emoji read poorly, and optional floor-tile and star tiles.
 - Palettes use the values in §2. Outlines use `--bg`'s value. Fill colors that depend on paint (vial liquid, socket glow) are passed in at render time, as `dropPalette` does.
-- Scale by whole pixels only. Desktop fighters stay at 10× (13× on large desktop); UI sprites pick a fixed whole-pixel scale per breakpoint.
+- Scale by whole pixels only. Desktop fighters scale with the window, 4× to 14× (`fighterPixel`, §5); UI sprites pick a fixed whole-pixel scale per breakpoint.
 
 ## 9. Motion
 
@@ -247,6 +247,6 @@ Every screen shares the same backdrop (nebula + stars, without the floor), frame
 
 - **Where changes go:** `src/ui/` (CSS and components), `src/data/sprites.ts` (new UI sprites), and `index.html` (font loading). No changes to `src/engine/` or gameplay data; the redesign is visual only.
 - **Keep all interaction working:** drag-and-drop (`useDrag.ts`, `data-drop` targets), click/tap-to-place, keyboard (Enter to lift/place, Escape to go back, focusable tooltips), and all `aria-*` labels. Decorative sprites and backdrops are `aria-hidden`.
-- **Keep the responsive breakpoints:** `useDesktop` (`min-width: 900px`) and `useLargeDesktop` (`min-width: 1500px` and `min-height: 960px`) in `useMediaQuery.ts`, and the matching CSS `@media` blocks. The desktop battle screen still fills the window with no scrolling; phones keep the single column.
+- **Keep the responsive breakpoints:** `useDesktop` (`min-width: 900px`) in `useMediaQuery.ts` and the matching CSS `@media` blocks; desktop fighter sizes come from the window size (`useWindowSize`, `fighterPixel`). The desktop battle screen still fills the window with no scrolling; phones keep the single column.
 - **Performance:** backdrops are CSS gradients or small tiled sprites, not large images; no heavy shaders or canvas effects.
 - **Tokens first:** new colors are added as tokens in §2 before use. Update this file when a token, utility, or rule changes.

@@ -1,6 +1,6 @@
 import type { Color } from '../engine';
 import type { SpriteSheet } from '../data/sprites';
-import { COLOR_HEX } from './fx';
+import { BLACK_RIM, COLOR_HEX } from './fx';
 import { PixelSprite } from './PixelSprite';
 
 // A 12×13 drop of paint: dark outline, a highlight down its left side, and
@@ -38,7 +38,7 @@ function shade(hex: string, amount: number): string {
 export function dropPalette(color: Color): Record<'k' | 'c' | 'h' | 'd', string> {
   const base = COLOR_HEX[color];
   // Black paint gets a light rim (and a stronger highlight) so it reads on the dark background.
-  if (color === 'black') return { k: '#8f86a8', c: base, h: shade(base, 0.35), d: '#120e1a' };
+  if (color === 'black') return { k: BLACK_RIM, c: base, h: shade(base, 0.35), d: '#120e1a' };
   return { k: '#14121a', c: base, h: shade(base, 0.45), d: shade(base, -0.3) };
 }
 
