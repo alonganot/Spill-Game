@@ -18,6 +18,7 @@ import {
   type BattleState,
   type Color,
   type EnemyIntent,
+  type InterestRule,
   type EnemyState,
   type Effect,
   type MixRecipe,
@@ -32,7 +33,7 @@ import { chipPopMs, useReducedMotion } from './anim';
 import { RollStage, TrayDie } from './PixelDie';
 import { EnemyStage, HeroStage, Projectile } from './Fighters';
 import { COLOR_HEX, floatsFor, glowHex, stageFxFor } from './fx';
-import { COLOR_LABEL, describeIntent, enemyLabels, formatEvent, intentTip, type IntentMark } from './format';
+import { COLOR_LABEL, describeIntent, enemyLabels, formatEvent, intentTip, interestTip, type IntentMark } from './format';
 import { Tip } from './Tooltip';
 import { beforeOpeningRoll, buildTimeline } from './timeline';
 import { chipsForPlan } from './mixHint';
@@ -72,6 +73,8 @@ interface BattleScreenProps {
   isFinalFight: boolean;
   /** The run's gold, shown beside the player's HP. */
   gold: number;
+  /** The run's gold interest rule, explained in the gold counter's tooltip. */
+  interest: InterestRule;
   /** Settings or the menu is on top: Auto-cast waits until the player is back. */
   paused: boolean;
   /** What the won fight pays, shown on the Victory popup; null until it's won. */
@@ -91,6 +94,7 @@ export function BattleScreen({
   actionCount,
   isFinalFight,
   gold,
+  interest,
   paused,
   reward,
   heroSprite,
@@ -537,9 +541,9 @@ export function BattleScreen({
               <Badges combatant={player} owner={{ kind: 'player' }} status={config.status} />
             </div>
             <span className="card-meta">
-              <span className="gold" aria-label="Gold">
-                🪙 {gold}
-              </span>
+              <Tip text={interestTip(gold, interest)} className="gold" focusable>
+                <span aria-label="Gold">🪙 {gold}</span>
+              </Tip>
               <span className="muted">Turn {state.turn}</span>
             </span>
           </div>
@@ -728,7 +732,7 @@ function intentPlan(
   return { intent, mark: null };
 }
 
-/** The Victory popup's gold: base, the unused paint bonus (when there's paint left), and the total. */
+/** The Victory popup's gold: base, the unused paint bonus and interest (when there are any), and the total. */
 function GoldBreakdown({ reward }: { reward: VictoryGold }) {
   return (
     <dl className="gold-breakdown" aria-label="Gold earned">
@@ -742,6 +746,14 @@ function GoldBreakdown({ reward }: { reward: VictoryGold }) {
             Unused paint ({reward.leftover} {reward.leftover === 1 ? 'drop' : 'drops'} × {reward.perColor}g)
           </dt>
           <dd>+{reward.bonus}g</dd>
+        </div>
+      )}
+      {reward.interest > 0 && (
+        <div className="gold-line">
+          <dt>
+            Interest ({reward.held}g held → {reward.interest} × 1g)
+          </dt>
+          <dd>+{reward.interest}g</dd>
         </div>
       )}
       <div className="gold-line gold-total">

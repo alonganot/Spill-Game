@@ -1,4 +1,5 @@
 import {
+  calculateGoldInterest,
   isAreaSpell,
   type AttackDefinition,
   type BattleConfig,
@@ -6,6 +7,7 @@ import {
   type Color,
   type Effect,
   type EnemyIntent,
+  type InterestRule,
   type MixRecipe,
   type StatusConfig,
 } from '../engine';
@@ -209,6 +211,15 @@ export function blockTip(amount: number, owner: Owner): string {
   return owner.kind === 'player'
     ? `Block ${amount}: absorbs the next ${amount} attack damage. It lasts until your next turn starts.`
     : `Block ${amount}: absorbs the next ${amount} damage from your spells. It lasts until ${owner.name} acts again.`;
+}
+
+/** The gold counter's tooltip: the interest the next won fight pays on the gold held now (RULES.md §4). */
+export function interestTip(gold: number, rule: InterestRule): string {
+  const ruleText = `+1g per ${rule.step}g held, max +${rule.max}g`;
+  const interest = calculateGoldInterest(gold, rule);
+  if (interest >= rule.max) return `Earning the max +${rule.max}g interest after your next win (${ruleText}).`;
+  if (interest === 0) return `No interest yet: hold ${rule.step}g to earn +1g after your next win (${ruleText}).`;
+  return `Earning +${interest}g interest after your next win (${ruleText}). Hold ${(interest + 1) * rule.step}g for +${interest + 1}g.`;
 }
 
 /** How an enemy's intent is changed: skipped (Silenced) or softened (Chilled). */

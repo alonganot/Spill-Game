@@ -211,10 +211,19 @@ export interface RewardAmounts {
   heal: number;
 }
 
+export interface InterestRule {
+  /** Gold held per 1g of interest. */
+  step: number;
+  /** The most interest one won fight pays. */
+  max: number;
+}
+
 export interface EconomyConfig {
   goldPerWin: Record<StageKind, number>;
   /** Extra gold per color still in the pool when a fight is won. */
   leftoverColorGold: number;
+  /** Gold interest on a won fight (RULES.md §4): +1g per `step` gold held, at most `max`. */
+  interest: InterestRule;
   /** Reward pick amounts by the kind of fight just won. */
   rewards: Record<StageKind, RewardAmounts>;
   /** Chance that a reward's third offer is a Free Spell Upgrade instead of a Free repaint. */
@@ -294,12 +303,16 @@ export interface ShopUpgrades {
 
 export type RunPhase = 'battle' | 'reward' | 'shop' | 'victory' | 'defeat';
 
-/** The gold a won fight pays: its base, plus a bonus per color left in the pool. */
+/** The gold a won fight pays: its base, a bonus per color left in the pool, and interest on gold held. */
 export interface VictoryGold {
   base: number;
   leftover: number;
   perColor: number;
   bonus: number;
+  /** Gold held when the fight was won, before this fight's gold. */
+  held: number;
+  interest: number;
+  interestRule: InterestRule;
   total: number;
 }
 

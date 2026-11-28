@@ -4,7 +4,7 @@ import { createSeededRng } from '../engine/rng';
 import { PLAYER_MAX_HP } from './balance';
 import { CHARACTER_ORDER, CHARACTERS, DEFAULT_CHARACTER, isCharacterId, TIER_COSTS } from './characters';
 import { DICE, SHOP_DICE } from './dice';
-import { ESSENCE } from './economy';
+import { ECONOMY, ESSENCE, INTEREST_GOLD_STEP, MAX_INTEREST_GOLD } from './economy';
 import { defaultRunConfig, runConfigFor, STARTING_DICE_CAP } from './run';
 
 describe('characters', () => {
@@ -70,5 +70,13 @@ describe('runConfigFor', () => {
     const base = defaultRunConfig();
     const tank = runConfigFor('tank');
     expect({ ...tank, startingDice: base.startingDice, battle: { ...tank.battle, playerMaxHp: base.battle.playerMaxHp } }).toEqual(base);
+  });
+});
+
+describe('gold interest data', () => {
+  it('matches RULES.md: +1g per 5g held, at most +5g, in every run config', () => {
+    expect([INTEREST_GOLD_STEP, MAX_INTEREST_GOLD]).toEqual([5, 5]);
+    expect(ECONOMY.interest).toEqual({ step: 5, max: 5 });
+    expect(defaultRunConfig().economy.interest).toEqual({ step: 5, max: 5 });
   });
 });

@@ -10,6 +10,7 @@ import {
   dieTip,
   effectSentence,
   intentTip,
+  interestTip,
   poisonTip,
   silenceImmuneTip,
   silenceTip,
@@ -131,5 +132,24 @@ describe('upgraded spell tooltips', () => {
 
   it('explains that Hush+ leaves no immunity', () => {
     expect(effectSentence({ type: 'silence', noImmunity: true }, status)).toContain('can be Silenced again right away');
+  });
+});
+
+describe('interestTip', () => {
+  const rule = { step: 5, max: 5 };
+
+  it('says how to start earning interest below one step', () => {
+    expect(interestTip(4, rule)).toBe('No interest yet: hold 5g to earn +1g after your next win (+1g per 5g held, max +5g).');
+  });
+
+  it('gives the interest now and the next tier', () => {
+    expect(interestTip(18, rule)).toBe(
+      'Earning +3g interest after your next win (+1g per 5g held, max +5g). Hold 20g for +4g.',
+    );
+  });
+
+  it('says when interest is at the cap', () => {
+    expect(interestTip(25, rule)).toBe('Earning the max +5g interest after your next win (+1g per 5g held, max +5g).');
+    expect(interestTip(80, rule)).toBe(interestTip(25, rule));
   });
 });
