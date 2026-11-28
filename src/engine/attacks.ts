@@ -60,7 +60,8 @@ export function payBounty(
   events: BattleEvent[],
 ): EnemyState {
   if (isDefeated(before) || !isDefeated(after) || after.bounty <= 0) return after;
-  events.push({ type: 'goldGained', amount: after.bounty * status.bountyGold, source: 'bounty', enemy: index });
+  const amount = after.bounty * status.bountyGold;
+  if (amount > 0) events.push({ type: 'goldGained', amount, source: 'bounty', enemy: index });
   return { ...after, bounty: 0 };
 }
 

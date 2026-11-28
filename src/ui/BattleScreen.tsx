@@ -544,7 +544,7 @@ export function BattleScreen({
             </div>
             <span className="card-meta">
               <Tip text={interestTip(shownGold, interest)} className="gold" focusable>
-                <span aria-label="Gold">🪙 {shownGold}</span>
+                <span aria-label={`Run gold: ${shownGold}`}>🪙 {shownGold}</span>
               </Tip>
               <span className="muted">Turn {state.turn}</span>
             </span>

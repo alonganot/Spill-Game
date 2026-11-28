@@ -107,7 +107,7 @@ export function RunScreen({
           {/* In a fight, gold sits beside the player's HP instead. */}
           {outsideBattle && (
             <Tip text={interestTip(run.gold, config.economy.interest)} focusable>
-              <span aria-label="Gold">🪙 {run.gold}</span>
+              <span aria-label={`Run gold: ${run.gold}`}>🪙 {run.gold}</span>
             </Tip>
           )}
         </span>

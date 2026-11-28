@@ -204,7 +204,7 @@ export const GOLD_ATTACKS = {
     name: 'Mint',
     cost: { gold: 1 },
     effects: [{ type: 'gold', amount: GOLD_SPELL_PAYOUT }],
-    upgrade: { effects: [{ type: 'gold', amount: 3 }] },
+    upgrade: { effects: [{ type: 'gold', amount: GOLD_SPELL_PAYOUT + 1 }] },
   },
   bounty: {
     id: 'bounty',
