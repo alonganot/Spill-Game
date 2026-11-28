@@ -24,6 +24,10 @@
   --crimson: #b5173f;
   --blight: #8e9c1e;
   --frost: #a6ecff;
+  /* Gold paint: deeper and more metallic than --accent, warmer than --orange. Not a UI frame color. */
+  --paint-gold: #d9a520;
+  --paint-gold-shine: #fff1a8;
+  --bounty: #ffd36b;
   --curse: #b58cff;
   --silence: #c9c3d8;
   --chill: #a6ecff;

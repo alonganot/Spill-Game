@@ -13,7 +13,8 @@
   - `Green` — Nature / Poison
   - `White` — Purity: cleansing, holy protection
   - `Black` — Shadow / Curse: silencing enemies, making them take more damage
-- Starter dice stay Red/Blue/Green. White and Black arrive through themed shop dice and Repaint (§4).
+  - `Gold` — Economy: gold for the run mid-fight, and Bounty on enemies
+- Starter dice stay Red/Blue/Green. White and Black arrive through themed shop dice and Repaint (§4). **Gold comes only from Repaint** (Reward free repaint or Shop repaint): no starter, character, or shop die has a Gold face.
 - **Mixing:** Consumes specified input colors from the Color Pool and adds one resulting secondary color to the Color Pool:
   - `Red + Blue -> Purple`
   - `Blue + Green -> Cyan`
@@ -23,9 +24,14 @@
   - `Red + Black -> Crimson` — Vampiric: damage plus heal
   - `Green + Black -> Blight` — Plague: amplifies Poison
   - `Blue + White -> Frost` — Chill: weakens enemy attacks
-- Mixing order doesn't matter (`Blue + Red` = `Red + Blue`). Pairs with no recipe (e.g. `Red + Red`, `Blue + Black`, `Green + White`, or anything with a secondary color) are invalid.
+- Mixing order doesn't matter (`Blue + Red` = `Red + Blue`). Pairs with no recipe (e.g. `Red + Red`, `Blue + Black`, `Green + White`, anything with Gold, or anything with a secondary color) are invalid. Gold has no mixes: it is spent as it is.
+- **Gold spells** (`src/data/attacks.ts`):
+  - `Mint` (Gold): +2 gold (`GOLD_SPELL_PAYOUT`). Mint+: +3.
+  - `Bounty` (Gold + Green): 1 Bounty stack on the target, then 3 damage. Bounty+: 2 stacks, then 4 damage. The Bounty lands first, so a killing hit pays it out too.
+  - `Gilded Ward` (Gold + Blue): 5 Block and +1 gold. Gilded Ward+: 7 Block and +2 gold.
+  - Gold from a spell (or a Bounty) goes **straight into the run's gold**, mid-fight. It stays even if the fight is lost, and it counts as gold held for that fight's interest (§4).
 - **Triggering Attacks / Abilities:** Consumes required colors or combinations from the Color Pool to apply effects such as direct damage, block/shield, status effects, or multi-color/stack combos.
-  - Damage, Poison, Burn, Curse, Silence, and Chill hit the **target** enemy. Block, Heal, and Cleanse go to the player.
+  - Damage, Poison, Burn, Curse, Silence, Chill, and Bounty hit the **target** enemy. Block, Heal, Cleanse, and Gold go to the player.
   - **Targeting:** the player picks which living enemy a spell is aimed at (by default, the first living one). Aiming at a defeated or missing enemy is invalid.
   - **Area spells** (e.g. Splash, Miasma, Spore Cloud, Radiant Burst) apply their enemy effects to **every living enemy** instead.
   - A spell's effects resolve in their listed order (so a Block that depends on the player's statuses sees any Cleanse listed before it).
@@ -42,8 +48,12 @@ Enemies can carry Poison and Burn (above) plus these. All values (`curseBonus`, 
 - **Silence:** the enemy **skips its next action** (no attack, block, or status on the player). The skipped intent counts as used, so its intent cycle moves on. Silence then clears and the enemy gains **Silence Immunity**, which lasts until the end of its next action, so it always acts on the turn after a silence. Hush+ (Milestone 9) silences without granting this immunity. Silence aimed at an immune enemy does nothing: a spell whose only effect is Silence (Hush, Hush+) **can't be cast** on an immune target (its card says "Target is immune to Silence"), while a spell with other effects (Eclipse) can, and only its Silence is resisted. An enemy can therefore be silenced at most every other turn.
 - **Chill:** the enemy's next action, if it is an Attack, deals `chillMultiplier` (default `0.5`) damage per hit, rounded down. Chill clears after the enemy's next action, whatever that action is. A silenced enemy keeps its Chill until the action it actually takes.
 
+### Bounty (from Gold spells)
+- **Bounty** is a stacking enemy status: each application adds its stacks (two Bounty casts = 2 stacks). It **never decays**; it lasts until the enemy is defeated or the fight ends.
+- When an enemy with Bounty is **defeated** (drops to 0 HP), the player immediately gains `stacks × bountyGold` gold (`BOUNTY_GOLD_PER_STACK`, default `3`, in `src/data/balance.ts`): 2 stacks pay 6 gold. It pays once, whatever the killing blow: spell damage, area damage, a Poison tick, or a Burn tick. An enemy with no Bounty pays nothing.
+
 ### Spell upgrades (`+`) (Milestone 9)
-- A spell with an `upgrade` config in `src/data/attacks.ts` can be upgraded once per run to its `+` form (e.g. Inferno -> Inferno+). Spells without an `upgrade` config can never be upgraded (after Milestone 9, that is none of the 24 starting spells).
+- A spell with an `upgrade` config in `src/data/attacks.ts` can be upgraded once per run to its `+` form (e.g. Inferno -> Inferno+). Spells without an `upgrade` config can never be upgraded (every one of the 27 starting spells has one, the 3 Gold spells included).
 - An upgrade changes the spell's numbers or effects, never its color cost, so a dice setup that already cast the spell still works.
 - Upgraded stats are roughly +30% to +50% on the numeric value. Area spells are the exception: they cost two colors and hit every enemy, so their upgrades roughly double (up to +100%). Where it fits, an upgrade adds a stack instead (e.g. a second Burn effect: Burn 1 -> 2 stacks).
 - Upgrades last for the rest of the run: `upgradedSpells` in `RunState` lists them, and every later fight resolves them with the `+` effects.
@@ -59,6 +69,7 @@ Enemies can carry Poison and Burn (above) plus these. All values (`curseBonus`, 
      - **Poison:** Deals damage equal to current stack count, then decreases stacks by `1` (removed when reaching `0`).
      - **Burn:** Deals the configured burn damage **per stack** (e.g. 2 stacks × 4 = 8), then every stack is **removed** (cleared).
      - A **Cursed** enemy takes `+curseBonus` on each of these ticks (once for its Poison tick, once for its Burn tick).
+     - An enemy a tick defeats pays its **Bounty** right then, before the victory check.
      - Status damage **ignores Block** and goes straight to HP.
    - **Curse clears** from every enemy once the status step is done.
    - Each living enemy acts in order, left to right, on its own intent:
@@ -77,12 +88,12 @@ Enemies can carry Poison and Burn (above) plus these. All values (`curseBonus`, 
 - **After every fight but the last:** a free **Reward** pick, then a **Shop**, then the next fight. Beating the final boss wins the run; losing any fight ends it.
 - **HP carries over** between fights (including HP healed during a fight). Block, all statuses (player and enemy), and the Color Pool reset at the start of each fight.
 - Each won fight pays **gold** (elites and bosses pay more), plus a **leftover paint bonus**: 1 gold for every color still in the Color Pool when the fight is won. Unspent gold carries over.
-- **Gold interest:** every won fight (the final boss included) also pays **+1 gold for every 5 gold held**, rounded down, up to **+5** (reached at 25 gold). It is counted on the gold held when the fight is won, before that fight's own gold is added (e.g. winning with 18 gold held pays +3). `INTEREST_GOLD_STEP` and `MAX_INTEREST_GOLD` in `src/data/economy.ts`.
+- **Gold interest:** every won fight (the final boss included) also pays **+1 gold for every 5 gold held**, rounded down, up to **+5** (reached at 25 gold). It is counted on the gold held when the fight is won, before that fight's own gold is added (e.g. winning with 18 gold held pays +3). Gold earned during that fight (Gold spells, Bounty) is already held, so it counts. `INTEREST_GOLD_STEP` and `MAX_INTEREST_GOLD` in `src/data/economy.ts`.
 - The Victory popup shows the base gold, the leftover paint bonus, the interest (when there is any), and the total. Hovering or tapping the gold counter (top bar, or the player card in a fight) tells you the interest your next win would pay.
-- **Dice:** a run starts with the dice and max HP of the character it was started with (see Characters below). Every character starts with a **dice cap** of 3. Dice faces are base colors only (Red, Blue, Green, White, Black).
-- **Reward stops:** pick 1 of 3 offers: Gold, Heal (can't go above max HP), and one more that the run RNG picks between Free repaint (to any base color, White and Black included) and **Free Spell Upgrade**, at even odds (`upgradeRewardChance`). Free Spell Upgrade is left out once no spell can be upgraded. A Free Spell Upgrade offer names its spell up front (e.g. `Upgrade Inferno -> Inferno+`) with a preview of the `+` form (its new numbers highlighted). Elite and boss rewards are bigger.
+- **Dice:** a run starts with the dice and max HP of the character it was started with (see Characters below). Every character starts with a **dice cap** of 3. Dice faces are base colors only (Red, Blue, Green, White, Black, Gold).
+- **Reward stops:** pick 1 of 3 offers: Gold, Heal (can't go above max HP), and one more that the run RNG picks between Free repaint (to any base color, White, Black, and Gold included) and **Free Spell Upgrade**, at even odds (`upgradeRewardChance`). Free Spell Upgrade is left out once no spell can be upgraded. A Free Spell Upgrade offer names its spell up front (e.g. `Upgrade Inferno -> Inferno+`) with a preview of the `+` form (its new numbers highlighted). Elite and boss rewards are bigger.
 - **Shop stops** (leave whenever you like):
-  - **Repaint a face:** set any face of any owned die to Red, Blue, Green, White, or Black. Repeatable; the price rises after each purchase.
+  - **Repaint a face:** set any face of any owned die to Red, Blue, Green, White, Black, or Gold. Repeatable; the price rises after each purchase.
   - **Heal:** restore a fixed amount of HP for gold (not allowed at full HP).
   - **+1 dice cap:** price rises after each purchase; the cap can't go above 6.
   - **Spell upgrades:** three options while an upgradable spell is left, each with its own price (see §2). Each can be bought **once per visit**:

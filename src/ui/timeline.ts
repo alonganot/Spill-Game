@@ -1,7 +1,7 @@
 import type { BattleEvent, BattleState, Color, Combatant, EnemyState, StatusConfig, Statuses } from '../engine';
 
-/** Curse, Silence, Silence Immunity, and Chill: flags only enemies carry. */
-export type Conditions = Pick<EnemyState, 'cursed' | 'silenced' | 'silenceImmune' | 'chilled'>;
+/** Curse, Silence, Silence Immunity, Chill, and Bounty stacks: only enemies carry them. */
+export type Conditions = Pick<EnemyState, 'cursed' | 'silenced' | 'silenceImmune' | 'chilled' | 'bounty'>;
 
 /** The parts of a combatant that change beat by beat during playback. Enemies also carry their Conditions. */
 export interface Vitals extends Partial<Conditions> {
@@ -18,12 +18,14 @@ export interface Step {
   /** One per enemy, same order as `BattleState.enemies`. */
   enemies: Vitals[];
   pool: readonly Color[];
+  /** Gold this action has earned so far, up to and including this beat (Gold spells, Bounty payouts). */
+  goldGained: number;
 }
 
 function vitals(c: Combatant | EnemyState): Vitals {
   const base = { hp: c.hp, block: c.block, statuses: c.statuses };
   if (!('cursed' in c)) return base;
-  return { ...base, cursed: c.cursed, silenced: c.silenced, silenceImmune: c.silenceImmune, chilled: c.chilled };
+  return { ...base, cursed: c.cursed, silenced: c.silenced, silenceImmune: c.silenceImmune, chilled: c.chilled, bounty: c.bounty };
 }
 
 /**
@@ -40,6 +42,7 @@ export function buildTimeline(
   let player = vitals(before.player);
   let enemies = before.enemies.map(vitals);
   let pool: readonly Color[] = before.pool;
+  let goldGained = 0;
   const steps: Step[] = [];
   /** Applies `change` to the player, or to the enemy the event names. */
   const update = (target: 'player' | 'enemy', index: number | undefined, change: (v: Vitals) => Vitals) => {
@@ -76,6 +79,8 @@ export function buildTimeline(
             ...v,
             statuses: { ...v.statuses, [applied]: v.statuses[applied] + stacks },
           }));
+        } else if (applied === 'bounty') {
+          update('enemy', event.enemy, (v) => ({ ...v, bounty: (v.bounty ?? 0) + stacks }));
         } else {
           const flag = { curse: 'cursed', silence: 'silenced', chill: 'chilled' } as const;
           update(event.target, event.enemy, (v) => ({ ...v, [flag[applied]]: true }));
@@ -92,6 +97,11 @@ export function buildTimeline(
         }));
         break;
       case 'silenceResisted':
+        break;
+      case 'goldGained':
+        goldGained += event.amount;
+        // A paid Bounty is used up.
+        if (event.source === 'bounty') update('enemy', event.enemy, (v) => ({ ...v, bounty: 0 }));
         break;
       case 'enemySkipped':
       case 'enemyIntent':
@@ -119,7 +129,7 @@ export function buildTimeline(
       case 'defeat':
         break;
     }
-    steps.push({ event, player, enemies, pool });
+    steps.push({ event, player, enemies, pool, goldGained });
   }
 
   const final: Step = {
@@ -127,6 +137,7 @@ export function buildTimeline(
     player: vitals(after.player),
     enemies: after.enemies.map(vitals),
     pool: after.pool,
+    goldGained,
   };
   if (steps.length === 0) return [final];
   steps[steps.length - 1] = final;

@@ -46,6 +46,9 @@ All colors are CSS custom properties on `:root` in `src/ui/global.css`. Componen
 | `--crimson` | `#b5173f` | `#b5173f` | Crimson paint (Vampiric). Darker than Red so the two stay apart. |
 | `--blight` | `#8e9c1e` | `#8e9c1e` | Blight paint (Plague). Olive, so it stays apart from Green. |
 | `--frost` | `#a6ecff` | `#a6ecff` | Frost paint (Chill). Paler than Cyan. |
+| `--paint-gold` | (Issue #12) | `#d9a520` | Gold paint (Economy). Deeper and more metallic than `--accent`, warmer than `--orange`. Named `--paint-gold` so it never collides with the frame token `--gold` (§2.2). |
+| `--paint-gold-shine` | (Issue #12) | `#fff1a8` | Gold paint's shine: the drop's highlight pixels, the chip's metallic gradient, and the `+Ng` float. |
+| `--bounty` | (Issue #12) | `#ffd36b` | Bounty badge (`🎯 N`), Bounty float, and glow. |
 | `--curse` | `#b58cff` | `#b58cff` | Curse badge, float, and glow. |
 | `--silence` | `#c9c3d8` | `#c9c3d8` | Silence badge, float, and glow. |
 | `--chill` | `#a6ecff` | `#a6ecff` | Chill badge, chilled intent, float, and glow. |
@@ -100,6 +103,8 @@ Use glows for: draggable paint drops (on hover/focus), the drag ghost, filled co
 Sprite colors live in `src/data/sprites.ts` and `src/ui/PaintDrop.tsx`/`PixelDie.tsx` palettes, not CSS. Keep them aligned with the tokens:
 - `COLOR_HEX` in `src/ui/fx.ts` must use the same paint values as the CSS color tokens (update both together).
 - Black paint's drop uses `--black-rim` as its outline instead of `--bg` (`dropPalette` in `PaintDrop.tsx`).
+- Gold paint's drop is metallic: `--paint-gold-shine` as its highlight and a deep bronze shade (`dropPalette`); its chips and dots use a static diagonal gradient (shine → gold → bronze), so there is no animation to turn off for `prefers-reduced-motion`.
+- Gold earned mid-fight floats `🪙+Ng` in `--paint-gold-shine`: off the hero for a Gold spell, off the defeated enemy for a Bounty payout. The player card's gold counter counts it up on that beat.
 - Sprite outlines (`k` in `dropPalette`) use `--bg`'s value (`#0f0d1a`).
 - New UI sprites (cauldron, vial, icons, frames) draw from §2.1–2.2 values only.
 

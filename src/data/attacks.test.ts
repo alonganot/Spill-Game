@@ -5,7 +5,7 @@ const byId = (id: string) => STARTING_ATTACKS.find((a) => a.id === id)!;
 
 describe('spell upgrades', () => {
   it('every spell has a + form', () => {
-    expect(STARTING_ATTACKS).toHaveLength(24);
+    expect(STARTING_ATTACKS).toHaveLength(27);
     for (const attack of STARTING_ATTACKS) expect(attack.upgrade, attack.id).toBeDefined();
   });
 
@@ -19,6 +19,21 @@ describe('spell upgrades', () => {
   it('Hex+ curses every enemy and Hush+ leaves no Silence Immunity', () => {
     expect(byId('hex').upgrade!.effects).toEqual([{ type: 'curse', area: true }]);
     expect(byId('hush').upgrade!.effects).toEqual([{ type: 'silence', noImmunity: true }]);
+  });
+
+  it('the Gold spells and their + forms match RULES.md', () => {
+    expect(byId('mint')).toMatchObject({ cost: { gold: 1 }, effects: [{ type: 'gold', amount: 2 }] });
+    expect(byId('mint').upgrade!.effects).toEqual([{ type: 'gold', amount: 3 }]);
+    expect(byId('bounty')).toMatchObject({
+      cost: { gold: 1, green: 1 },
+      effects: [{ type: 'bounty', stacks: 1 }, { type: 'damage', amount: 3 }],
+    });
+    expect(byId('bounty').upgrade!.effects).toEqual([{ type: 'bounty', stacks: 2 }, { type: 'damage', amount: 4 }]);
+    expect(byId('gildedWard')).toMatchObject({
+      cost: { gold: 1, blue: 1 },
+      effects: [{ type: 'block', amount: 5 }, { type: 'gold', amount: 1 }],
+    });
+    expect(byId('gildedWard').upgrade!.effects).toEqual([{ type: 'block', amount: 7 }, { type: 'gold', amount: 2 }]);
   });
 
   it('Inferno+ adds a second Burn stack', () => {

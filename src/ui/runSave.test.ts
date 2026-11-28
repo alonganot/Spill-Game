@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defaultRunConfig, runConfigFor } from '../data/run';
 import { BASE_COLORS } from '../data/colors';
+import { META_KEY } from './metaSave';
 import {
   applyRunAction,
   createRun,
@@ -69,12 +70,12 @@ describe('replayRun', () => {
         furthestStage = Math.max(furthestStage, run.stageIndex);
 
         if (actions.length % 10 === 0) {
-          const replayed = replayRun({ version: 5, seed, seeded: false, actions: [...actions] }, config);
+          const replayed = replayRun({ version: 6, seed, seeded: false, actions: [...actions] }, config);
           expect(replayed?.run).toEqual(run);
           replays++;
         }
       }
-      const final = replayRun({ version: 5, seed, seeded: false, actions }, config);
+      const final = replayRun({ version: 6, seed, seeded: false, actions }, config);
       expect(final?.run).toEqual(run);
       // The replayed rng carries on exactly where the live one is.
       expect(final?.rng()).toBe(rng());
@@ -93,7 +94,7 @@ describe('replayRun', () => {
     let roll = started.events.find((e) => e.type === 'rolled');
     expect(roll).toBeDefined();
     const actions: RunAction[] = [];
-    expect(replayRun({ version: 5, seed: 5, seeded: false, actions }, config)?.lastRoll).toEqual(roll);
+    expect(replayRun({ version: 6, seed: 5, seeded: false, actions }, config)?.lastRoll).toEqual(roll);
 
     // End a turn (a new roll), then cast a spell (no roll): the roll from the end of turn is kept.
     const endTurn: RunAction = { type: 'battle', action: { type: 'endTurn' } };
@@ -114,7 +115,7 @@ describe('replayRun', () => {
       expect(result.events.some((e) => e.type === 'rolled')).toBe(false);
       actions.push(cast);
     }
-    expect(replayRun({ version: 5, seed: 5, seeded: false, actions }, config)?.lastRoll).toEqual(roll);
+    expect(replayRun({ version: 6, seed: 5, seeded: false, actions }, config)?.lastRoll).toEqual(roll);
   });
 
   it('has no roll outside a battle', () => {
@@ -127,7 +128,7 @@ describe('replayRun', () => {
       actions.push(action);
     }
     expect(run.phase).toBe('reward');
-    expect(replayRun({ version: 5, seed: 1, seeded: false, actions }, config)?.lastRoll).toBeNull();
+    expect(replayRun({ version: 6, seed: 1, seeded: false, actions }, config)?.lastRoll).toBeNull();
   });
 
   it("replays a character run with that character's dice and HP", () => {
@@ -142,26 +143,26 @@ describe('replayRun', () => {
       run = result.state;
       actions.push(action);
     }
-    const save: RunSave = { version: 5, seed: 11, seeded: false, characterId: 'tank', actions };
+    const save: RunSave = { version: 6, seed: 11, seeded: false, characterId: 'tank', actions };
     const replayed = replayRun(save, runConfigFor(saveCharacter(save)));
     expect(replayed?.run).toEqual(run);
     expect(replayed?.run.maxHp).toBe(42);
   });
 
   it('treats a save without a character as the Apprentice', () => {
-    const save: RunSave = { version: 5, seed: 3, seeded: false, actions: [] };
+    const save: RunSave = { version: 6, seed: 3, seeded: false, actions: [] };
     expect(saveCharacter(save)).toBe('apprentice');
     expect(replayRun(save, runConfigFor(saveCharacter(save)))?.run).toEqual(createRun(config, createSeededRng(3)).state);
   });
 
   it('returns null when a saved action no longer applies', () => {
-    const save: RunSave = { version: 5, seed: 5, seeded: false, actions: [{ type: 'leaveShop' }] };
+    const save: RunSave = { version: 6, seed: 5, seeded: false, actions: [{ type: 'leaveShop' }] };
     expect(replayRun(save, config)).toBeNull();
   });
 });
 
 describe('parseSave', () => {
-  const good: RunSave = { version: 5, seed: 42, seeded: true, actions: [{ type: 'battle', action: { type: 'endTurn' } }] };
+  const good: RunSave = { version: 6, seed: 42, seeded: true, actions: [{ type: 'battle', action: { type: 'endTurn' } }] };
 
   it('reads back a saved run, with or without its character', () => {
     expect(parseSave(JSON.stringify(good))).toEqual(good);
@@ -183,6 +184,8 @@ describe('parseSave', () => {
       JSON.stringify({ ...good, version: 3 }),
       // A v4 save (before Miasma's Block and the Hush rule): it could replay differently.
       JSON.stringify({ ...good, version: 4 }),
+      // A v5 save (before the Gold spells joined the upgrade draws): its draws would differ.
+      JSON.stringify({ ...good, version: 5 }),
       JSON.stringify({ ...good, seed: -1 }),
       JSON.stringify({ ...good, seed: 1.5 }),
       JSON.stringify({ ...good, seed: '42' }),
@@ -213,7 +216,7 @@ describe('save storage', () => {
 
   it('saves, loads, and clears a run', () => {
     const items = stubStorage();
-    const save: RunSave = { version: 5, seed: 7, seeded: false, actions: [] };
+    const save: RunSave = { version: 6, seed: 7, seeded: false, actions: [] };
     saveRun(save);
     expect(items.has(SAVE_KEY)).toBe(true);
     expect(loadRun()).toEqual(save);
@@ -228,8 +231,18 @@ describe('save storage', () => {
     for (const key of OLD_SAVE_KEYS) expect(items.has(key)).toBe(false);
   });
 
+  it('keeps Essence and unlocks when dropping an old run save', () => {
+    const items = stubStorage();
+    items.set('spill.run.v5', '{"version":5,"seed":3,"seeded":false,"actions":[]}');
+    items.set(META_KEY, '{"essence":1250}');
+    expect(OLD_SAVE_KEYS).toContain('spill.run.v5');
+    expect(loadRun()).toBeNull();
+    expect(items.has('spill.run.v5')).toBe(false);
+    expect(items.get(META_KEY)).toBe('{"essence":1250}');
+  });
+
   it('ignores a corrupted save', () => {
-    stubStorage().set(SAVE_KEY, '{"version":5,"seed":');
+    stubStorage().set(SAVE_KEY, '{"version":6,"seed":');
     expect(loadRun()).toBeNull();
   });
 
@@ -238,7 +251,7 @@ describe('save storage', () => {
       throw new Error('blocked');
     };
     vi.stubGlobal('localStorage', { getItem: fail, setItem: fail, removeItem: fail });
-    expect(() => saveRun({ version: 5, seed: 1, seeded: false, actions: [] })).not.toThrow();
+    expect(() => saveRun({ version: 6, seed: 1, seeded: false, actions: [] })).not.toThrow();
     expect(loadRun()).toBeNull();
     expect(() => clearRun()).not.toThrow();
   });

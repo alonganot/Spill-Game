@@ -31,6 +31,7 @@ const conditionsOf = (e: Partial<Conditions>) => ({
   silenced: e.silenced,
   silenceImmune: e.silenceImmune,
   chilled: e.chilled,
+  bounty: e.bounty,
 });
 const vitalsOf = (c: { hp: number; block: number; statuses: BattleState['player']['statuses'] }) => ({
   hp: c.hp,
@@ -219,5 +220,22 @@ describe('buildTimeline against the engine', () => {
       }
     }
     expect(actionsChecked).toBeGreaterThan(500);
+  });
+});
+
+describe('buildTimeline: Gold and Bounty', () => {
+  it('adds Bounty stacks, clears them on the payout beat, and counts the gold beat by beat', () => {
+    const before = battle();
+    const events: BattleEvent[] = [
+      { type: 'goldGained', amount: 2, source: 'spell' },
+      { type: 'statusApplied', target: 'enemy', enemy: 0, status: 'bounty', stacks: 2 },
+      { type: 'damaged', target: 'enemy', enemy: 0, amount: 3, blocked: 0, source: 'attack' },
+      { type: 'goldGained', amount: 6, source: 'bounty', enemy: 0 },
+      { type: 'victory' },
+    ];
+    const after = { ...before, enemies: [{ ...before.enemies[0]!, hp: before.enemies[0]!.hp - 3 }] };
+    const steps = buildTimeline(before, events, after, STATUS_CONFIG);
+    expect(steps.map((s) => s.goldGained)).toEqual([2, 2, 2, 8, 8]);
+    expect(steps.map((s) => s.enemies[0]!.bounty)).toEqual([0, 2, 2, 0, 0]);
   });
 });

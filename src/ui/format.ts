@@ -22,6 +22,7 @@ export const COLOR_LABEL: Record<Color, string> = {
   orange: 'Orange',
   white: 'White',
   black: 'Black',
+  gold: 'Gold',
   pink: 'Pink',
   grey: 'Grey',
   crimson: 'Crimson',
@@ -69,6 +70,10 @@ export function describeEffect(effect: Effect, stacks = 1): string {
       return `chill${all}`;
     case 'multiplyPoison':
       return `poison ×${effect.factor}${all}`;
+    case 'gold':
+      return `+${effect.amount}g`;
+    case 'bounty':
+      return `${effect.stacks} bounty${all}`;
   }
 }
 
@@ -148,8 +153,15 @@ export function formatEvent(
           return `${who} is silenced`;
         case 'chill':
           return `${who} is chilled`;
+        case 'bounty':
+          return `${who} has a bounty (+${event.stacks})`;
       }
+      return null;
     }
+    case 'goldGained':
+      return event.source === 'bounty'
+        ? `Bounty on ${name(event.enemy)} pays +${event.amount}g`
+        : `You mint +${event.amount}g`;
     case 'healed':
       return `You heal ${event.amount}`;
     case 'cleansed': {
@@ -205,6 +217,11 @@ export function silenceImmuneTip(name: string): string {
 
 export function chillTip(name: string, status: StatusConfig): string {
   return `Chilled: ${name}'s next attack deals ${Math.round(status.chillMultiplier * 100)}% damage per hit (rounded down). Clears after it acts.`;
+}
+
+/** A Bounty badge's tooltip: the gold the enemy pays when defeated. */
+export function bountyTip(stacks: number, name: string, status: StatusConfig): string {
+  return `Bounty (${stacks}): defeating ${name} awards +${stacks * status.bountyGold}g (${status.bountyGold}g per stack). Stacks add up and never fade.`;
 }
 
 export function blockTip(amount: number, owner: Owner): string {
@@ -281,6 +298,10 @@ export function effectSentence(effect: Effect, status: StatusConfig, stacks = 1)
       return `Chills ${effect.area ? 'every enemy' : 'the enemy'} (its next attack deals ${Math.round(status.chillMultiplier * 100)}% damage)`;
     case 'multiplyPoison':
       return `Multiplies ${effect.area ? 'every enemy’s' : 'the enemy’s'} Poison by ${effect.factor}`;
+    case 'gold':
+      return `Adds ${effect.amount} gold to your purse right away`;
+    case 'bounty':
+      return `Puts ${effect.stacks} Bounty on ${effect.area ? 'every enemy' : 'the enemy'} (+${status.bountyGold}g per stack when it is defeated)`;
   }
 }
 

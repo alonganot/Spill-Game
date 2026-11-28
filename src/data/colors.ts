@@ -1,6 +1,6 @@
 import type { BaseColor, MixRecipe, SecondaryColor } from '../engine/types';
 
-export const BASE_COLORS: readonly BaseColor[] = ['red', 'blue', 'green', 'white', 'black'];
+export const BASE_COLORS: readonly BaseColor[] = ['red', 'blue', 'green', 'white', 'black', 'gold'];
 export const SECONDARY_COLORS: readonly SecondaryColor[] = [
   'purple',
   'cyan',

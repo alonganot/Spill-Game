@@ -18,6 +18,7 @@ const BEAT_MS: Record<BattleEvent['type'], number> = {
   healed: 400,
   cleansed: 350,
   silenceResisted: 350,
+  goldGained: 400,
   rolled: 700,
   victory: 300,
   defeat: 300,

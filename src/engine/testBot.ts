@@ -42,6 +42,9 @@ function intentHarm(state: BattleState, config: BattleConfig, i: number): number
   return enemyThreat(state, config, i);
 }
 
+/** What 1 gold is worth to the bot, in damage-equivalent points. */
+const GOLD_WORTH = 0.5;
+
 /** Rough value of casting `attack` at enemy `target` now. */
 function score(attack: AttackDefinition, state: BattleState, config: BattleConfig, target: number): number {
   const { status } = config;
@@ -98,6 +101,14 @@ function score(attack: AttackDefinition, state: BattleState, config: BattleConfi
           if (e.chilled) continue;
           value += Math.min(enemyThreat(state, config, i) * (1 - status.chillMultiplier), uncoveredHit);
         }
+        break;
+      case 'gold':
+        // Gold buys power later, so it is worth less than damage now.
+        value += effect.amount * GOLD_WORTH;
+        break;
+      case 'bounty':
+        // Pays only if the enemy dies, which the bot usually manages.
+        value += effect.stacks * status.bountyGold * GOLD_WORTH * hit.length;
         break;
     }
   }
@@ -183,6 +194,12 @@ function effectsWorth(effects: readonly Effect[], status: StatusConfig): number 
         break;
       case 'chill':
         value += 4 * targets;
+        break;
+      case 'gold':
+        value += effect.amount * GOLD_WORTH;
+        break;
+      case 'bounty':
+        value += effect.stacks * status.bountyGold * GOLD_WORTH * targets;
         break;
     }
   }

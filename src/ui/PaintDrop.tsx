@@ -34,11 +34,16 @@ function shade(hex: string, amount: number): string {
   return `#${channel(0)}${channel(1)}${channel(2)}`;
 }
 
+/** Gold paint's shine (`--paint-gold-shine`). */
+const GOLD_SHINE = '#fff1a8';
+
 /** The drop's colors: outline (k), paint (c), highlight (h), and shade (d). Shared with the dice faces. */
 export function dropPalette(color: Color): Record<'k' | 'c' | 'h' | 'd', string> {
   const base = COLOR_HEX[color];
   // Black paint gets a light rim (and a stronger highlight) so it reads on the dark background.
   if (color === 'black') return { k: BLACK_RIM, c: base, h: shade(base, 0.35), d: '#120e1a' };
+  // Gold paint is metallic: a near-white shine and a deep bronze shade, so it reads apart from Orange.
+  if (color === 'gold') return { k: '#14121a', c: base, h: GOLD_SHINE, d: shade(base, -0.45) };
   return { k: '#14121a', c: base, h: shade(base, 0.45), d: shade(base, -0.3) };
 }
 
@@ -56,6 +61,7 @@ const DROP_SHEETS: Record<Color, SpriteSheet<'drop'>> = {
   orange: dropSheet('orange'),
   white: dropSheet('white'),
   black: dropSheet('black'),
+  gold: dropSheet('gold'),
   pink: dropSheet('pink'),
   grey: dropSheet('grey'),
   crimson: dropSheet('crimson'),

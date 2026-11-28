@@ -18,6 +18,7 @@ export const COLOR_HEX: Record<Color, string> = {
   orange: '#f08a24',
   white: '#f4f0e6',
   black: '#2b2238',
+  gold: '#d9a520',
   pink: '#ff7eb6',
   grey: '#9a96a8',
   crimson: '#b5173f',
@@ -44,7 +45,9 @@ export type FloatKind =
   | 'curse'
   | 'silence'
   | 'chill'
-  | 'resist';
+  | 'resist'
+  | 'gold'
+  | 'bounty';
 
 /** A number that rises from a combatant on one playback beat. */
 export interface FloatText {
@@ -76,7 +79,14 @@ export function floatsFor(event: BattleEvent | null, who: Who): FloatText[] {
         return [{ text: '🤐 Silenced', kind: 'silence' }];
       case 'chill':
         return [{ text: '❄ Chilled', kind: 'chill' }];
+      case 'bounty':
+        return [{ text: `🎯 Bounty +${event.stacks}`, kind: 'bounty' }];
     }
+  }
+  // Gold from a spell rises off the player; a Bounty's payout rises off the enemy that paid it.
+  if (event.type === 'goldGained') {
+    const from: Who = event.source === 'bounty' ? (event.enemy ?? 0) : 'player';
+    return from === who ? [{ text: `🪙+${event.amount}g`, kind: 'gold' }] : [];
   }
   if (event.type === 'healed' && who === 'player') return [{ text: `+${event.amount}`, kind: 'heal' }];
   if (event.type === 'cleansed' && who === 'player') {
@@ -88,7 +98,20 @@ export function floatsFor(event: BattleEvent | null, who: Who): FloatText[] {
 }
 
 /** How a combatant's sprite reacts on this beat. */
-export type StageFx = 'hit' | 'poison' | 'burn' | 'guard' | 'lunge' | 'cast' | 'heal' | 'cleanse' | 'curse' | 'silence' | 'chill';
+export type StageFx =
+  | 'hit'
+  | 'poison'
+  | 'burn'
+  | 'guard'
+  | 'lunge'
+  | 'cast'
+  | 'heal'
+  | 'cleanse'
+  | 'curse'
+  | 'silence'
+  | 'chill'
+  | 'bounty'
+  | 'gold';
 
 export function stageFxFor(event: BattleEvent | null, who: Who): StageFx | null {
   if (!event) return null;
@@ -104,6 +127,8 @@ export function stageFxFor(event: BattleEvent | null, who: Who): StageFx | null 
       return who === 'player' ? 'heal' : null;
     case 'cleansed':
       return who === 'player' ? 'cleanse' : null;
+    case 'goldGained':
+      return (event.source === 'bounty' ? event.enemy === who : who === 'player') ? 'gold' : null;
     case 'enemySkipped':
       return event.enemy === who ? 'silence' : null;
     case 'enemyIntent':

@@ -3,7 +3,7 @@ import { createCombatant, takeDamage } from './combat';
 import { resolveStatuses } from './statuses';
 import type { Combatant } from './types';
 
-const config = { burnDamage: 4, poisonDecay: 1, curseBonus: 3, chillMultiplier: 0.5 };
+const config = { burnDamage: 4, poisonDecay: 1, curseBonus: 3, chillMultiplier: 0.5, bountyGold: 3 };
 
 function withStatuses(poison: number, burn: number, block = 0): Combatant {
   return { ...createCombatant(20), block, statuses: { poison, burn } };
