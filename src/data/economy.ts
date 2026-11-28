@@ -11,6 +11,7 @@ export const ECONOMY: EconomyConfig = {
     elite: { gold: 34, heal: 10 },
     boss: { gold: 42, heal: 14 },
   },
+  upgradeRewardChance: 0.5,
   shop: {
     repaintPrice: 20,
     repaintPriceStep: 10,
@@ -19,5 +20,10 @@ export const ECONOMY: EconomyConfig = {
     capPrice: 50,
     capPriceStep: 40,
     diceForSale: 2,
+    spotlightPrice: 25,
+    draftPrice: 35,
+    draftChoices: 3,
+    targetedPrice: 60,
+    targetedPriceStep: 10,
   },
 };

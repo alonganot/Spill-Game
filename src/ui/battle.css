@@ -1209,7 +1209,11 @@
   border-color: var(--accent);
 }
 
-.attack.attack-locked {
+/* Not castable with this pool: the name, text, and Cast button dim, but the cost slots stay
+   clear so the colors it needs are easy to read. */
+.attack.attack-locked .attack-head,
+.attack.attack-locked .attack-fx,
+.attack.attack-locked .attack-cast {
   opacity: 0.45;
 }
 
@@ -1250,7 +1254,7 @@ button.attack-mix-tag {
   gap: 4px;
 }
 
-/* An empty place for a color, outlined in the color it wants. */
+/* An empty place for a color, outlined in the color it wants, with a faded drop of it inside. */
 .slot {
   flex: none;
   width: 28px;
@@ -1272,6 +1276,30 @@ button.attack-mix-tag {
 .slot-purple { border-color: var(--purple); }
 .slot-cyan { border-color: var(--cyan); }
 .slot-orange { border-color: var(--orange); }
+.slot-white { border-color: var(--white); }
+/* Black paint is near the background, so its slot uses Black's light rim (as drops and chips do). */
+.slot-black { border-color: var(--black-rim); }
+.slot-pink { border-color: var(--pink); }
+.slot-grey { border-color: var(--grey); }
+.slot-crimson { border-color: var(--crimson); }
+.slot-blight { border-color: var(--blight); }
+.slot-frost { border-color: var(--frost); }
+
+.slot.slot-empty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.slot-ghost {
+  display: inline-flex;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.slot.slot-empty:not(:disabled):hover .slot-ghost {
+  opacity: 1;
+}
 
 /* A staged chip sitting in a slot: small, no label (the color says it). */
 .chip.slot-chip {

@@ -127,7 +127,7 @@ export function RunScreen({
         />
       )}
       {run.phase === 'reward' && (
-        <RewardScreen run={run} onChoose={(index, repaint) => dispatch({ type: 'chooseReward', index, repaint })} />
+        <RewardScreen run={run} config={config} onChoose={(index, repaint) => dispatch({ type: 'chooseReward', index, repaint })} />
       )}
       {run.phase === 'shop' && <ShopScreen run={run} config={config} onAction={dispatch} />}
       {(run.phase === 'victory' || run.phase === 'defeat') && (

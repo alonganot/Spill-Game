@@ -28,6 +28,7 @@ export function createBattle(config: BattleConfig, rng: Rng): { state: BattleSta
       cursed: false,
       silenced: false,
       silenceImmune: false,
+      silenceNoImmunity: false,
       chilled: false,
     })),
   };
@@ -123,15 +124,22 @@ function endTurn(state: BattleState, config: BattleConfig, rng: Rng): ActionResu
 
   // 2. Each living enemy acts in order. Its own block lasts until its next action.
   //    A Silenced enemy skips its intent (which still counts as used) and becomes
-  //    immune to Silence; an enemy that really acts loses its Chill and immunity.
+  //    immune to Silence (unless Hush+ silenced it); an enemy that really acts loses its Chill and immunity.
   for (let i = 0; i < current.enemies.length; i++) {
     if (isDefeated(current.enemies[i]!)) continue;
     const intent = getEnemyIntent(current, config, i);
     if (!intent) continue;
     const enemy: EnemyState = { ...current.enemies[i]!, block: 0 };
     if (enemy.silenced) {
-      events.push({ type: 'enemySkipped', enemy: i, intent });
-      current = withEnemy(current, i, { ...enemy, silenced: false, silenceImmune: true, intentIndex: enemy.intentIndex + 1 });
+      const immune = !enemy.silenceNoImmunity;
+      events.push(immune ? { type: 'enemySkipped', enemy: i, intent } : { type: 'enemySkipped', enemy: i, intent, noImmunity: true });
+      current = withEnemy(current, i, {
+        ...enemy,
+        silenced: false,
+        silenceImmune: immune,
+        silenceNoImmunity: false,
+        intentIndex: enemy.intentIndex + 1,
+      });
       continue;
     }
     current = withEnemy(current, i, enemy);

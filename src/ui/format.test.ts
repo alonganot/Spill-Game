@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { defaultBattleConfig } from '../data/battles';
 import { ENEMIES } from '../data/enemies';
 import type { BattleEvent } from '../engine';
-import { describeEffect, describeIntent, describeUpdate, enemyLabels, formatEvent } from './format';
+import { describeEffect, shownEffects, describeIntent, describeUpdate, enemyLabels, formatEvent } from './format';
 
 const config = defaultBattleConfig();
 
@@ -76,6 +76,38 @@ describe('describe helpers', () => {
     expect(describeIntent({ type: 'block', amount: 5 })).toBe('Block 5');
     expect(describeIntent({ type: 'poison', stacks: 3 })).toBe('Poison 3');
     expect(describeIntent({ type: 'burn' })).toBe('Burn');
+  });
+
+  it('names Hush+ silence and marks the effects an upgrade changed', () => {
+    expect(describeEffect({ type: 'silence', noImmunity: true })).toBe('silence, no immunity');
+    expect(
+      shownEffects(
+        [{ type: 'damage', amount: 10 }, { type: 'block', amount: 3 }],
+        [{ type: 'damage', amount: 7 }, { type: 'block', amount: 3 }],
+      ),
+    ).toEqual([
+      { text: '10 dmg', changed: true },
+      { text: '3 block', changed: false },
+    ]);
+    // Without a base, nothing is marked.
+    expect(shownEffects([{ type: 'burn' }])).toEqual([{ text: 'burn', changed: false }]);
+  });
+
+  it('merges repeated Burn effects into one "N burn"', () => {
+    // Wildfire+ against Wildfire.
+    expect(
+      shownEffects(
+        [{ type: 'burn' }, { type: 'burn' }, { type: 'poison', stacks: 4 }],
+        [{ type: 'burn' }, { type: 'poison', stacks: 3 }],
+      ),
+    ).toEqual([
+      { text: '2 burn', changed: true },
+      { text: '4 poison', changed: true },
+    ]);
+    expect(shownEffects([{ type: 'damage', amount: 8 }, { type: 'burn' }, { type: 'burn' }]).map((e) => e.text)).toEqual([
+      '8 dmg',
+      '2 burn',
+    ]);
   });
 });
 

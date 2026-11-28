@@ -37,18 +37,29 @@ export type Effect =
   | { type: 'cleanse'; stacks?: number }
   /** The enemy takes `curseBonus` more from each damage instance this turn. */
   | { type: 'curse'; area?: true }
-  /** The enemy skips its next action. */
-  | { type: 'silence'; area?: true }
+  /** The enemy skips its next action. With `noImmunity`, it gains no Silence Immunity afterwards. */
+  | { type: 'silence'; area?: true; noImmunity?: true }
   /** The enemy's next attack hits softer (`chillMultiplier`). */
   | { type: 'chill'; area?: true }
   /** Multiplies the enemy's Poison stacks. */
   | { type: 'multiplyPoison'; factor: number; area?: true };
+
+/** A spell's `+` form: new effects, same cost (RULES.md §2). */
+export interface SpellUpgrade {
+  effects: readonly Effect[];
+}
 
 export interface AttackDefinition {
   id: string;
   name: string;
   cost: ColorCost;
   effects: readonly Effect[];
+  /** Its `+` form, if the spell can be upgraded. */
+  upgrade?: SpellUpgrade;
+  /** Set only on a resolved `+` spell (`upgradeAttack`). */
+  upgraded?: true;
+  /** On a resolved `+` spell: the base effects, so the change can be shown. */
+  baseEffects?: readonly Effect[];
 }
 
 export type EnemyIntent =
@@ -115,6 +126,8 @@ export interface EnemyState extends Combatant {
   silenced: boolean;
   /** Can't be Silenced until it next really acts. */
   silenceImmune: boolean;
+  /** Its current Silence (from Hush+) grants no Silence Immunity when it ends. */
+  silenceNoImmunity: boolean;
   /** Its next action's attack hits deal `chillMultiplier` damage; clears after it really acts. */
   chilled: boolean;
 }
@@ -159,8 +172,8 @@ export type BattleEvent =
   | { type: 'silenceResisted'; enemy: number }
   /** Enemy `enemy` acts on its intent; the results follow as their own events. */
   | { type: 'enemyIntent'; enemy: number; intent: EnemyIntent }
-  /** Enemy `enemy` is Silenced and skips this intent. */
-  | { type: 'enemySkipped'; enemy: number; intent: EnemyIntent }
+  /** Enemy `enemy` is Silenced and skips this intent. `noImmunity`: it gains no Silence Immunity. */
+  | { type: 'enemySkipped'; enemy: number; intent: EnemyIntent; noImmunity?: true }
   | { type: 'victory' }
   | { type: 'defeat' };
 
@@ -202,6 +215,8 @@ export interface EconomyConfig {
   leftoverColorGold: number;
   /** Reward pick amounts by the kind of fight just won. */
   rewards: Record<StageKind, RewardAmounts>;
+  /** Chance that a reward's third offer is a Free Spell Upgrade instead of a Free repaint. */
+  upgradeRewardChance: number;
   shop: {
     repaintPrice: number;
     repaintPriceStep: number;
@@ -210,6 +225,14 @@ export interface EconomyConfig {
     capPrice: number;
     capPriceStep: number;
     diceForSale: number;
+    /** Spell upgrades (RULES.md §4). */
+    spotlightPrice: number;
+    draftPrice: number;
+    /** How many spells a Draft Upgrade draws to pick from. */
+    draftChoices: number;
+    targetedPrice: number;
+    /** Added to the Targeted price for each upgrade bought earlier in the run. */
+    targetedPriceStep: number;
   };
 }
 
@@ -228,10 +251,23 @@ export interface RunConfig {
 export type RewardOption =
   | { type: 'gold'; amount: number }
   | { type: 'heal'; amount: number }
-  | { type: 'repaint' };
+  | { type: 'repaint' }
+  /** Upgrades the named spell to its `+` form for free. */
+  | { type: 'upgrade'; attackId: string };
 
 export interface ShopDieOffer extends DieForSale {
   sold: boolean;
+}
+
+/** This shop visit's spell upgrade options (RULES.md §4). Reset on every shop arrival. */
+export interface ShopUpgrades {
+  /** The discounted spell, drawn on arrival; null when none can be upgraded. */
+  spotlight: string | null;
+  spotlightSold: boolean;
+  draftSold: boolean;
+  targetedSold: boolean;
+  /** A bought Draft's drawn spells, waiting for the pick; null when no pick is pending. */
+  draftChoices: string[] | null;
 }
 
 export type RunPhase = 'battle' | 'reward' | 'shop' | 'victory' | 'defeat';
@@ -253,12 +289,15 @@ export interface RunState {
   gold: number;
   dice: DieDefinition[];
   diceCap: number;
-  /** How many times each repeatable shop service was bought (drives price increases). */
-  purchases: { repaint: number; cap: number };
+  /** How many times each repeatable shop service was bought (drives price increases). `upgrade`: spell upgrades bought in shops. */
+  purchases: { repaint: number; cap: number; upgrade: number };
+  /** Ids of the spells upgraded to their `+` form this run, in the order they were upgraded. */
+  upgradedSpells: string[];
   /** The current fight; null outside the battle phase. */
   battle: BattleState | null;
   rewardOffers: RewardOption[];
   shopStock: ShopDieOffer[];
+  shopUpgrades: ShopUpgrades;
 }
 
 export interface RepaintTarget {
@@ -277,6 +316,13 @@ export type RunAction =
   | { type: 'repaint'; target: RepaintTarget }
   | { type: 'buyHeal' }
   | { type: 'buyCapUpgrade' }
+  /** Upgrades this visit's Spotlight spell. */
+  | { type: 'buySpotlightUpgrade' }
+  /** Pays for a Draft: the run RNG draws spells, and `pickDraftUpgrade` must follow. */
+  | { type: 'buyDraftUpgrade' }
+  | { type: 'pickDraftUpgrade'; attackId: string }
+  /** Upgrades any spell that can still be upgraded. */
+  | { type: 'buyTargetedUpgrade'; attackId: string }
   | { type: 'leaveShop' };
 
 export type RunError =
@@ -287,7 +333,10 @@ export type RunError =
   | 'dice_cap_reached'
   | 'cap_max_reached'
   | 'already_full_hp'
-  | 'sold_out';
+  | 'sold_out'
+  | 'not_upgradable'
+  | 'no_draft_pending'
+  | 'draft_pending';
 
 export type RunActionResult =
   | { ok: true; state: RunState; events: BattleEvent[] }

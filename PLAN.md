@@ -1,7 +1,7 @@
 # PLAN.md — Spill Development Roadmap
 
 ## Current Focus
-**Milestone 8 done and released (v2.0.0). Milestone 8.5 (small fixes and additions) done on the `milestone-8.5` branch; Milestone 9 (Cosmic Paint Workshop UI overhaul, `DESIGN.md`) follows.** V1 is a PC game: it fills a desktop screen, stays playable on a phone-sized window, and ships as a Windows app (Electron, `npm run dist:win` builds `release/Spill-Setup-<version>.exe`); mobile app builds are out of V1. A full 15-fight run (3 acts, multi-enemy fights from fight 4) with a main menu, seeded runs, rewards, a dice shop, pixel-art sprites, and beat-by-beat combat playback is playable via `npm run dev` (`src/ui/RunScreen.tsx`, driven by `useRun` and `src/engine/run.ts`).
+**Milestone 8 done and released (v2.0.0). Milestone 8.5 (small fixes and additions) done. Milestone 9 (Spell Upgrades, `+`) done on the `milestone-9` branch; next is Milestone 10 (Meta-Progression & Playable Characters, proposed); Milestone 11 (Cosmic Paint Workshop UI overhaul, `DESIGN.md`) follows.** V1 is a PC game: it fills a desktop screen, stays playable on a phone-sized window, and ships as a Windows app (Electron, `npm run dist:win` builds `release/Spill-Setup-<version>.exe`); mobile app builds are out of V1. A full 15-fight run (3 acts, multi-enemy fights from fight 4) with a main menu, seeded runs, rewards, a dice shop, pixel-art sprites, and beat-by-beat combat playback is playable via `npm run dev` (`src/ui/RunScreen.tsx`, driven by `useRun` and `src/engine/run.ts`).
 
 ## Milestones
 
@@ -103,7 +103,62 @@ Five small gameplay and UX improvements before the UI overhaul. Saves stay on `s
 - [x] **Task 4, Quit button** (`MainMenu.tsx`, `src/desktop/bridge.ts`, `electron/`): Quit on the main menu closes the Windows app (`app:quit` IPC). Not shown in a browser, where a tab can't close itself.
 - [x] **Task 5, Leftover paint gold** (`src/data/economy.ts`, `src/engine/run.ts`, `BattleScreen.tsx`): a won fight also pays `leftoverColorGold` (1g) per color left in the pool (`victoryGold`). The Victory popup shows the base gold, the unused paint bonus, and the total. Balance: the bonus alone raised the bot's wins from 22.5% to 33.5%, so base win gold went 14/27/34 → 12/25/31 (normal/elite/boss): **23.0% wins** over 200 seeded runs.
 
-### Milestone 9: Cosmic Paint Workshop UI Overhaul
+### Milestone 9: Spell Upgrades (`+`)
+Each upgradable spell can be upgraded once per run to a `+` form with stronger numbers and the same color cost (RULES.md §2 and §4). Upgrades come from Reward stops (Free Spell Upgrade) and Shop stops (Spotlight, Draft, Targeted). Upgraded spells get a Chroma Aura (DESIGN.md §6.6). Saves: `RunState` gains `upgradedSpells`, and new shop and reward draws use the run RNG, which changes seeded results. So `SAVE_KEY` moves to `spill.run.v4` (old saves are dropped), and this ships as a **major** release, as with Milestone 8.
+
+**Proposed upgrade table** (current stats → `+`; spells not listed have no upgrade):
+
+| Spell | Cost | Base | `+` |
+|---|---|---|---|
+| Ember | Red | 4 dmg | 6 dmg |
+| Ripple | Blue | 4 block | 6 block |
+| Thorn | Green | 2 poison | 4 poison |
+| Inferno | Red ×2 | 6 dmg, 1 burn | 8 dmg, 2 burn |
+| Tidal Wall | Blue ×2 | 10 block | 14 block |
+| Spore Cloud (new) | Green ×2 | 2 poison (all) | 3 poison (all) |
+| Steam Burst | Purple | 7 dmg, 3 block | 10 dmg, 3 block |
+| Toxic Tide | Cyan | 3 poison, 4 block | 4 poison, 6 block |
+| Wildfire | Orange | 1 burn, 3 poison | 2 burn, 4 poison |
+| Splash | Purple + Red | 4 dmg (all) | 8 dmg (all) |
+| Miasma | Cyan + Green | 2 poison (all) | 4 poison (all) |
+| Purify | White | 3 block, cleanse | 5 block, cleanse |
+| Aegis | White ×2 | 12 block (16 if cleansed) | 16 block (20 if cleansed) |
+| Radiant Burst | White + Red | 6 dmg (all), cleanse 1 | 10 dmg (all), cleanse 2 |
+| Mend | Pink | 5 heal | 7 heal |
+| Rejuvenate | Pink + Green | 4 heal, 6 block | 6 heal, 8 block |
+| Blood Bloom | Pink + Red | 10 dmg, 4 heal | 14 dmg, 6 heal |
+| Soul Siphon | Crimson | 7 dmg, 3 heal | 10 dmg, 4 heal |
+| Eclipse | Grey | 8 block, silence | 12 block, silence |
+| Plague Burst | Blight | 2 poison, ×2 poison | 3 poison, ×3 poison |
+| Frostbite | Frost | 5 dmg, chill | 7 dmg, chill |
+| Prism | Purple + Cyan + Orange | 20 dmg | 20 dmg, chill |
+| Hex | Black | curse (one enemy) | curse (all enemies) |
+| Hush | Black + Blue | silence (one enemy) | silence (one enemy), no Silence Immunity afterwards |
+
+Decisions: the Reward's third offer is a Free Spell Upgrade or a Free repaint at even odds; Spotlight, Draft, and Targeted are each once per shop visit; a Draft is paid first and its pick is mandatory (no Cancel, survives a reload, blocks Leave shop); the Targeted price rises with shop-bought upgrades only.
+
+Every spell now has an upgrade. Spore Cloud (Green ×2, an area Poison spell) is new in this milestone, so there are 24 spells. Prism+ adds Chill to its damage, Hex+ curses every enemy (area), and Hush+ leaves the target without Silence Immunity, so it can be silenced again right after its action.
+
+Burn needs no schema change: each Burn effect already adds one stack, so Inferno+ and Wildfire+ list a second Burn effect. Area spells roughly double on upgrade, because they cost two colors and hit every enemy; the numbers are a first proposal, to be checked by the balance run in Task 4.
+
+- [x] **Task 1, Data & Schemas** (`src/data/attacks.ts`, `src/data/economy.ts`, `src/engine/types.ts`): every spell has an `upgrade` (its full replacement effects, same cost); `silence` takes `noImmunity`; shop prices (Spotlight 25g, Draft 35g with 3 choices, Targeted 60g +10g per earlier shop upgrade) and `upgradeRewardChance: 0.5` in `economy.ts`. Tests in `src/data/attacks.test.ts`.
+- [x] **Task 2, Engine & Run State** (`src/engine/upgrades.ts`, `run.ts`, `battle.ts`, `attacks.ts`, `types.ts`, `src/ui/runSave.ts`): `RunState` gains `upgradedSpells`, `purchases.upgrade`, and `shopUpgrades` (this visit's Spotlight spell, sold flags, a pending Draft's choices). `battleConfigFor` swaps in the `+` definitions (`upgradeAttack`: `Name+`, upgrade effects, `upgraded`, `baseEffects`), so the battle UI, log, and bot see them with no other changes. `continue` draws the reward offers (an `upgrade` offer names its spell); arriving at a shop draws the Spotlight spell after the reward is applied. New actions `buySpotlightUpgrade`, `buyDraftUpgrade` + `pickDraftUpgrade`, `buyTargetedUpgrade`; `leaveShop` fails with `draft_pending`. Hush+ sets `silenceNoImmunity` on the enemy, so its skip grants no immunity (`enemySkipped.noImmunity`, mirrored in the playback timeline). `drawDistinct` is shared by the reward, Spotlight, Draft, and shop dice draws. Saves moved to `spill.run.v4` (v3 dropped), so this is a **major** release. Tests in `src/engine/upgrades.test.ts`, `runSave.test.ts`, `timeline.test.ts`.
+- [x] **Task 3, UI & Chroma Aura** (`src/ui/SpellUpgrade.tsx`, `Spellbook.tsx`, `RewardScreen.tsx`, `ShopScreen.tsx`, `ConfirmDialog.tsx`, `BattleScreen.tsx`, `Fighters.tsx`, `format.ts`, `global.css`, `fx.css`, `run.css`): the Chroma Aura (`.chroma-aura`, DESIGN.md §6.6) on `+` spell cards, the shimmering `+` badge (`SpellName`), changed effects in gold (`EffectLine`, `changedEffects`), and "Upgraded from …" in spell tooltips. The Reward card shows `Upgrade X → X+` with a preview of the `+` form (`UpgradePreview`: `Name+`, cost drops, changed numbers in gold; the base form isn't repeated, here or in the shop). Every preview shows the spell's cost as paint drops beside its name (`CostDrops`). The shop's "Spell upgrades" (Spotlight with its preview, Draft, Targeted) are one row of cards under both columns on desktop, so a 1366×768 window needs no scrolling; the Draft picker is a `ConfirmDialog` with no Cancel (`onCancel` is now optional) that reopens whenever a pick is pending, and the Targeted picker lists every spell left. A `+` spell's bolt is prismatic and its action's floats use the gradient. Played in the browser: reward upgrade, Draft (with a reload mid-pick), Targeted (price step), aura and gold numbers in battle, the prismatic bolt, the log line, and a phone-width window.
+- [x] **Task 4, Bot & Balance** (`src/engine/testBot.ts`): the bot scores an upgrade as its extra worth per cast (`effectsWorth`) times how often its dice can pay the spell (`castChance`). It takes a Free Spell Upgrade over gold when the gain clears a bar (3), always resolves a Draft with its best pick, and buys shop upgrades (Spotlight, Targeted for the best spell, Draft) only with gold the next dice slot doesn't need. Result: **18.5% wins** over 200 seeds (in band; no enemy changes); after adding Spore Cloud and raising Thorn+ to 4 poison, **22.0%**. Findings (1,000 seeds): never upgrading wins 21%, a gain bar of 1 wins 10%, while a free Thorn+ from the start wins 30% and six free upgrades 95%. So upgrades are strong, but rewards pay most of a run's gold, and trading 20 gold (or 25–70g in shops) for one costs this bot more than it gains. Worth a playtest; making upgrades cheaper or the Free Spell Upgrade a bonus on top of gold are the levers if they feel weak.
+
+### Milestone 10: Meta-Progression & Playable Characters (proposed, awaiting review)
+Between runs, the player earns Essence and spends it to unlock starting characters, each with its own starting dice and max HP (RULES.md §4). The active run stays a seed plus actions; Essence and unlocks live in their own save, `spill.meta.v1`. Assumes Milestone 9 (Spell Upgrades) is done.
+
+**Proposed numbers** (to confirm): unlock costs 1,000 Essence (Tier 1) and 2,500 (Tier 2), about 100 wins for all six; Essence per run = remaining gold ÷ 5 + 3 per fight won + 30 on victory; Tank max HP 50; unlocks in any order; seeded runs pay no Essence.
+
+**Save compatibility:** `RunSave` gains an optional `characterId`, and a save without it is the Apprentice. The run save stays on `spill.run.v4`, so this is not a save-format break and no key bump is needed. Essence is granted once per run: the run-end grant is recorded in `spill.meta.v1` under the key `seed:actionCount`, so reloading the run-end screen never pays twice.
+
+- [ ] **Task 1, Data & Sprites** (`src/data/characters.ts`, `src/data/economy.ts`, `src/data/sprites.ts`, `src/data/dice.ts`): define `CharacterId`, `CharacterDef` (name, tier, unlock cost, starting dice, max HP, description, sprite key) and the six characters from the table; add the Essence payout constants to `economy.ts` (gold divisor, per-fight amount, victory bonus). Pixel-art hero sprites for Warrior, Tank, Venom, Demon, and Healer in `sprites.ts`. The Apprentice uses the existing hero sprite. No behavior change yet.
+- [ ] **Task 2, Engine & Meta Logic** (`src/engine/run.ts`, `src/engine/meta.ts`, `src/engine/types.ts`): `RunConfig` takes a `characterId` (default `apprentice`), so `createRun` builds from its starting dice and max HP; `calculateRunEssenceReward(run, config)` in `meta.ts` returns the breakdown (gold, fights, victory, total), with `seeded` excluded. Vitest tests: each character's starting state; the payout for a win, a loss, and a seeded run; a replay of a character run keeps its dice and HP.
+- [ ] **Task 3, Meta Persistence & UI** (`src/ui/metaSave.ts`, `CharacterSelect.tsx`, `MainMenu.tsx`, `RunEndScreen.tsx`, `RunScreen.tsx`, `Fighters.tsx`, `DESIGN.md`): `metaSave.ts` stores Essence, unlocked characters, the selected character, and the granted run keys in `spill.meta.v1`, guarded against corrupt data (defaults on any parse failure). A Character Select screen, opened by New run (not a main menu button), grouped by tier, showing each character's dice faces, max HP, and an unlock button or "Selected". The Essence balance on the main menu. The Run End screen shows the Essence breakdown and the new total, once. The hero sprite of the selected character in the battle arena.
+- [ ] **Task 4, Bot & Balance** (`src/engine/testBot.ts`, `src/engine/balance.sim.test.ts`): run the greedy bot over 200 seeds for each of the six characters, and check each win rate stays in the 5%–35% band. The bot's win rate was 23.0% for Apprentice after Milestone 8.5; a Tier 2 character may need its numbers adjusted if it sits outside the band. Essence amounts get a playtest pass separately, because the bot is not a good model of how long players take to earn Essence.
+
+### Milestone 11: Cosmic Paint Workshop UI Overhaul
 Restyle the whole game to the "Cosmic Paint Workshop" theme in `DESIGN.md`: a pixel-art painter's workbench in a cosmic nebula. Visual only, so no engine or gameplay-data changes. Drag-and-drop, tap-to-place, keyboard support, aria labels, `prefers-reduced-motion`, and the `useDesktop` (900px) breakpoint and the window-sized fighters (`fighterPixel`) all keep working. Each task ships on its own and the game stays playable after it.
 - [ ] **Task 1, Foundation** (`index.html`, `src/ui/global.css`, shared button styles in `battle.css`/`run.css`/`menu.css`): load `Pixelify Sans` from Google Fonts; add `--font-pixel`/`--font-body`; remap the existing color tokens and add the new ones (DESIGN.md §2), keeping `COLOR_HEX` in `fx.ts` and the drop outline in `PaintDrop.tsx` in sync; add the `.px-frame`, `.px-frame-gold`, `.px-recess`, and `.px-raised` utilities; restyle `.btn`, `.btn-primary`, `.btn-secondary`, `.btn-mix`, `.btn-danger`, `.btn.attack-cast`, and the icon buttons as tactile beveled blocks with gold focus rings; drop soft `border-radius` from cards and panels.
 - [ ] **Task 2, Battle Arena** (`Fighters.tsx`, the `components.tsx` `HpBar`/`Badges`, arena rules in `battle.css`, `fx.css` floats, new sprites in `src/data/sprites.ts`): nebula-and-stars backdrop, stone-tile floor under the hero and the 1–3 enemy row, enemies as sprites on the floor with gold-framed name/intent/HP plates, gold pixel-framed HP bars, louder intent banners (attack, block, poison, burn, multi-hit), gem-style status badges with the Burn stack count, a gold floor ring plus the "Target" tag for the selected enemy, and pixel-font floats.

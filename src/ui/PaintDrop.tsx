@@ -3,11 +3,11 @@ import type { SpriteSheet } from '../data/sprites';
 import { BLACK_RIM, COLOR_HEX } from './fx';
 import { PixelSprite } from './PixelSprite';
 
-// A 12×13 drop of paint: dark outline, a highlight down its left side, and
-// a shaded bottom right. The same drop as on the dice faces, drawn bigger.
+// A 12×12 drop of paint: dark outline, a highlight down its left side, and
+// a shaded bottom right. The only drop in the game: pool chips, slots, previews,
+// and dice faces (where it leaves a row of face above and below it) all use it.
 export const DROP_ROWS = [
   '.....kk.....',
-  '....kcck....',
   '....kcck....',
   '...kchcck...',
   '...khccck...',
@@ -63,7 +63,7 @@ const DROP_SHEETS: Record<Color, SpriteSheet<'drop'>> = {
   frost: dropSheet('frost'),
 };
 
-/** A pixel paint drop in a color. `size` is the largest side in CSS px (13px art, whole-pixel scaling). */
+/** A pixel paint drop in a color. `size` is the largest side in CSS px (12px art, whole-pixel scaling). */
 export function PaintDrop({ color, size = 39, label = '' }: { color: Color; size?: number; label?: string }) {
   return <PixelSprite sprite={DROP_SHEETS[color]} frame="drop" size={size} label={label} className="paint-drop" />;
 }

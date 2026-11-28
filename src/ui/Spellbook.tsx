@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef } from 'react';
 import type { AttackDefinition, Color, MixRecipe } from '../engine';
 import { PaintDrop } from './PaintDrop';
-import { COLOR_LABEL, describeEffect, spellTip } from './format';
+import { COLOR_LABEL, spellTip } from './format';
+import { EffectLine, SpellName } from './SpellUpgrade';
 import { Tip } from './Tooltip';
 import { costSlots } from './staging';
 import { SlotChip, useWorkbench } from './workbench';
@@ -28,7 +29,6 @@ interface SpellCardProps {
 export function SpellCard({ spell }: SpellCardProps) {
   const wb = useWorkbench();
   const { attack, status, plan } = spell;
-  const effects = attack.effects.map(describeEffect).join(' · ');
   const mixes = plan ? `${plan.length} mix${plan.length > 1 ? 'es' : ''}` : '';
   const target = `spell:${attack.id}`;
   const staged = wb.staging.spells[attack.id] ?? [];
@@ -39,7 +39,7 @@ export function SpellCard({ spell }: SpellCardProps) {
 
   return (
     <div
-      className={`attack attack-${status}${ready ? ' attack-charged' : ''}${wb.dropClass(target)}`}
+      className={`attack attack-${status}${ready ? ' attack-charged' : ''}${attack.upgraded ? ' chroma-aura' : ''}${wb.dropClass(target)}`}
       data-drop={locked ? undefined : target}
       onPointerEnter={hint}
       onPointerLeave={() => wb.hint(null)}
@@ -50,7 +50,7 @@ export function SpellCard({ spell }: SpellCardProps) {
     >
       <div className="attack-head">
         <Tip text={spellTip(attack, status, wb.status, plan)} className="attack-name-tip" focusable>
-          <span className="attack-name">{attack.name}</span>
+          <SpellName attack={attack} />
         </Tip>
         {status === 'craftable' && plan && (
           <button
@@ -69,7 +69,7 @@ export function SpellCard({ spell }: SpellCardProps) {
           </button>
         )}
       </div>
-      <span className="attack-fx">{effects}</span>
+      <EffectLine effects={attack.effects} base={attack.baseEffects} />
       <div className="attack-foot">
         <span className="cost-slots" role="group" aria-label={`${attack.name} cost`}>
           {slots.map((slot, i) =>
@@ -91,7 +91,12 @@ export function SpellCard({ spell }: SpellCardProps) {
                     : `Empty ${COLOR_LABEL[slot.color]} slot. Mix ${COLOR_LABEL[slot.color]} first`
                 }
                 title={wb.pool.includes(slot.color) ? undefined : `Mix ${COLOR_LABEL[slot.color]} first`}
-              />
+              >
+                {/* A faded drop of the color this slot wants. */}
+                <span className="slot-ghost" aria-hidden="true">
+                  <PaintDrop color={slot.color} size={18} />
+                </span>
+              </button>
             ),
           )}
         </span>

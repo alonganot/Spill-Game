@@ -5,7 +5,18 @@ import { isDefeated } from './combat';
 import { findMixPlan } from './mixing';
 import { canAfford } from './pool';
 import { battleConfigFor, capUpgradePrice } from './run';
-import type { AttackDefinition, BattleConfig, BattleState, RunAction, RunConfig, RunState } from './types';
+import type {
+  AttackDefinition,
+  BattleConfig,
+  BattleState,
+  Color,
+  Effect,
+  RunAction,
+  RunConfig,
+  RunState,
+  StatusConfig,
+} from './types';
+import { targetedUpgradePrice, upgradableSpells } from './upgrades';
 
 /** Damage enemy `i` will deal when the turn ends (block ignored, Chill and Silence counted). */
 function enemyThreat(state: BattleState, config: BattleConfig, i: number): number {
@@ -135,15 +146,132 @@ function battleAction(state: BattleState, config: BattleConfig): RunAction {
   return { type: 'battle', action: { type: 'endTurn' } };
 }
 
-/** Greedy bot: best spell now (or mix toward one); in shops buy cap → die → heal; take heal when hurt. */
+// ---------- Spell upgrades ----------
+
+/** Rough worth of one cast of these effects, outside any battle (area effects count two enemies). */
+function effectsWorth(effects: readonly Effect[], status: StatusConfig): number {
+  let value = 0;
+  for (const effect of effects) {
+    const targets = isAreaEffect(effect) ? 2 : 1;
+    switch (effect.type) {
+      case 'damage':
+        value += effect.amount * targets;
+        break;
+      case 'block':
+        value += (effect.cleanAmount ?? effect.amount) * 0.7;
+        break;
+      case 'poison':
+        value += effect.stacks * 2 * targets;
+        break;
+      case 'burn':
+        value += status.burnDamage * targets;
+        break;
+      case 'multiplyPoison':
+        value += (effect.factor - 1) * 4 * targets;
+        break;
+      case 'heal':
+        value += effect.amount * 0.75;
+        break;
+      case 'cleanse':
+        value += effect.stacks === undefined ? 4 : effect.stacks * 2;
+        break;
+      case 'curse':
+        value += status.curseBonus * 2 * targets;
+        break;
+      case 'silence':
+        value += (effect.noImmunity ? 9 : 6) * targets;
+        break;
+      case 'chill':
+        value += 4 * targets;
+        break;
+    }
+  }
+  return value;
+}
+
+/** How likely a roll of these dice pays `attack`: per needed base color, its expected count per roll (capped at 1), multiplied. */
+function castChance(attack: AttackDefinition, run: RunState, cfg: RunConfig): number {
+  const expected = (color: Color) =>
+    run.dice.reduce((sum, die) => sum + die.faces.filter((f) => f === color).length / die.faces.length, 0);
+  const baseColors = (color: Color): Color[] => {
+    const recipe = cfg.battle.recipes.find((r) => r.output === color);
+    return recipe ? recipe.inputs.flatMap(baseColors) : [color];
+  };
+  const needed = Object.entries(attack.cost).flatMap(([color, n]) =>
+    Array.from({ length: n ?? 0 }, () => baseColors(color as Color)).flat(),
+  );
+  return needed.reduce((chance, color) => chance * Math.min(1, expected(color)), 1);
+}
+
+/** What upgrading `attack` is worth to this run: the extra value per cast, times how often it can be cast. */
+function upgradeGain(attack: AttackDefinition, run: RunState, cfg: RunConfig): number {
+  if (!attack.upgrade) return 0;
+  const { status } = cfg.battle;
+  return (effectsWorth(attack.upgrade.effects, status) - effectsWorth(attack.effects, status)) * castChance(attack, run, cfg);
+}
+
+/** The spell (by id) worth the most to upgrade among `ids`, with its gain. */
+function bestUpgrade(ids: readonly string[], run: RunState, cfg: RunConfig): { id: string; gain: number } | null {
+  let best: { id: string; gain: number } | null = null;
+  for (const id of ids) {
+    const attack = cfg.battle.attacks.find((a) => a.id === id);
+    const gain = attack ? upgradeGain(attack, run, cfg) : 0;
+    if (!best || gain > best.gain) best = { id, gain };
+  }
+  return best;
+}
+
+/**
+ * An upgrade the bot takes only when its gain clears this bar (Targeted needs twice as much).
+ * Rewards pay most of a run's gold, so a low bar trades away too much of it: over 1,000 seeds
+ * a bar of 1 won 10%, 3 won 14-17%, and never upgrading 21% (Milestone 9, Task 4).
+ */
+const MIN_UPGRADE_GAIN = 3;
+/** Gold the bot keeps after a Draft, since it can't know what the Draft will offer. */
+const DRAFT_RESERVE = 20;
+
+/** The shop upgrade the bot wants to buy now, if any. */
+function shopUpgradeAction(run: RunState, cfg: RunConfig): RunAction | null {
+  const { spotlightPrice, draftPrice } = cfg.economy.shop;
+  const { spotlight, spotlightSold, draftSold, targetedSold } = run.shopUpgrades;
+  const left = upgradableSpells(run, cfg).map((a) => a.id);
+  if (left.length === 0) return null;
+  // Dice slots compound, so upgrades only get gold that the next slot doesn't need.
+  const reserve = run.diceCap < cfg.maxDiceCap ? capUpgradePrice(run, cfg) : 0;
+  const affords = (price: number) => run.gold - price >= reserve;
+  if (spotlight && !spotlightSold && left.includes(spotlight) && affords(spotlightPrice)) {
+    if ((bestUpgrade([spotlight], run, cfg)?.gain ?? 0) >= MIN_UPGRADE_GAIN) return { type: 'buySpotlightUpgrade' };
+  }
+  const best = bestUpgrade(left, run, cfg);
+  if (!targetedSold && best && best.gain >= MIN_UPGRADE_GAIN * 2 && affords(targetedUpgradePrice(run, cfg))) {
+    return { type: 'buyTargetedUpgrade', attackId: best.id };
+  }
+  if (!draftSold && best && best.gain >= MIN_UPGRADE_GAIN && affords(draftPrice + DRAFT_RESERVE)) {
+    return { type: 'buyDraftUpgrade' };
+  }
+  return null;
+}
+
+/**
+ * Greedy bot: best spell now (or mix toward one). Rewards: heal when hurt, else a worthwhile
+ * upgrade, else gold. Shops: heal when low, then die, cap, upgrades, and heal.
+ */
 export function botAction(run: RunState, cfg: RunConfig): RunAction {
   if (run.phase === 'battle') {
     const battle = run.battle!;
     if (battle.phase !== 'player') return { type: 'continue' };
     return battleAction(battle, battleConfigFor(run, cfg));
   }
-  if (run.phase === 'reward') return { type: 'chooseReward', index: run.hp < run.maxHp / 2 ? 1 : 0 };
-  // shop
+  if (run.phase === 'reward') {
+    if (run.hp < run.maxHp / 2) return { type: 'chooseReward', index: 1 };
+    const upgrade = run.rewardOffers.findIndex(
+      (o) => o.type === 'upgrade' && (bestUpgrade([o.attackId], run, cfg)?.gain ?? 0) >= MIN_UPGRADE_GAIN,
+    );
+    return { type: 'chooseReward', index: upgrade >= 0 ? upgrade : 0 };
+  }
+  // Shop: a bought Draft is always picked first.
+  const draft = run.shopUpgrades.draftChoices;
+  if (draft) return { type: 'pickDraftUpgrade', attackId: bestUpgrade(draft, run, cfg)!.id };
   if (run.hp < run.maxHp * 0.4 && run.gold >= cfg.economy.shop.healPrice) return { type: 'buyHeal' };
   const offer = run.shopStock.findIndex((o) => !o.sold && o.price <= run.gold);
   if (offer >= 0 && run.dice.length < run.diceCap) return { type: 'buyDie', offerIndex: offer };
@@ -151,5 +279,5 @@ export function botAction(run: RunState, cfg: RunConfig): RunAction {
     return { type: 'buyCapUpgrade' };
   }
   if (run.hp < run.maxHp && run.gold >= cfg.economy.shop.healPrice) return { type: 'buyHeal' };
-  return { type: 'leaveShop' };
+  return shopUpgradeAction(run, cfg) ?? { type: 'leaveShop' };
 }

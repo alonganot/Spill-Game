@@ -146,6 +146,9 @@ export function BattleScreen({
       : isAreaSpell(castAttack)
         ? before.enemies.flatMap((e, i) => (e.hp > 0 ? [i] : []))
         : [beatEvent.target];
+  // A `+` spell's bolt and the floats of its action use the Chroma gradient.
+  const upgradedCast =
+    playing && events.some((e) => e.type === 'triggered' && config.attacks.find((a) => a.id === e.attackId)?.upgraded);
   // A mix appends its output to the pool, so the splash goes on the last chip.
   const splashColor = beatEvent?.type === 'mixed' ? COLOR_HEX[beatEvent.output] : null;
   const isOver = state.phase !== 'player';
@@ -429,7 +432,7 @@ export function BattleScreen({
     <WorkbenchProvider value={workbench}>
       {/* On phones these wrappers are display: contents, so it's one column; on desktop, an arena and a side panel. */}
       <div className="battle-layout">
-      <div className={`arena${enemyCount > 1 ? ' arena-crowd' : ''}`}>
+      <div className={`arena${enemyCount > 1 ? ' arena-crowd' : ''}${upgradedCast ? ' cast-upgraded' : ''}`}>
       {desktop && (
         <DiceRack dice={config.dice} roll={shownRoll} kept={keptCount} away={onStage} trayRef={trayRef} />
       )}
@@ -618,7 +621,13 @@ export function BattleScreen({
 
       {boltColor &&
         boltTargets.map((i) => (
-          <Projectile key={`${beatKey}-${i}`} from={heroStageRef} to={enemyStageRefs[i]!} color={boltColor} />
+          <Projectile
+            key={`${beatKey}-${i}`}
+            from={heroStageRef}
+            to={enemyStageRefs[i]!}
+            color={boltColor}
+            prismatic={castAttack?.upgraded === true}
+          />
         ))}
 
       {playing && <button type="button" className="skip-layer" aria-label="Skip animation" onClick={skip} />}

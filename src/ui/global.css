@@ -28,6 +28,19 @@
   --silence: #c9c3d8;
   --chill: #a6ecff;
   --heal: #7dea9a;
+  /* Chroma Aura: upgraded (+) spells, DESIGN.md §6.6 */
+  --chroma-magenta: #ff6ad5;
+  --chroma-cyan: #6be6ff;
+  --chroma-gold: #f2c94c;
+  --chroma-emerald: #5ff0a0;
+  --chroma-gradient: linear-gradient(
+    90deg,
+    var(--chroma-magenta),
+    var(--chroma-cyan),
+    var(--chroma-gold),
+    var(--chroma-emerald),
+    var(--chroma-magenta)
+  );
   background: var(--bg);
   color: var(--text);
   -webkit-tap-highlight-color: transparent;
@@ -71,4 +84,84 @@ p {
 /* Screens set their own display, which would otherwise beat the hidden attribute. */
 [hidden] {
   display: none !important;
+}
+
+/* ---------- Chroma Aura: upgraded (+) spells (DESIGN.md §6.6) ---------- */
+
+/* A 2px border cycling through the cosmic hues, with a matching outer glow. */
+.chroma-aura {
+  position: relative;
+  border-color: transparent !important;
+}
+
+.chroma-aura::before,
+.chroma-aura::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.chroma-aura::before {
+  padding: 2px;
+  background: var(--chroma-gradient);
+  background-size: 300% 100%;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: chroma 6s ease-in-out infinite;
+}
+
+.chroma-aura::after {
+  animation: chroma-glow 6s ease-in-out infinite;
+}
+
+@keyframes chroma {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes chroma-glow {
+  0%, 100% { box-shadow: 0 0 12px color-mix(in srgb, var(--chroma-magenta) 55%, transparent); }
+  25% { box-shadow: 0 0 12px color-mix(in srgb, var(--chroma-cyan) 55%, transparent); }
+  50% { box-shadow: 0 0 12px color-mix(in srgb, var(--chroma-gold) 55%, transparent); }
+  75% { box-shadow: 0 0 12px color-mix(in srgb, var(--chroma-emerald) 55%, transparent); }
+}
+
+/* The + after an upgraded spell's name, with a highlight sweeping across it every 3s. */
+.plus-badge {
+  margin-left: 1px;
+  font-weight: 900;
+  color: transparent;
+  background: linear-gradient(110deg, var(--chroma-gold) 40%, #fff 50%, var(--chroma-gold) 60%);
+  background-size: 250% 100%;
+  background-position: 0 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: plus-shimmer 3s linear infinite;
+}
+
+@keyframes plus-shimmer {
+  0% { background-position: 100% 0; }
+  35%, 100% { background-position: 0 0; }
+}
+
+/* An upgrade's changed numbers: gold with a faint prismatic glow. Base numbers stay as they are. */
+.stat-up {
+  color: var(--chroma-gold);
+  font-weight: 700;
+  text-shadow: 0 0 4px rgb(255 106 213 / 0.45), 0 0 7px rgb(107 230 255 / 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chroma-aura::before,
+  .chroma-aura::after,
+  .plus-badge {
+    animation: none;
+  }
+
+  .chroma-aura::after {
+    box-shadow: 0 0 12px color-mix(in srgb, var(--chroma-magenta) 45%, transparent);
+  }
 }

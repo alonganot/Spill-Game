@@ -1,7 +1,17 @@
 import { useState } from 'react';
-import { capUpgradePrice, repaintPrice, type RunAction, type RunConfig, type RunState } from '../engine';
+import {
+  capUpgradePrice,
+  repaintPrice,
+  targetedUpgradePrice,
+  upgradableSpells,
+  type AttackDefinition,
+  type RunAction,
+  type RunConfig,
+  type RunState,
+} from '../engine';
 import { ConfirmDialog } from './ConfirmDialog';
 import { DiceEditor, DieFaces } from './DiceEditor';
+import { UpgradePreview } from './SpellUpgrade';
 
 interface ShopScreenProps {
   run: RunState;
@@ -20,6 +30,24 @@ export function ShopScreen({ run, config, onAction }: ShopScreenProps) {
   const [swapping, setSwapping] = useState<number | null>(null);
   const [replaced, setReplaced] = useState<number | null>(null);
   const swapOffer = swapping === null ? undefined : run.shopStock[swapping];
+  // Targeted Upgrade: the picker is open, and the spell picked in it.
+  const [targeting, setTargeting] = useState(false);
+  const [targeted, setTargeted] = useState<string | null>(null);
+  const [drafted, setDrafted] = useState<string | null>(null);
+
+  const { spotlightPrice, draftPrice } = config.economy.shop;
+  const targetedPrice = targetedUpgradePrice(run, config);
+  const upgradable = upgradableSpells(run, config);
+  const spell = (id: string | null) => (id === null ? undefined : config.battle.attacks.find((a) => a.id === id));
+  const { spotlightSold, draftSold, targetedSold, draftChoices } = run.shopUpgrades;
+  const spotlight = spell(run.shopUpgrades.spotlight);
+  const spotlightLeft = spotlight !== undefined && upgradable.some((a) => a.id === spotlight.id);
+  const priceReason = (sold: boolean, price: number) => (sold ? 'Sold' : run.gold < price ? 'Not enough gold' : null);
+
+  function closeTargeted() {
+    setTargeting(false);
+    setTargeted(null);
+  }
 
   function closeSwap() {
     setSwapping(null);
@@ -105,6 +133,54 @@ export function ShopScreen({ run, config, onAction }: ShopScreenProps) {
         />
         </div>
         </div>
+
+        {/* Spell upgrades: a full-width row under both columns. */}
+        <div className="shop-upgrades">
+          <h3 className="subhead">Spell upgrades</h3>
+          {upgradable.length === 0 && !draftChoices ? (
+            <p className="muted small">Every spell is upgraded.</p>
+          ) : (
+            <ul className="shop-list shop-upgrade-row">
+              {spotlight && (spotlightLeft || spotlightSold) && (
+                <li className="shop-item shop-upgrade">
+                  <span className="item-main">
+                    <span className="item-title">Spotlight Upgrade</span>
+                    <UpgradePreview attack={spotlight} />
+                  </span>
+                  <BuyButton
+                    label={spotlightSold ? 'Sold' : `${spotlightPrice}g`}
+                    reason={priceReason(spotlightSold, spotlightPrice)}
+                    onClick={() => onAction({ type: 'buySpotlightUpgrade' })}
+                  />
+                </li>
+              )}
+              <li className="shop-item">
+                <span className="item-main">
+                  <span className="item-title">Draft Upgrade</span>
+                  <span className="muted small">
+                    Draw {config.economy.shop.draftChoices} spells, upgrade one of them
+                  </span>
+                </span>
+                <BuyButton
+                  label={draftSold ? 'Sold' : `${draftPrice}g`}
+                  reason={priceReason(draftSold, draftPrice)}
+                  onClick={() => onAction({ type: 'buyDraftUpgrade' })}
+                />
+              </li>
+              <li className="shop-item">
+                <span className="item-main">
+                  <span className="item-title">Targeted Upgrade</span>
+                  <span className="muted small">Upgrade any spell you choose</span>
+                </span>
+                <BuyButton
+                  label={targetedSold ? 'Sold' : `${targetedPrice}g`}
+                  reason={priceReason(targetedSold, targetedPrice)}
+                  onClick={() => setTargeting(true)}
+                />
+              </li>
+            </ul>
+          )}
+        </div>
       </section>
 
       {swapOffer && (
@@ -143,12 +219,84 @@ export function ShopScreen({ run, config, onAction }: ShopScreenProps) {
         </ConfirmDialog>
       )}
 
+      {/* A bought Draft must be picked: the dialog has no Cancel and comes back after a reload. */}
+      {draftChoices && (
+        <ConfirmDialog
+          title="Draft Upgrade: pick a spell"
+          body="Pick one of these spells to upgrade to its + form for the rest of the run."
+          confirmLabel="Upgrade"
+          confirmDisabled={drafted === null || !draftChoices.includes(drafted)}
+          onConfirm={() => {
+            if (drafted === null) return;
+            onAction({ type: 'pickDraftUpgrade', attackId: drafted });
+            setDrafted(null);
+          }}
+        >
+          <SpellPicker spells={draftChoices.map(spell).filter(isSpell)} picked={drafted} onPick={setDrafted} />
+        </ConfirmDialog>
+      )}
+
+      {targeting && (
+        <ConfirmDialog
+          title="Targeted Upgrade"
+          body="Pick any spell to upgrade to its + form for the rest of the run."
+          confirmLabel={`Upgrade · ${targetedPrice}g`}
+          confirmDisabled={targeted === null}
+          onConfirm={() => {
+            if (targeted === null) return;
+            onAction({ type: 'buyTargetedUpgrade', attackId: targeted });
+            closeTargeted();
+          }}
+          onCancel={closeTargeted}
+        >
+          <SpellPicker spells={upgradable} picked={targeted} onPick={setTargeted} />
+        </ConfirmDialog>
+      )}
+
       <footer className="footer">
-        <button type="button" className="btn btn-primary" onClick={() => onAction({ type: 'leaveShop' })}>
+        <button
+          type="button"
+          className="btn btn-primary"
+          disabled={draftChoices !== null}
+          onClick={() => onAction({ type: 'leaveShop' })}
+        >
           Leave shop
         </button>
       </footer>
     </>
+  );
+}
+
+function isSpell(attack: AttackDefinition | undefined): attack is AttackDefinition {
+  return attack !== undefined;
+}
+
+/** A list of spells to upgrade, each shown as its `+` form; one can be picked. */
+function SpellPicker({
+  spells,
+  picked,
+  onPick,
+}: {
+  spells: readonly AttackDefinition[];
+  picked: string | null;
+  onPick: (id: string) => void;
+}) {
+  return (
+    <ul className="dice-list swap-list upgrade-list" role="group" aria-label="Spell to upgrade">
+      {spells.map((attack) => (
+        <li key={attack.id}>
+          <button
+            type="button"
+            className={`die-row swap-pick upgrade-pick${picked === attack.id ? ' selected' : ''}`}
+            aria-pressed={picked === attack.id}
+            aria-label={`Upgrade ${attack.name}`}
+            onClick={() => onPick(attack.id)}
+          >
+            <UpgradePreview attack={attack} />
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }
 

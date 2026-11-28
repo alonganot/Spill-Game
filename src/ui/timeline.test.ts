@@ -86,6 +86,15 @@ describe('buildTimeline', () => {
     ]);
   });
 
+  it('a Hush+ skip leaves no Silence Immunity', () => {
+    const base = battle();
+    const before = { ...base, enemies: [{ ...base.enemies[0]!, silenced: true, silenceNoImmunity: true }] };
+    const events: BattleEvent[] = [{ type: 'enemySkipped', enemy: 0, intent: { type: 'attack', amount: 6 }, noImmunity: true }];
+    const after = { ...before, enemies: [{ ...before.enemies[0]!, silenced: false, silenceNoImmunity: false }] };
+    const [step] = buildTimeline(before, events, after, STATUS_CONFIG);
+    expect(step!.enemies[0]).toMatchObject({ silenced: false, silenceImmune: false });
+  });
+
   it('applies and uses up statuses beat by beat', () => {
     const base = battle();
     const before = { ...base, enemies: [{ ...base.enemies[0]!, statuses: { poison: 3, burn: 1 } }] };
