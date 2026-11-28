@@ -39,7 +39,7 @@
 ### Enemy statuses (from White/Black spells)
 Enemies can carry Poison and Burn (above) plus these. All values (`curseBonus`, `chillMultiplier`, durations) live in `STATUS_CONFIG` in `src/data/`. None of them stack; applying one again just keeps it on.
 - **Curse:** every instance of damage the enemy takes gets `+curseBonus` (default `3`): each spell damage effect (area included) and each Poison or Burn tick. The bonus is added before Block absorbs damage. Curse **clears at the end of the status step** of the turn it was applied (§3, step 3), so it lasts the rest of the player's turn plus that turn's status ticks.
-- **Silence:** the enemy **skips its next action** (no attack, block, or status on the player). The skipped intent counts as used, so its intent cycle moves on. Silence then clears and the enemy gains **Silence Immunity**, which lasts until the end of its next action, so it always acts on the turn after a silence. Hush+ (Milestone 9) silences without granting this immunity. Silence aimed at an immune enemy does nothing (the spell's other effects still apply). An enemy can therefore be silenced at most every other turn.
+- **Silence:** the enemy **skips its next action** (no attack, block, or status on the player). The skipped intent counts as used, so its intent cycle moves on. Silence then clears and the enemy gains **Silence Immunity**, which lasts until the end of its next action, so it always acts on the turn after a silence. Hush+ (Milestone 9) silences without granting this immunity. Silence aimed at an immune enemy does nothing: a spell whose only effect is Silence (Hush, Hush+) **can't be cast** on an immune target (its card says "Target is immune to Silence"), while a spell with other effects (Eclipse) can, and only its Silence is resisted. An enemy can therefore be silenced at most every other turn.
 - **Chill:** the enemy's next action, if it is an Attack, deals `chillMultiplier` (default `0.5`) damage per hit, rounded down. Chill clears after the enemy's next action, whatever that action is. A silenced enemy keeps its Chill until the action it actually takes.
 
 ### Spell upgrades (`+`) (Milestone 9)
@@ -90,25 +90,27 @@ Enemies can carry Poison and Burn (above) plus these. All values (`curseBonus`, 
 - **Dice for sale:** 2 random themed dice per visit; each can be bought once. With a free slot under the cap, it's added to your dice; you can instead **replace** one of your dice with it (the new die takes the old one's place), and with every slot full, replacing is the only way to buy. The pool includes White/Black dice (e.g. Cleric: White/Red/Blue, Occult: Black/Green/Red, Monochrome: White/Black).
 - Prices, rewards, and gold amounts live in `src/data/economy.ts`.
 
-### Characters & Essence (proposed, Milestone 10)
+### Characters & Essence (Milestone 10)
 - **Characters:** the run starts with the chosen character's dice and max HP. Every character starts with a dice cap of 3. The default is Apprentice.
 
 | Character | Tier | Cost | Starting dice | Max HP |
 |---|---|---|---|---|
-| Apprentice | Starter (free) | — | Standard ×2 (R, R, B, B, G, G) | 40 |
-| Warrior | 1 | 1,000 Essence | Red-heavy ×2 (R, R, R, R, B, G) | 40 |
-| Tank | 1 | 1,000 Essence | Blue-heavy ×2 (B, B, B, B, R, G) | 50 |
-| Venom | 1 | 1,000 Essence | Green-heavy ×2 (G, G, G, G, B, R) | 40 |
-| Demon | 2 | 2,500 Essence | Standard + Black-heavy (B, B, B, B, R, G) | 40 |
-| Healer | 2 | 2,500 Essence | Standard + White-heavy (W, W, W, W, R, B) | 40 |
+| Apprentice | Starter (free) | — | Standard ×2 (Red ×2, Blue ×2, Green ×2) | 40 |
+| Warrior | 1 | 500 Essence | Ember ×2 (Red ×4, Blue, Green) | 40 |
+| Tank | 1 | 500 Essence | Lagoon (Blue ×3, Green ×3) + Standard | 42 |
+| Venom | 1 | 500 Essence | Moss (Green ×4, Red, Blue) + Tide (Blue ×4, Red, Green) | 40 |
+| Demon | 2 | 2,000 Essence | Standard + Shade (Black ×4, Red, Green) | 40 |
+| Healer | 2 | 2,000 Essence | Standard + Halo (White ×4, Red, Blue) | 28 |
+
+- Shade and Halo are starting dice only; the shop doesn't sell them.
 
 - **Choosing and unlocking:** New run opens the Character Select screen (after the abandon confirmation, if a run is in progress). There you pick a character to start with, or spend Essence to unlock one. Continue skips it and resumes the saved run with its own character. Unlocks are permanent and can be bought in any order.
-- **Essence** is a permanent currency, kept apart from run saves (in `spill.meta.v1`). It is earned once, when a run ends, win or lose:
+- **Essence** is a permanent currency, kept apart from run saves (in `spill.meta.v1`). It is earned once, when a run is won or lost (abandoning or restarting a run pays nothing):
   - Remaining gold ÷ 5, rounded down.
   - +3 per fight won.
   - +30 for winning the run.
   - Example: a win with 60 gold left pays 12 + 45 + 30 = 87 Essence. A loss in fight 8 with 20 gold left pays 4 + 21 = 25 Essence.
-- **Seeded runs** (the Settings seed) pay no Essence, so a shared seed can't be farmed for it.
+- **Seeded runs** (started from a seed typed in Settings) pay no Essence, so a shared seed can't be farmed for it. Replaying or restarting a random run's own seed still pays.
 - The run saves its character, so a saved run replays with the same starting dice and HP. A run saved before this milestone is treated as the Apprentice.
 
 ## 5. Balancing & Configuration Rule

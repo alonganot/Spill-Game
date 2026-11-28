@@ -11,6 +11,30 @@ export function isAreaSpell(attack: AttackDefinition): boolean {
   return attack.effects.some(isAreaEffect);
 }
 
+/** The enemies a spell aimed at `target` would Silence: the target, or every living enemy for an area Silence. */
+function silenceTargets(attack: AttackDefinition, enemies: readonly EnemyState[], target: number): EnemyState[] {
+  const silence = attack.effects.find((e) => e.type === 'silence');
+  if (!silence) return [];
+  if (isAreaEffect(silence)) return enemies.filter((e) => !isDefeated(e));
+  const aimed = enemies[target];
+  return aimed ? [aimed] : [];
+}
+
+/** Whether a spell Silences, and every enemy it would Silence is immune (RULES.md §2). */
+export function silenceResisted(attack: AttackDefinition, enemies: readonly EnemyState[], target: number): boolean {
+  const aimed = silenceTargets(attack, enemies, target);
+  return aimed.length > 0 && aimed.every((e) => e.silenceImmune);
+}
+
+/**
+ * Whether casting would do nothing: a spell whose only effect is Silence (Hush),
+ * aimed only at enemies immune to Silence. Spells with other effects (Eclipse's
+ * Block) can still be cast; their Silence is just resisted.
+ */
+export function silenceWasted(attack: AttackDefinition, enemies: readonly EnemyState[], target: number): boolean {
+  return attack.effects.every((e) => e.type === 'silence') && silenceResisted(attack, enemies, target);
+}
+
 /** Whether the player has any Poison or Burn. */
 function afflicted(player: Combatant): boolean {
   return player.statuses.poison > 0 || player.statuses.burn > 0;

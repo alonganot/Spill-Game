@@ -1,4 +1,11 @@
-import type { EconomyConfig } from '../engine/types';
+import type { EconomyConfig, EssenceConfig } from '../engine/types';
+
+// Paid once when a run is won or lost; seeded runs pay nothing (RULES.md §4).
+export const ESSENCE: EssenceConfig = {
+  goldDivisor: 5,
+  perFightWon: 3,
+  victoryBonus: 30,
+};
 
 // A reward and a shop follow every one of the 15 fights, so each stop gives
 // little and prices climb. Tuned with the balance simulation test.

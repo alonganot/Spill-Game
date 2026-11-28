@@ -182,7 +182,9 @@ export type ActionError =
   | 'no_recipe'
   | 'missing_colors'
   | 'unknown_attack'
-  | 'invalid_target';
+  | 'invalid_target'
+  /** A spell that only Silences, aimed only at enemies immune to Silence (it would do nothing). */
+  | 'silence_immune';
 
 export type ActionResult =
   | { ok: true; state: BattleState; events: BattleEvent[] }
@@ -234,6 +236,26 @@ export interface EconomyConfig {
     /** Added to the Targeted price for each upgrade bought earlier in the run. */
     targetedPriceStep: number;
   };
+}
+
+/** How much permanent Essence a finished run pays (RULES.md §4, Characters & Essence). */
+export interface EssenceConfig {
+  /** Remaining gold is divided by this, rounded down. */
+  goldDivisor: number;
+  perFightWon: number;
+  victoryBonus: number;
+}
+
+/** A finished run's Essence, by source. */
+export interface EssenceReward {
+  fightsWon: number;
+  /** From remaining gold. */
+  gold: number;
+  /** From fights won. */
+  fights: number;
+  /** The bonus for winning the run (0 on a loss). */
+  victory: number;
+  total: number;
 }
 
 export interface RunConfig {

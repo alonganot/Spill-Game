@@ -18,6 +18,10 @@ export const DICE = {
   cleric: { id: 'cleric', name: 'Cleric', faces: ['white', 'white', 'white', 'red', 'red', 'blue'] },
   occult: { id: 'occult', name: 'Occult', faces: ['black', 'black', 'black', 'green', 'green', 'red'] },
   monochrome: { id: 'monochrome', name: 'Monochrome', faces: ['white', 'white', 'white', 'black', 'black', 'black'] },
+
+  // Starting dice for the Demon and Healer (Milestone 10); not sold in the shop.
+  shade: { id: 'shade', name: 'Shade', faces: ['black', 'black', 'black', 'black', 'red', 'green'] },
+  halo: { id: 'halo', name: 'Halo', faces: ['white', 'white', 'white', 'white', 'red', 'blue'] },
 } as const satisfies Record<string, DieDefinition>;
 
 export const STANDARD_DIE: DieDefinition = DICE.standard;

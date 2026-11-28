@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { defaultRunConfig } from '../data/run';
+import { defaultRunConfig, runConfigFor } from '../data/run';
 import { BASE_COLORS } from '../data/colors';
 import {
   applyRunAction,
@@ -12,7 +12,7 @@ import {
   type RunState,
 } from '../engine';
 import { botAction } from '../engine/testBot';
-import { clearRun, loadRun, OLD_SAVE_KEYS, parseSave, replayRun, SAVE_KEY, saveRun, type RunSave } from './runSave';
+import { clearRun, loadRun, OLD_SAVE_KEYS, parseSave, replayRun, SAVE_KEY, saveCharacter, saveRun, type RunSave } from './runSave';
 
 const config = defaultRunConfig();
 
@@ -69,12 +69,12 @@ describe('replayRun', () => {
         furthestStage = Math.max(furthestStage, run.stageIndex);
 
         if (actions.length % 10 === 0) {
-          const replayed = replayRun({ version: 4, seed, seeded: false, actions: [...actions] }, config);
+          const replayed = replayRun({ version: 5, seed, seeded: false, actions: [...actions] }, config);
           expect(replayed?.run).toEqual(run);
           replays++;
         }
       }
-      const final = replayRun({ version: 4, seed, seeded: false, actions }, config);
+      const final = replayRun({ version: 5, seed, seeded: false, actions }, config);
       expect(final?.run).toEqual(run);
       // The replayed rng carries on exactly where the live one is.
       expect(final?.rng()).toBe(rng());
@@ -93,7 +93,7 @@ describe('replayRun', () => {
     let roll = started.events.find((e) => e.type === 'rolled');
     expect(roll).toBeDefined();
     const actions: RunAction[] = [];
-    expect(replayRun({ version: 4, seed: 5, seeded: false, actions }, config)?.lastRoll).toEqual(roll);
+    expect(replayRun({ version: 5, seed: 5, seeded: false, actions }, config)?.lastRoll).toEqual(roll);
 
     // End a turn (a new roll), then cast a spell (no roll): the roll from the end of turn is kept.
     const endTurn: RunAction = { type: 'battle', action: { type: 'endTurn' } };
@@ -114,7 +114,7 @@ describe('replayRun', () => {
       expect(result.events.some((e) => e.type === 'rolled')).toBe(false);
       actions.push(cast);
     }
-    expect(replayRun({ version: 4, seed: 5, seeded: false, actions }, config)?.lastRoll).toEqual(roll);
+    expect(replayRun({ version: 5, seed: 5, seeded: false, actions }, config)?.lastRoll).toEqual(roll);
   });
 
   it('has no roll outside a battle', () => {
@@ -127,20 +127,46 @@ describe('replayRun', () => {
       actions.push(action);
     }
     expect(run.phase).toBe('reward');
-    expect(replayRun({ version: 4, seed: 1, seeded: false, actions }, config)?.lastRoll).toBeNull();
+    expect(replayRun({ version: 5, seed: 1, seeded: false, actions }, config)?.lastRoll).toBeNull();
+  });
+
+  it("replays a character run with that character's dice and HP", () => {
+    const cfg = runConfigFor('tank');
+    const rng = createSeededRng(11);
+    let run = createRun(cfg, rng).state;
+    const actions: RunAction[] = [];
+    for (let i = 0; i < 60 && run.phase !== 'victory' && run.phase !== 'defeat'; i++) {
+      const action = botAction(run, cfg);
+      const result = applyRunAction(run, action, cfg, rng);
+      if (!result.ok) throw new Error(result.error);
+      run = result.state;
+      actions.push(action);
+    }
+    const save: RunSave = { version: 5, seed: 11, seeded: false, characterId: 'tank', actions };
+    const replayed = replayRun(save, runConfigFor(saveCharacter(save)));
+    expect(replayed?.run).toEqual(run);
+    expect(replayed?.run.maxHp).toBe(42);
+  });
+
+  it('treats a save without a character as the Apprentice', () => {
+    const save: RunSave = { version: 5, seed: 3, seeded: false, actions: [] };
+    expect(saveCharacter(save)).toBe('apprentice');
+    expect(replayRun(save, runConfigFor(saveCharacter(save)))?.run).toEqual(createRun(config, createSeededRng(3)).state);
   });
 
   it('returns null when a saved action no longer applies', () => {
-    const save: RunSave = { version: 4, seed: 5, seeded: false, actions: [{ type: 'leaveShop' }] };
+    const save: RunSave = { version: 5, seed: 5, seeded: false, actions: [{ type: 'leaveShop' }] };
     expect(replayRun(save, config)).toBeNull();
   });
 });
 
 describe('parseSave', () => {
-  const good: RunSave = { version: 4, seed: 42, seeded: true, actions: [{ type: 'battle', action: { type: 'endTurn' } }] };
+  const good: RunSave = { version: 5, seed: 42, seeded: true, actions: [{ type: 'battle', action: { type: 'endTurn' } }] };
 
-  it('reads back a saved run', () => {
+  it('reads back a saved run, with or without its character', () => {
     expect(parseSave(JSON.stringify(good))).toEqual(good);
+    const healer: RunSave = { ...good, characterId: 'healer' };
+    expect(parseSave(JSON.stringify(healer))).toEqual(healer);
   });
 
   it('rejects missing, corrupt, outdated, and malformed saves', () => {
@@ -155,6 +181,8 @@ describe('parseSave', () => {
       JSON.stringify({ ...good, version: 2 }),
       // A v3 save (before spell upgrades): reward and shop draws changed, so it would replay differently.
       JSON.stringify({ ...good, version: 3 }),
+      // A v4 save (before Miasma's Block and the Hush rule): it could replay differently.
+      JSON.stringify({ ...good, version: 4 }),
       JSON.stringify({ ...good, seed: -1 }),
       JSON.stringify({ ...good, seed: 1.5 }),
       JSON.stringify({ ...good, seed: '42' }),
@@ -162,6 +190,9 @@ describe('parseSave', () => {
       JSON.stringify({ ...good, actions: 'none' }),
       JSON.stringify({ ...good, actions: [{ type: 'cheat' }] }),
       JSON.stringify({ ...good, actions: [null] }),
+      // A character this version doesn't know would start with the wrong dice.
+      JSON.stringify({ ...good, characterId: 'wizard' }),
+      JSON.stringify({ ...good, characterId: 7 }),
     ];
     for (const text of bad) expect(parseSave(text), String(text)).toBeNull();
   });
@@ -182,7 +213,7 @@ describe('save storage', () => {
 
   it('saves, loads, and clears a run', () => {
     const items = stubStorage();
-    const save: RunSave = { version: 4, seed: 7, seeded: false, actions: [] };
+    const save: RunSave = { version: 5, seed: 7, seeded: false, actions: [] };
     saveRun(save);
     expect(items.has(SAVE_KEY)).toBe(true);
     expect(loadRun()).toEqual(save);
@@ -198,7 +229,7 @@ describe('save storage', () => {
   });
 
   it('ignores a corrupted save', () => {
-    stubStorage().set(SAVE_KEY, '{"version":4,"seed":');
+    stubStorage().set(SAVE_KEY, '{"version":5,"seed":');
     expect(loadRun()).toBeNull();
   });
 
@@ -207,7 +238,7 @@ describe('save storage', () => {
       throw new Error('blocked');
     };
     vi.stubGlobal('localStorage', { getItem: fail, setItem: fail, removeItem: fail });
-    expect(() => saveRun({ version: 4, seed: 1, seeded: false, actions: [] })).not.toThrow();
+    expect(() => saveRun({ version: 5, seed: 1, seeded: false, actions: [] })).not.toThrow();
     expect(loadRun()).toBeNull();
     expect(() => clearRun()).not.toThrow();
   });

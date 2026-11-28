@@ -85,8 +85,9 @@ export const ATTACKS = {
     id: 'miasma',
     name: 'Miasma',
     cost: { cyan: 1, green: 1 },
-    effects: [{ type: 'poison', stacks: 2, area: true }],
-    upgrade: { effects: [{ type: 'poison', stacks: 4, area: true }] },
+    // Spore Cloud's area Poison plus Block, for the extra mix it costs; the upgrade only adds Poison.
+    effects: [{ type: 'poison', stacks: 2, area: true }, { type: 'block', amount: 5 }],
+    upgrade: { effects: [{ type: 'poison', stacks: 4, area: true }, { type: 'block', amount: 5 }] },
   },
   // Multi-color combo
   prism: {

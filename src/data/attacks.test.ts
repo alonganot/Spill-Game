@@ -34,3 +34,14 @@ describe('Spore Cloud', () => {
     expect(spore.upgrade!.effects).toEqual([{ type: 'poison', stacks: 3, area: true }]);
   });
 });
+
+describe('Miasma', () => {
+  it("adds 5 Block to Spore Cloud's area Poison; the upgrade raises only the Poison", () => {
+    const miasma = byId('miasma');
+    expect(miasma.cost).toEqual({ cyan: 1, green: 1 });
+    expect(miasma.effects).toEqual([{ type: 'poison', stacks: 2, area: true }, { type: 'block', amount: 5 }]);
+    expect(miasma.upgrade!.effects).toEqual([{ type: 'poison', stacks: 4, area: true }, { type: 'block', amount: 5 }]);
+    // No longer a copy of Spore Cloud.
+    expect(miasma.effects).not.toEqual(byId('sporeCloud').effects);
+  });
+});

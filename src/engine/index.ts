@@ -5,7 +5,8 @@ export { addToPool, canAfford, countColor, spendColors } from './pool';
 export { findMixPlan, findRecipe, mixColors, mixCost } from './mixing';
 export { applyAction, attackHitDamage, createBattle, firstLivingEnemy, getEnemyIntent } from './battle';
 export { isDefeated } from './combat';
-export { isAreaEffect, isAreaSpell } from './attacks';
+export { isAreaEffect, isAreaSpell, silenceResisted, silenceWasted } from './attacks';
+export { runEssence } from './meta';
 export { applyRunAction, battleConfigFor, capUpgradePrice, createRun, currentStage, repaintPrice, victoryGold } from './run';
 export {
   canUpgrade,

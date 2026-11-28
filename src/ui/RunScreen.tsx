@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 import { battleConfigFor, currentStage, victoryGold, type RunAction, type RunConfig, type RunError, type RunState } from '../engine';
+import { CHARACTERS } from '../data/characters';
+import { HERO_SPRITES } from '../data/sprites';
 import { BattleScreen } from './BattleScreen';
 import { RewardScreen } from './RewardScreen';
 import { RunEndScreen } from './RunEndScreen';
@@ -15,6 +17,7 @@ const ERROR_TEXT: Partial<Record<RunError, string>> = {
   already_full_hp: 'You are already at full HP.',
   sold_out: 'That die is sold.',
   invalid_target: "That can't be done.",
+  silence_immune: 'That enemy is immune to Silence until it acts.',
 };
 
 const ERROR_FALLBACK = "That action isn't available right now.";
@@ -39,8 +42,9 @@ function stageLabel(run: RunState, config: RunConfig): string {
 }
 
 interface RunScreenProps {
-  config: RunConfig;
   view: RunView;
+  /** The Essence balance now, shown on the Run End screen. */
+  essenceTotal: number;
   dispatch: (action: RunAction) => void;
   clearError: () => void;
   onNewRun: () => void;
@@ -60,8 +64,8 @@ interface RunScreenProps {
  * battle playback, the log, and the dice tray keep their state.
  */
 export function RunScreen({
-  config,
   view,
+  essenceTotal,
   dispatch,
   clearError,
   onNewRun,
@@ -71,7 +75,7 @@ export function RunScreen({
   hidden,
   paused,
 }: RunScreenProps) {
-  const { run } = view;
+  const { run, config } = view;
   const outsideBattle = run.phase !== 'battle';
   const error = errorMessage(view.error);
 
@@ -122,6 +126,7 @@ export function RunScreen({
           gold={run.gold}
           paused={paused}
           reward={run.battle.phase === 'victory' ? victoryGold(run, config) : null}
+          heroSprite={HERO_SPRITES[view.characterId]}
           onAction={(action) => dispatch({ type: 'battle', action })}
           onContinue={() => dispatch({ type: 'continue' })}
         />
@@ -136,6 +141,9 @@ export function RunScreen({
           config={config}
           seed={view.seed}
           seeded={view.seeded}
+          characterName={CHARACTERS[view.characterId].name}
+          essence={view.essence}
+          essenceTotal={essenceTotal}
           onNewRun={onNewRun}
           onReplaySeed={onReplaySeed}
           onMainMenu={onMainMenu}

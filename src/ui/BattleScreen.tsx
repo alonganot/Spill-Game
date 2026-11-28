@@ -9,6 +9,9 @@ import {
   spendColors,
   getEnemyIntent,
   attackHitDamage,
+  silenceResisted,
+  silenceWasted,
+  type AttackDefinition,
   type BattleAction,
   type BattleConfig,
   type BattleEvent,
@@ -21,7 +24,7 @@ import {
   type VictoryGold,
 } from '../engine';
 import { MIX_HINT_MAX_MIXES } from '../data/balance';
-import { enemySprite } from '../data/sprites';
+import { enemySprite, type HeroFrame, type SpriteSheet } from '../data/sprites';
 import { Badges, HpBar } from './components';
 import { BattleLog } from './BattleLog';
 import { SpellCard, Spellbook, type Spell } from './Spellbook';
@@ -38,7 +41,7 @@ import { useDesktop, useWindowSize } from './useMediaQuery';
 import { useSettings } from './settings';
 import { DiceRack } from './DiceRack';
 import { useChipDrag } from './useDrag';
-import { BOWL_RESULT, MixingBowl, WorkbenchProvider, type Workbench } from './workbench';
+import { BOWL_RESULT, MixingBowl, WorkbenchProvider, type SilenceCheck, type Workbench } from './workbench';
 import { PaintDrop } from './PaintDrop';
 import {
   bowlResult,
@@ -73,6 +76,8 @@ interface BattleScreenProps {
   paused: boolean;
   /** What the won fight pays, shown on the Victory popup; null until it's won. */
   reward: VictoryGold | null;
+  /** The run's character, drawn as the hero. */
+  heroSprite: SpriteSheet<HeroFrame>;
   onAction: (action: BattleAction) => void;
   onContinue: () => void;
 }
@@ -88,6 +93,7 @@ export function BattleScreen({
   gold,
   paused,
   reward,
+  heroSprite,
   onAction,
   onContinue,
 }: BattleScreenProps) {
@@ -306,6 +312,9 @@ export function BattleScreen({
   }
 
   const { autoCast } = useSettings();
+  // Silence Immunity lives on the settled battle state, not the playback beat.
+  const silenceCheck = (attack: AttackDefinition): SilenceCheck =>
+    silenceWasted(attack, state.enemies, target) ? 'blocked' : silenceResisted(attack, state.enemies, target) ? 'resisted' : null;
   const workbench: Workbench = {
     pool,
     staging,
@@ -337,11 +346,15 @@ export function BattleScreen({
     cast: (attackId) => {
       const cost = costs[attackId];
       if (!cost || !spellReady(staging, attackId, cost, pool)) return;
+      // Hush on an immune target would do nothing; the card says so instead.
+      const attack = config.attacks.find((a) => a.id === attackId);
+      if (attack && silenceCheck(attack) === 'blocked') return;
       closeBook();
       act({ type: 'trigger', attackId, target });
       const after = spendColors(pool, cost);
       if (after) carryOver(carryStaging(staging, pool, cost, after, { kind: 'spell', attackId }), after);
     },
+    silenceCheck,
     prepareMix,
     hint: setHintedAttack,
   };
@@ -354,7 +367,7 @@ export function BattleScreen({
   const autoCastAt = useRef<number | null>(null);
   const autoReady =
     autoCast && !locked && !paused && fresh
-      ? config.attacks.find((a) => spellReady(staging, a.id, a.cost, pool))?.id
+      ? config.attacks.find((a) => spellReady(staging, a.id, a.cost, pool) && silenceCheck(a) !== 'blocked')?.id
       : undefined;
   useEffect(() => {
     if (autoReady === undefined || autoCastAt.current === actionCount) return;
@@ -510,6 +523,7 @@ export function BattleScreen({
       <section className="card player with-sprite">
         <HeroStage
           ref={heroStageRef}
+          sprite={heroSprite}
           fx={beatEvent ? stageFxFor(beatEvent, 'player') : null}
           floats={floatsFor(beatEvent, 'player')}
           beatKey={beatKey}

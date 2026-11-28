@@ -1,3 +1,4 @@
+import { DEFAULT_CHARACTER, isCharacterId, type CharacterId } from '../data/characters';
 import {
   applyRunAction,
   type BattleEvent,
@@ -15,15 +16,24 @@ import {
  * exactly, random rolls included.
  */
 export interface RunSave {
-  version: 4;
+  version: 5;
   seed: number;
   seeded: boolean;
+  /** The character the run started as; a save without one plays as the Apprentice. */
+  characterId?: CharacterId;
   actions: RunAction[];
 }
 
-export const SAVE_KEY = 'spill.run.v4';
+/** The character a saved run plays as. */
+export function saveCharacter(save: RunSave): CharacterId {
+  return save.characterId ?? DEFAULT_CHARACTER;
+}
+
+// v5 (Milestone 10): Miasma gained Block and Hush can't target an immune enemy,
+// so a v4 save could replay differently or fail partway; v4 saves are dropped.
+export const SAVE_KEY = 'spill.run.v5';
 /** Saves from earlier versions, which can't be replayed by this engine. */
-export const OLD_SAVE_KEYS = ['spill.run.v1', 'spill.run.v2', 'spill.run.v3'] as const;
+export const OLD_SAVE_KEYS = ['spill.run.v1', 'spill.run.v2', 'spill.run.v3', 'spill.run.v4'] as const;
 
 const ACTION_TYPES = new Set<RunAction['type']>([
   'battle',
@@ -58,12 +68,14 @@ export function parseSave(text: string | null): RunSave | null {
     return null;
   }
   if (typeof data !== 'object' || data === null) return null;
-  const { version, seed, seeded, actions } = data as Record<string, unknown>;
-  if (version !== 4) return null;
+  const { version, seed, seeded, characterId, actions } = data as Record<string, unknown>;
+  if (version !== 5) return null;
   if (typeof seed !== 'number' || !Number.isInteger(seed) || seed < 0) return null;
   if (typeof seeded !== 'boolean') return null;
+  // A character this version doesn't know would start with the wrong dice, so it can't replay.
+  if (characterId !== undefined && !isCharacterId(characterId)) return null;
   if (!Array.isArray(actions) || !actions.every(isAction)) return null;
-  return { version, seed, seeded, actions };
+  return characterId === undefined ? { version, seed, seeded, actions } : { version, seed, seeded, characterId, actions };
 }
 
 export type RolledEvent = Extract<BattleEvent, { type: 'rolled' }>;
@@ -81,8 +93,9 @@ export function findRoll(events: readonly BattleEvent[]): RolledEvent | null {
 }
 
 /**
- * Rebuilds a saved run by replaying its actions on its seed. Returns null if
- * any action no longer applies (for example after a balance change).
+ * Rebuilds a saved run by replaying its actions on its seed, with the config
+ * of the run's character (`runConfigFor(saveCharacter(save))`). Returns null
+ * if any action no longer applies (for example after a balance change).
  */
 export function replayRun(save: RunSave, config: RunConfig): ReplayedRun | null {
   try {
