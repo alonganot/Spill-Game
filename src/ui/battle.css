@@ -374,6 +374,7 @@
 .badge-silence { color: var(--silence); }
 .badge-immune { color: var(--muted); }
 .badge-chill { color: var(--chill); }
+.badge-bounty { color: var(--bounty); }
 
 .intent {
   font-size: 0.85rem;
@@ -595,6 +596,10 @@
 .chip-crimson, .dot-crimson { background: var(--crimson); }
 .chip-blight, .dot-blight { background: var(--blight); }
 .chip-frost, .dot-frost { background: var(--frost); }
+/* Gold paint: a metallic sheen (static, so it needs no reduced-motion fallback). */
+.chip-gold, .dot-gold {
+  background: linear-gradient(135deg, var(--paint-gold-shine) 0%, var(--paint-gold) 35%, var(--paint-gold) 70%, #8a6410 100%);
+}
 
 .mixbar {
   min-height: 44px;
@@ -1298,6 +1303,7 @@ button.attack-mix-tag {
 .slot-crimson { border-color: var(--crimson); }
 .slot-blight { border-color: var(--blight); }
 .slot-frost { border-color: var(--frost); }
+.slot-gold { border-color: var(--paint-gold); }
 
 .slot.slot-empty {
   display: inline-flex;

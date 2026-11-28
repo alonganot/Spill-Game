@@ -98,6 +98,11 @@ export function victoryGold(run: RunState, config: RunConfig): VictoryGold {
   return { base, leftover, perColor, bonus, held: run.gold, interest, interestRule, total: base + bonus + interest };
 }
 
+/** Gold the run earned mid-fight from these events (Gold spells and Bounty payouts). */
+export function goldFromEvents(events: readonly BattleEvent[]): number {
+  return events.reduce((sum, e) => (e.type === 'goldGained' ? sum + e.amount : sum), 0);
+}
+
 /** Applies a run action. Invalid actions return the unchanged run and an error. */
 export function applyRunAction(run: RunState, action: RunAction, config: RunConfig, rng: Rng): RunActionResult {
   const fail = (error: RunError): RunActionResult => ({ ok: false, state: run, error });
@@ -113,7 +118,8 @@ export function applyRunAction(run: RunState, action: RunAction, config: RunConf
       if (run.phase !== 'battle' || !run.battle) return fail('wrong_phase');
       const result = applyAction(run.battle, action.action, battleConfigFor(run, config), rng);
       if (!result.ok) return fail(result.error);
-      return done({ ...run, battle: result.state }, result.events);
+      // Gold earned mid-fight goes straight into the run's gold (so it counts as held for interest).
+      return done({ ...run, gold: run.gold + goldFromEvents(result.events), battle: result.state }, result.events);
     }
 
     case 'continue': {

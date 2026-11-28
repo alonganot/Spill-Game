@@ -35,6 +35,7 @@ const DIE_SHEETS: Record<Color, SpriteSheet<'face'>> = {
   orange: dieSheet('orange'),
   white: dieSheet('white'),
   black: dieSheet('black'),
+  gold: dieSheet('gold'),
   pink: dieSheet('pink'),
   grey: dieSheet('grey'),
   crimson: dieSheet('crimson'),

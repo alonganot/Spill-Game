@@ -131,6 +131,8 @@ export function BattleScreen({
   const player = { ...state.player, ...step.player };
   const enemies = state.enemies.map((e, i) => ({ ...e, ...step.enemies[i] }));
   const pool = step.pool;
+  // Gold earned mid-fight is already in the run's gold; count it up beat by beat during playback.
+  const shownGold = gold - ((steps.at(-1)?.goldGained ?? 0) - step.goldGained);
   const labels = useMemo(() => enemyLabels(config), [config]);
 
   // The enemy single-target spells hit. It moves on to the next living enemy when it falls.
@@ -144,7 +146,7 @@ export function BattleScreen({
   const enemyStageRefs = useMemo(() => config.enemies.map(() => createRef<HTMLDivElement>()), [config.enemies]);
   const heroStageRef = useRef<HTMLDivElement>(null);
   // A spell that reaches enemies sends a bolt of its first cost color: to its target, or to every living enemy.
-  // Spells that only touch the player (Block, Heal, Cleanse) send none.
+  // Spells that only touch the player (Block, Heal, Cleanse, Gold) send none.
   const castAttack =
     beatEvent?.type === 'triggered' ? config.attacks.find((x) => x.id === beatEvent.attackId) : undefined;
   const castColor = castAttack && (Object.keys(castAttack.cost)[0] as Color | undefined);
@@ -541,8 +543,8 @@ export function BattleScreen({
               <Badges combatant={player} owner={{ kind: 'player' }} status={config.status} />
             </div>
             <span className="card-meta">
-              <Tip text={interestTip(gold, interest)} className="gold" focusable>
-                <span aria-label="Gold">🪙 {gold}</span>
+              <Tip text={interestTip(shownGold, interest)} className="gold" focusable>
+                <span aria-label="Gold">🪙 {shownGold}</span>
               </Tip>
               <span className="muted">Turn {state.turn}</span>
             </span>
@@ -712,7 +714,7 @@ function samePool(a: readonly Color[], b: readonly Color[]): boolean {
   return a.length === b.length && a.every((c, i) => c === b[i]);
 }
 
-const PLAYER_EFFECTS = new Set<Effect['type']>(['block', 'heal', 'cleanse']);
+const PLAYER_EFFECTS = new Set<Effect['type']>(['block', 'heal', 'cleanse', 'gold']);
 
 const INTENT_ICON: Record<EnemyIntent['type'], string> = { attack: '⚔', block: '🛡', poison: '☠', burn: '🔥' };
 

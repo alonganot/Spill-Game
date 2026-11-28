@@ -1,6 +1,7 @@
 import type { Color, ColorCost, Combatant, StatusConfig } from '../engine';
 import {
   blockTip,
+  bountyTip,
   burnTip,
   chillTip,
   COLOR_LABEL,
@@ -35,9 +36,9 @@ export function Badges({
   owner: Owner;
   status: StatusConfig;
 }) {
-  const { block, statuses, cursed, silenced, silenceImmune, chilled } = combatant;
+  const { block, statuses, cursed, silenced, silenceImmune, chilled, bounty = 0 } = combatant;
   const name = owner.kind === 'enemy' ? owner.name : 'You';
-  if (block === 0 && statuses.poison === 0 && statuses.burn === 0 && !cursed && !silenced && !silenceImmune && !chilled) {
+  if (block === 0 && statuses.poison === 0 && statuses.burn === 0 && !cursed && !silenced && !silenceImmune && !chilled && bounty === 0) {
     return null;
   }
   return (
@@ -75,6 +76,11 @@ export function Badges({
       {chilled && (
         <Tip text={chillTip(name, status)} focusable>
           <span className="badge badge-chill">❄ Chill</span>
+        </Tip>
+      )}
+      {bounty > 0 && (
+        <Tip text={bountyTip(bounty, name, status)} focusable>
+          <span className="badge badge-bounty">🎯 {bounty}</span>
         </Tip>
       )}
     </div>

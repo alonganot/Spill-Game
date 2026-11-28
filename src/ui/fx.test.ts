@@ -120,3 +120,27 @@ describe('glowHex', () => {
     expect(glowHex('red')).toBe(COLOR_HEX.red);
   });
 });
+
+describe('Gold and Bounty effects', () => {
+  it('floats spell gold on the player and a Bounty payout on the enemy that paid it', () => {
+    const minted: BattleEvent = { type: 'goldGained', amount: 2, source: 'spell' };
+    expect(floatsFor(minted, 'player')).toEqual([{ text: '🪙+2g', kind: 'gold' }]);
+    expect(floatsFor(minted, 0)).toEqual([]);
+    const paid: BattleEvent = { type: 'goldGained', amount: 6, source: 'bounty', enemy: 1 };
+    expect(floatsFor(paid, 1)).toEqual([{ text: '🪙+6g', kind: 'gold' }]);
+    expect(floatsFor(paid, 'player')).toEqual([]);
+    expect(stageFxFor(paid, 1)).toBe('gold');
+    expect(stageFxFor(minted, 'player')).toBe('gold');
+  });
+
+  it('marks a new Bounty on its enemy', () => {
+    const marked: BattleEvent = { type: 'statusApplied', target: 'enemy', enemy: 0, status: 'bounty', stacks: 2 };
+    expect(floatsFor(marked, 0)).toEqual([{ text: '🎯 Bounty +2', kind: 'bounty' }]);
+    expect(stageFxFor(marked, 0)).toBe('bounty');
+  });
+
+  it('gives Gold paint its own color, apart from Orange', () => {
+    expect(COLOR_HEX.gold).toMatch(/^#[0-9a-f]{6}$/);
+    expect(COLOR_HEX.gold).not.toBe(COLOR_HEX.orange);
+  });
+});

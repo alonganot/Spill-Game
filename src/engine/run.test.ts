@@ -1,10 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { defaultRunConfig, runConfigFor } from '../data/run';
 import { createSeededRng } from './rng';
-import { applyRunAction, battleConfigFor, calculateGoldInterest, capUpgradePrice, createRun, repaintPrice, victoryGold } from './run';
+import {
+  applyRunAction,
+  battleConfigFor,
+  calculateGoldInterest,
+  capUpgradePrice,
+  createRun,
+  goldFromEvents,
+  repaintPrice,
+  victoryGold,
+} from './run';
 import { botAction } from './testBot';
 import { fixedDie, noopRng, testConfig } from './testUtils';
-import type { EnemyDefinition, RunAction, RunConfig, RunState } from './types';
+import type { Color, EnemyDefinition, RunAction, RunConfig, RunState } from './types';
 
 function enemy(id: string, maxHp = 10): EnemyDefinition {
   return { id, name: id, maxHp, intents: [{ type: 'attack', amount: 3 }] };
@@ -340,7 +349,7 @@ describe('rewards', () => {
     const repainted = act(run, { type: 'chooseReward', index: 2, repaint: { dieIndex: 0, faceIndex: 0, color: 'green' } });
     expect(repainted.dice[0]?.faces).toEqual(['green']);
     expect(repainted.gold).toBe(10);
-    for (const color of ['white', 'black'] as const) {
+    for (const color of ['white', 'black', 'gold'] as const) {
       const painted = act(run, { type: 'chooseReward', index: 2, repaint: { dieIndex: 0, faceIndex: 0, color } });
       expect(painted.dice[0]?.faces).toEqual([color]);
     }
@@ -378,6 +387,11 @@ describe('shop', () => {
     expect(repaintPrice(run, config)).toBe(15);
     run = act(run, { type: 'repaint', target: { dieIndex: 1, faceIndex: 0, color: 'green' } });
     expect(run.gold).toBe(75);
+  });
+
+  it('repaints a face to Gold', () => {
+    const run = act(withGold(toFirstShop(), 100), { type: 'repaint', target: { dieIndex: 0, faceIndex: 0, color: 'gold' } });
+    expect(run.dice[0]!.faces).toEqual(['gold']);
   });
 
   it('repaint fails without enough gold or with a bad target', () => {
@@ -514,5 +528,63 @@ describe('determinism and simulation', () => {
     expect(furthestStage.every((s) => s >= 1), 'every run should get past the first fight').toBe(true);
     expect(furthestStage).toContain(cfg.stages.length - 1);
     expect(outcomes).toContain('victory');
+  });
+});
+
+describe('gold earned mid-fight (Gold spells, Bounty)', () => {
+  const mint = { id: 'mint', name: 'Mint', cost: { gold: 1 }, effects: [{ type: 'gold', amount: 2 }] } as const;
+  const goldConfig = testRunConfig({
+    battle: { ...config.battle, attacks: [...config.battle.attacks, mint] },
+    economy: { ...config.economy, interest: { step: 5, max: 5 } },
+  });
+
+  function withPool(run: RunState, pool: Color[]): RunState {
+    return { ...run, battle: { ...run.battle!, pool } };
+  }
+
+  it('goes straight into the run gold when the spell is cast', () => {
+    const run = { ...withPool(createRun(goldConfig, noopRng).state, ['gold']), gold: 3 };
+    const result = applyRunAction(run, { type: 'battle', action: { type: 'trigger', attackId: 'mint' } }, goldConfig, noopRng);
+    expect(result.ok && result.state.gold).toBe(5);
+    expect(result.ok && goldFromEvents(result.events)).toBe(2);
+  });
+
+  it('counts as gold held for the interest of the fight it was earned in', () => {
+    const run = { ...withPool(createRun(goldConfig, noopRng).state, ['gold']), gold: 3 };
+    const minted = act(run, { type: 'battle', action: { type: 'trigger', attackId: 'mint' } }, goldConfig);
+    expect(victoryGold(minted, goldConfig)).toMatchObject({ held: 5, interest: 1 });
+  });
+
+  it('a Bounty kill pays into the run gold', () => {
+    const run = createRun(goldConfig, noopRng).state;
+    const rigged: RunState = {
+      ...run,
+      battle: { ...run.battle!, pool: ['red'], enemies: run.battle!.enemies.map((e) => ({ ...e, hp: 1, bounty: 2 })) },
+    };
+    const won = act(rigged, { type: 'battle', action: { type: 'trigger', attackId: 'hit' } }, goldConfig);
+    expect(won.gold).toBe(run.gold + 2 * goldConfig.battle.status.bountyGold);
+  });
+
+  it('goldFromEvents sums only goldGained events', () => {
+    expect(
+      goldFromEvents([
+        { type: 'goldGained', amount: 2, source: 'spell' },
+        { type: 'victory' },
+        { type: 'goldGained', amount: 6, source: 'bounty', enemy: 1 },
+      ]),
+    ).toBe(8);
+    expect(goldFromEvents([])).toBe(0);
+  });
+
+  it('the real shop never offers a die with Gold faces', () => {
+    const real = defaultRunConfig();
+    const rng = createSeededRng(12);
+    let run = createRun(real, rng).state;
+    for (let i = 0; i < 400 && run.phase !== 'victory' && run.phase !== 'defeat'; i++) {
+      if (run.phase === 'shop') for (const offer of run.shopStock) expect(offer.die.faces).not.toContain('gold');
+      const result = applyRunAction(run, botAction(run, real), real, rng);
+      if (!result.ok) break;
+      run = result.state;
+    }
   });
 });

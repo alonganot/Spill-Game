@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { AttackDefinition, Color } from '../engine/types';
-import { ATTACKS, PALETTE_ATTACKS, STARTING_ATTACKS } from './attacks';
+import { ATTACKS, GOLD_ATTACKS, PALETTE_ATTACKS, STARTING_ATTACKS } from './attacks';
 import { BASE_COLORS, MIX_RECIPES, SECONDARY_COLORS } from './colors';
+import { CHARACTERS } from './characters';
 import { DICE, SHOP_DICE, STARTING_DICE } from './dice';
 
 const ALL_COLORS: readonly Color[] = [...BASE_COLORS, ...SECONDARY_COLORS];
@@ -14,6 +15,14 @@ describe('color recipes', () => {
       expect(BASE_COLORS).toContain(inputs[1]);
       expect(inputs[0]).not.toBe(inputs[1]);
       expect(SECONDARY_COLORS).toContain(output);
+    }
+  });
+
+  it('never uses Gold: it has no mixes', () => {
+    expect(BASE_COLORS).toContain('gold');
+    for (const { inputs, output } of MIX_RECIPES) {
+      expect(inputs).not.toContain('gold');
+      expect(output).not.toBe('gold');
     }
   });
 
@@ -35,7 +44,11 @@ describe('color recipes', () => {
 });
 
 describe('spells', () => {
-  const all: [string, AttackDefinition][] = [...Object.entries(ATTACKS), ...Object.entries(PALETTE_ATTACKS)];
+  const all: [string, AttackDefinition][] = [
+    ...Object.entries(ATTACKS),
+    ...Object.entries(PALETTE_ATTACKS),
+    ...Object.entries(GOLD_ATTACKS),
+  ];
 
   it('have unique ids matching their keys', () => {
     for (const [key, attack] of all) expect(attack.id).toBe(key);
@@ -54,7 +67,7 @@ describe('spells', () => {
     }
   });
 
-  it('are all in play, the White/Pink/Black ones included', () => {
+  it('are all in play, the White/Pink/Black and Gold ones included', () => {
     expect(STARTING_ATTACKS.map((a) => a.id)).toEqual(all.map(([key]) => key));
   });
 
@@ -77,6 +90,12 @@ describe('dice', () => {
     for (const die of STARTING_DICE) {
       for (const face of die.faces) expect(['red', 'blue', 'green']).toContain(face);
     }
+  });
+
+  it('Gold comes only from Repaint: no starter, character, or shop die has a Gold face', () => {
+    const dice = [...STARTING_DICE, ...SHOP_DICE.map((d) => d.die), ...Object.values(CHARACTERS).flatMap((c) => c.dice)];
+    for (const die of dice) expect(die.faces, die.id).not.toContain('gold');
+    for (const die of Object.values(DICE)) expect(die.faces, die.id).not.toContain('gold');
   });
 
   it('the shop sells White and Black dice', () => {

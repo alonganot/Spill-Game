@@ -42,9 +42,31 @@ function afflicted(player: Combatant): boolean {
 
 type EffectResult = { player: Combatant; enemies: EnemyState[]; events: BattleEvent[] };
 
-/** Block, Heal, and Cleanse: effects on the player. */
+type PlayerEffect = Extract<Effect, { type: 'block' | 'heal' | 'cleanse' | 'gold' }>;
+
+function isPlayerEffect(effect: Effect): effect is PlayerEffect {
+  return effect.type === 'block' || effect.type === 'heal' || effect.type === 'cleanse' || effect.type === 'gold';
+}
+
+/**
+ * Pays enemy `index`'s Bounty if it was alive before and is defeated after:
+ * a `goldGained` event, and its stacks are cleared so it can never pay twice.
+ */
+export function payBounty(
+  before: EnemyState,
+  after: EnemyState,
+  index: number,
+  status: StatusConfig,
+  events: BattleEvent[],
+): EnemyState {
+  if (isDefeated(before) || !isDefeated(after) || after.bounty <= 0) return after;
+  events.push({ type: 'goldGained', amount: after.bounty * status.bountyGold, source: 'bounty', enemy: index });
+  return { ...after, bounty: 0 };
+}
+
+/** Block, Heal, Cleanse, and Gold: effects on the player (Gold goes to the run's purse). */
 function applyToPlayer(
-  effect: Extract<Effect, { type: 'block' | 'heal' | 'cleanse' }>,
+  effect: PlayerEffect,
   player: Combatant,
 ): { player: Combatant; events: BattleEvent[] } {
   switch (effect.type) {
@@ -67,26 +89,31 @@ function applyToPlayer(
         events: [{ type: 'cleansed', target: 'player', ...removed }],
       };
     }
+    case 'gold':
+      return { player, events: effect.amount > 0 ? [{ type: 'goldGained', amount: effect.amount, source: 'spell' }] : [] };
   }
 }
 
 /** One effect on one enemy. */
 function applyToEnemy(
-  effect: Exclude<Effect, { type: 'block' | 'heal' | 'cleanse' }>,
+  effect: Exclude<Effect, PlayerEffect>,
   enemy: EnemyState,
   index: number,
   status: StatusConfig,
   events: BattleEvent[],
 ): EnemyState {
-  const applied = (s: 'poison' | 'burn' | 'curse' | 'silence' | 'chill', stacks: number) =>
+  const applied = (s: 'poison' | 'burn' | 'bounty' | 'curse' | 'silence' | 'chill', stacks: number) =>
     events.push({ type: 'statusApplied', target: 'enemy', enemy: index, status: s, stacks });
   switch (effect.type) {
     case 'damage': {
       const amount = effect.amount + (enemy.cursed ? status.curseBonus : 0);
       const { combatant, blocked, dealt } = takeDamage(enemy, amount);
       events.push({ type: 'damaged', target: 'enemy', enemy: index, amount: dealt, blocked, source: 'attack' });
-      return { ...enemy, ...combatant };
+      return payBounty(enemy, { ...enemy, ...combatant }, index, status, events);
     }
+    case 'bounty':
+      applied('bounty', effect.stacks);
+      return { ...enemy, bounty: enemy.bounty + effect.stacks };
     case 'poison':
       applied('poison', effect.stacks);
       return { ...enemy, statuses: { ...enemy.statuses, poison: enemy.statuses.poison + effect.stacks } };
@@ -123,7 +150,8 @@ function applyToEnemy(
 
 /**
  * Applies one attack effect. Enemy effects hit enemy `target`, or every living
- * enemy for an area effect; Block, Heal, and Cleanse go to the player.
+ * enemy for an area effect; Block, Heal, Cleanse, and Gold go to the player.
+ * A hit that defeats an enemy with Bounty pays it out (`goldGained`).
  */
 export function applyEffect(
   effect: Effect,
@@ -132,7 +160,7 @@ export function applyEffect(
   target: number,
   status: StatusConfig,
 ): EffectResult {
-  if (effect.type === 'block' || effect.type === 'heal' || effect.type === 'cleanse') {
+  if (isPlayerEffect(effect)) {
     return { ...applyToPlayer(effect, player), enemies: [...enemies] };
   }
 

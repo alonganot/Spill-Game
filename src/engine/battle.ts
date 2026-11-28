@@ -1,4 +1,4 @@
-import { applyEffect, silenceWasted } from './attacks';
+import { applyEffect, payBounty, silenceWasted } from './attacks';
 import { createCombatant, gainBlock, isDefeated, takeDamage } from './combat';
 import { rollDice } from './dice';
 import { mixColors } from './mixing';
@@ -30,6 +30,7 @@ export function createBattle(config: BattleConfig, rng: Rng): { state: BattleSta
       silenceImmune: false,
       silenceNoImmunity: false,
       chilled: false,
+      bounty: 0,
     })),
   };
   return startPlayerTurn(initial, config, rng);
@@ -114,7 +115,9 @@ function endTurn(state: BattleState, config: BattleConfig, rng: Rng): ActionResu
     const bonus = enemy.cursed ? config.status.curseBonus : 0;
     const resolved = resolveStatuses(enemy, 'enemy', config.status, i, bonus);
     events.push(...resolved.events);
-    current = checkOutcome(withEnemy(current, i, resolved.combatant), events);
+    // A Poison or Burn kill pays the enemy's Bounty, before any victory.
+    const ticked = payBounty(enemy, resolved.combatant, i, config.status, events);
+    current = checkOutcome(withEnemy(current, i, ticked), events);
     if (over()) return { ok: true, state: current, events };
   }
   const playerStatus = resolveStatuses(current.player, 'player', config.status);

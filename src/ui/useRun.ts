@@ -114,7 +114,7 @@ function isOver(run: RunState): boolean {
 /** Keeps the saved run in step with the one on screen. A finished run isn't kept. */
 function persist(view: RunView | null): void {
   if (view === null || isOver(view.run)) clearRun();
-  else saveRun({ version: 5, seed: view.seed, seeded: view.seeded, characterId: view.characterId, actions: view.actions });
+  else saveRun({ version: 6, seed: view.seed, seeded: view.seeded, characterId: view.characterId, actions: view.actions });
 }
 
 /** Identifies one finished run, so its Essence is paid once. */

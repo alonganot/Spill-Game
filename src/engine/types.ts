@@ -1,6 +1,6 @@
 // Core engine types. Values for these shapes live in `src/data/`.
 
-export type BaseColor = 'red' | 'blue' | 'green' | 'white' | 'black';
+export type BaseColor = 'red' | 'blue' | 'green' | 'white' | 'black' | 'gold';
 export type SecondaryColor = 'purple' | 'cyan' | 'orange' | 'pink' | 'grey' | 'crimson' | 'blight' | 'frost';
 export type Color = BaseColor | SecondaryColor;
 
@@ -22,8 +22,8 @@ export interface MixRecipe {
 export type ColorCost = Partial<Record<Color, number>>;
 
 /**
- * Damage and statuses (Poison, Burn, Curse, Silence, Chill) hit the target enemy,
- * or every living enemy when `area` is set. Block, Heal, and Cleanse go to the player.
+ * Damage and statuses (Poison, Burn, Curse, Silence, Chill, Bounty) hit the target enemy,
+ * or every living enemy when `area` is set. Block, Heal, Cleanse, and Gold go to the player.
  */
 export type Effect =
   | { type: 'damage'; amount: number; area?: true }
@@ -42,7 +42,11 @@ export type Effect =
   /** The enemy's next attack hits softer (`chillMultiplier`). */
   | { type: 'chill'; area?: true }
   /** Multiplies the enemy's Poison stacks. */
-  | { type: 'multiplyPoison'; factor: number; area?: true };
+  | { type: 'multiplyPoison'; factor: number; area?: true }
+  /** Adds `amount` to the run's gold right away. */
+  | { type: 'gold'; amount: number }
+  /** Adds Bounty stacks: the enemy pays `bountyGold` per stack when it is defeated. */
+  | { type: 'bounty'; stacks: number; area?: true };
 
 /** A spell's `+` form: new effects, same cost (RULES.md §2). */
 export interface SpellUpgrade {
@@ -88,6 +92,8 @@ export interface StatusConfig {
   curseBonus: number;
   /** A Chilled enemy's attack hits deal this fraction of their damage (rounded down). */
   chillMultiplier: number;
+  /** Gold a defeated enemy pays per Bounty stack. */
+  bountyGold: number;
 }
 
 export interface BattleConfig {
@@ -130,6 +136,8 @@ export interface EnemyState extends Combatant {
   silenceNoImmunity: boolean;
   /** Its next action's attack hits deal `chillMultiplier` damage; clears after it really acts. */
   chilled: boolean;
+  /** Bounty stacks: paid out as gold when this enemy is defeated. Never decay. */
+  bounty: number;
 }
 
 /** Statuses that only enemies carry (from White/Black spells). */
@@ -162,8 +170,10 @@ export type BattleEvent =
   | { type: 'triggered'; attackId: string; target: number }
   | { type: 'damaged'; target: Target; enemy?: number; amount: number; blocked: number; source: 'attack' | 'poison' | 'burn' }
   | { type: 'blockGained'; target: Target; enemy?: number; amount: number }
-  /** Poison and Burn add `stacks`; Curse, Silence, and Chill (enemies only) are on/off, with `stacks` 1. */
-  | { type: 'statusApplied'; target: Target; enemy?: number; status: 'poison' | 'burn' | EnemyCondition; stacks: number }
+  /** Poison, Burn, and Bounty (enemies only) add `stacks`; Curse, Silence, and Chill (enemies only) are on/off, with `stacks` 1. */
+  | { type: 'statusApplied'; target: Target; enemy?: number; status: 'poison' | 'burn' | 'bounty' | EnemyCondition; stacks: number }
+  /** Gold for the run, mid-fight: from a Gold spell, or a Bounty paid by defeated enemy `enemy`. */
+  | { type: 'goldGained'; amount: number; source: 'spell' | 'bounty'; enemy?: number }
   /** HP actually restored (after the max HP cap). */
   | { type: 'healed'; target: 'player'; amount: number }
   /** Poison and Burn stacks removed from the player. */

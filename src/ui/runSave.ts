@@ -16,7 +16,7 @@ import {
  * exactly, random rolls included.
  */
 export interface RunSave {
-  version: 5;
+  version: 6;
   seed: number;
   seeded: boolean;
   /** The character the run started as; a save without one plays as the Apprentice. */
@@ -31,9 +31,11 @@ export function saveCharacter(save: RunSave): CharacterId {
 
 // v5 (Milestone 10): Miasma gained Block and Hush can't target an immune enemy,
 // so a v4 save could replay differently or fail partway; v4 saves are dropped.
-export const SAVE_KEY = 'spill.run.v5';
+// v6 (Issue #12): the Gold spells joined the upgrade draws, so reward and shop draws changed.
+// Only the run save moves: Essence and unlocks (`spill.meta.v1`) are untouched.
+export const SAVE_KEY = 'spill.run.v6';
 /** Saves from earlier versions, which can't be replayed by this engine. */
-export const OLD_SAVE_KEYS = ['spill.run.v1', 'spill.run.v2', 'spill.run.v3', 'spill.run.v4'] as const;
+export const OLD_SAVE_KEYS = ['spill.run.v1', 'spill.run.v2', 'spill.run.v3', 'spill.run.v4', 'spill.run.v5'] as const;
 
 const ACTION_TYPES = new Set<RunAction['type']>([
   'battle',
@@ -69,7 +71,7 @@ export function parseSave(text: string | null): RunSave | null {
   }
   if (typeof data !== 'object' || data === null) return null;
   const { version, seed, seeded, characterId, actions } = data as Record<string, unknown>;
-  if (version !== 5) return null;
+  if (version !== 6) return null;
   if (typeof seed !== 'number' || !Number.isInteger(seed) || seed < 0) return null;
   if (typeof seeded !== 'boolean') return null;
   // A character this version doesn't know would start with the wrong dice, so it can't replay.

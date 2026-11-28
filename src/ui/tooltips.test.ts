@@ -4,6 +4,7 @@ import { MIX_RECIPES } from '../data/colors';
 import { upgradeAttack, type AttackDefinition, type StatusConfig } from '../engine';
 import {
   blockTip,
+  bountyTip,
   burnTip,
   chillTip,
   curseTip,
@@ -17,7 +18,7 @@ import {
   spellTip,
 } from './format';
 
-const status: StatusConfig = { burnDamage: 4, poisonDecay: 1, curseBonus: 3, chillMultiplier: 0.5 };
+const status: StatusConfig = { burnDamage: 4, poisonDecay: 1, curseBonus: 3, chillMultiplier: 0.5, bountyGold: 3 };
 const enemy = { kind: 'enemy', name: 'Ink Blob' } as const;
 const player = { kind: 'player' } as const;
 
@@ -151,5 +152,20 @@ describe('interestTip', () => {
   it('says when interest is at the cap', () => {
     expect(interestTip(25, rule)).toBe('Earning the max +5g interest after your next win (+1g per 5g held, max +5g).');
     expect(interestTip(80, rule)).toBe(interestTip(25, rule));
+  });
+});
+
+describe('Bounty and Gold texts', () => {
+  it('explains the gold a Bounty pays on defeat', () => {
+    expect(bountyTip(2, 'Ink Blob', status)).toBe(
+      'Bounty (2): defeating Ink Blob awards +6g (3g per stack). Stacks add up and never fade.',
+    );
+  });
+
+  it('describes the Gold effects', () => {
+    expect(effectSentence({ type: 'gold', amount: 2 }, status)).toBe('Adds 2 gold to your purse right away');
+    expect(effectSentence({ type: 'bounty', stacks: 1 }, status)).toBe(
+      'Puts 1 Bounty on the enemy (+3g per stack when it is defeated)',
+    );
   });
 });

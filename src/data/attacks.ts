@@ -1,5 +1,8 @@
 import type { AttackDefinition } from '../engine/types';
 
+/** Gold that Mint adds to the run's gold (RULES.md §2). */
+export const GOLD_SPELL_PAYOUT = 2;
+
 // Every spell has a `+` form (`upgrade`): stronger effects, same cost (RULES.md §2).
 // Area spells roughly double, since they cost two colors and hit every enemy.
 
@@ -194,4 +197,34 @@ export const PALETTE_ATTACKS = {
   },
 } as const satisfies Record<string, AttackDefinition>;
 
-export const STARTING_ATTACKS: readonly AttackDefinition[] = [...Object.values(ATTACKS), ...Object.values(PALETTE_ATTACKS)];
+/** Gold spells (Issue #12): gold for the run mid-fight, and Bounty on enemies. Gold comes only from Repaint. */
+export const GOLD_ATTACKS = {
+  mint: {
+    id: 'mint',
+    name: 'Mint',
+    cost: { gold: 1 },
+    effects: [{ type: 'gold', amount: GOLD_SPELL_PAYOUT }],
+    upgrade: { effects: [{ type: 'gold', amount: 3 }] },
+  },
+  bounty: {
+    id: 'bounty',
+    name: 'Bounty',
+    cost: { gold: 1, green: 1 },
+    // Bounty first, so a killing hit pays out the new stack too.
+    effects: [{ type: 'bounty', stacks: 1 }, { type: 'damage', amount: 3 }],
+    upgrade: { effects: [{ type: 'bounty', stacks: 2 }, { type: 'damage', amount: 4 }] },
+  },
+  gildedWard: {
+    id: 'gildedWard',
+    name: 'Gilded Ward',
+    cost: { gold: 1, blue: 1 },
+    effects: [{ type: 'block', amount: 5 }, { type: 'gold', amount: 1 }],
+    upgrade: { effects: [{ type: 'block', amount: 7 }, { type: 'gold', amount: 2 }] },
+  },
+} as const satisfies Record<string, AttackDefinition>;
+
+export const STARTING_ATTACKS: readonly AttackDefinition[] = [
+  ...Object.values(ATTACKS),
+  ...Object.values(PALETTE_ATTACKS),
+  ...Object.values(GOLD_ATTACKS),
+];

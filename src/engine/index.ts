@@ -7,7 +7,7 @@ export { applyAction, attackHitDamage, createBattle, firstLivingEnemy, getEnemyI
 export { isDefeated } from './combat';
 export { isAreaEffect, isAreaSpell, silenceResisted, silenceWasted } from './attacks';
 export { runEssence } from './meta';
-export { applyRunAction, battleConfigFor, calculateGoldInterest, capUpgradePrice, createRun, currentStage, repaintPrice, victoryGold } from './run';
+export { applyRunAction, battleConfigFor, calculateGoldInterest, capUpgradePrice, createRun, currentStage, goldFromEvents, repaintPrice, victoryGold } from './run';
 export {
   canUpgrade,
   runAttacks,
