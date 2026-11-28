@@ -6,6 +6,8 @@ import { BattleScreen } from './BattleScreen';
 import { RewardScreen } from './RewardScreen';
 import { RunEndScreen } from './RunEndScreen';
 import { ShopScreen } from './ShopScreen';
+import { interestTip } from './format';
+import { Tip } from './Tooltip';
 import type { RunView } from './useRun';
 import './battle.css';
 import './run.css';
@@ -103,7 +105,11 @@ export function RunScreen({
             </span>
           )}
           {/* In a fight, gold sits beside the player's HP instead. */}
-          {outsideBattle && <span aria-label="Gold">🪙 {run.gold}</span>}
+          {outsideBattle && (
+            <Tip text={interestTip(run.gold, config.economy.interest)} focusable>
+              <span aria-label="Gold">🪙 {run.gold}</span>
+            </Tip>
+          )}
         </span>
       </header>
 
@@ -124,6 +130,7 @@ export function RunScreen({
           actionCount={view.actionCount}
           isFinalFight={run.stageIndex === config.stages.length - 1}
           gold={run.gold}
+          interest={config.economy.interest}
           paused={paused}
           reward={run.battle.phase === 'victory' ? victoryGold(run, config) : null}
           heroSprite={HERO_SPRITES[view.characterId]}

@@ -12,6 +12,7 @@ import type {
   BattleConfig,
   BattleEvent,
   DieDefinition,
+  InterestRule,
   RepaintTarget,
   RewardOption,
   Rng,
@@ -76,14 +77,25 @@ export function capUpgradePrice(run: RunState, config: RunConfig): number {
   return base + step * run.purchases.cap;
 }
 
-/** What winning the current fight pays: base gold for its kind, plus a bonus per color left in the pool. */
+/** Interest a won fight pays on `gold` held: +1g per `step` gold, capped at `max` (RULES.md §4). */
+export function calculateGoldInterest(gold: number, { step, max }: InterestRule): number {
+  if (step <= 0) return 0;
+  return Math.max(0, Math.min(max, Math.floor(gold / step)));
+}
+
+/**
+ * What winning the current fight pays: base gold for its kind, a bonus per color left in the pool,
+ * and interest on the gold held before this fight's gold is added.
+ */
 export function victoryGold(run: RunState, config: RunConfig): VictoryGold {
   const stage = currentStage(run, config);
   const base = stage ? config.economy.goldPerWin[stage.kind] : 0;
   const leftover = run.battle?.pool.length ?? 0;
   const perColor = config.economy.leftoverColorGold;
   const bonus = leftover * perColor;
-  return { base, leftover, perColor, bonus, total: base + bonus };
+  const interestRule = config.economy.interest;
+  const interest = calculateGoldInterest(run.gold, interestRule);
+  return { base, leftover, perColor, bonus, held: run.gold, interest, interestRule, total: base + bonus + interest };
 }
 
 /** Applies a run action. Invalid actions return the unchanged run and an error. */

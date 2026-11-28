@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { defaultRunConfig, runConfigFor } from '../data/run';
 import { createSeededRng } from './rng';
-import { applyRunAction, battleConfigFor, capUpgradePrice, createRun, repaintPrice, victoryGold } from './run';
+import { applyRunAction, battleConfigFor, calculateGoldInterest, capUpgradePrice, createRun, repaintPrice, victoryGold } from './run';
 import { botAction } from './testBot';
 import { fixedDie, noopRng, testConfig } from './testUtils';
 import type { EnemyDefinition, RunAction, RunConfig, RunState } from './types';
@@ -31,6 +31,8 @@ function testRunConfig(overrides: Partial<RunConfig> = {}): RunConfig {
     economy: {
       goldPerWin: { normal: 10, elite: 20, boss: 0 },
       leftoverColorGold: 2,
+      // Off by default so gold totals elsewhere stay simple; the interest tests turn it on.
+      interest: { step: 5, max: 0 },
       rewards: { normal: { gold: 15, heal: 5 }, elite: { gold: 25, heal: 9 }, boss: { gold: 40, heal: 12 } },
       upgradeRewardChance: 0.5,
       shop: {
@@ -234,9 +236,9 @@ describe('HP and gold between fights', () => {
   it('pays a bonus for every color left in the pool', () => {
     const won = winFight(start());
     const rich: RunState = { ...won, battle: { ...won.battle!, pool: ['red', 'blue', 'green', 'red'] } };
-    expect(victoryGold(rich, config)).toEqual({ base: 10, leftover: 4, perColor: 2, bonus: 8, total: 18 });
+    expect(victoryGold(rich, config)).toMatchObject({ base: 10, leftover: 4, perColor: 2, bonus: 8, interest: 0, total: 18 });
     expect(act(rich, { type: 'continue' }).gold).toBe(18);
-    expect(victoryGold(won, config)).toEqual({ base: 10, leftover: 0, perColor: 2, bonus: 0, total: 10 });
+    expect(victoryGold(won, config)).toMatchObject({ base: 10, leftover: 0, perColor: 2, bonus: 0, interest: 0, total: 10 });
     const none = testRunConfig({ economy: { ...config.economy, leftoverColorGold: 0 } });
     expect(act(rich, { type: 'continue' }, none).gold).toBe(10);
   });
@@ -247,6 +249,57 @@ describe('HP and gold between fights', () => {
     run = act(act(run, { type: 'chooseReward', index: 0 }), { type: 'leaveShop' }); // +15
     run = act(winFight(run), { type: 'continue' }); // elite +20
     expect(run.gold).toBe(45);
+  });
+});
+
+describe('gold interest', () => {
+  const rule = { step: 5, max: 5 };
+  const interestConfig = testRunConfig({ economy: { ...config.economy, interest: rule } });
+
+  it.each([
+    [0, 0],
+    [4, 0],
+    [5, 1],
+    [14, 2],
+    [18, 3],
+    [25, 5],
+    [50, 5],
+    [999, 5],
+    [-10, 0],
+  ])('%ig held pays %ig', (gold, interest) => {
+    expect(calculateGoldInterest(gold, rule)).toBe(interest);
+  });
+
+  it('pays nothing with a zero step or cap', () => {
+    expect(calculateGoldInterest(50, { step: 0, max: 5 })).toBe(0);
+    expect(calculateGoldInterest(50, { step: 5, max: 0 })).toBe(0);
+  });
+
+  it('adds interest on gold held to the victory gold', () => {
+    const won = winFight(withGold(start(), 18));
+    const painted: RunState = { ...won, battle: { ...won.battle!, pool: ['red', 'blue'] } };
+    expect(victoryGold(painted, interestConfig)).toEqual({
+      base: 10,
+      leftover: 2,
+      perColor: 2,
+      bonus: 4,
+      held: 18,
+      interest: 3,
+      interestRule: rule,
+      total: 17,
+    });
+    expect(act(painted, { type: 'continue' }, interestConfig).gold).toBe(18 + 17);
+  });
+
+  it("counts gold held before the fight's own gold", () => {
+    const won = winFight(withGold(start(), 3));
+    expect(victoryGold(won, interestConfig)).toMatchObject({ held: 3, interest: 0, total: 10 });
+    expect(act(won, { type: 'continue' }, interestConfig).gold).toBe(13);
+  });
+
+  it('caps interest however much gold is held', () => {
+    const won = winFight(withGold(start(), 200));
+    expect(act(won, { type: 'continue' }, interestConfig).gold).toBe(200 + 10 + 5);
   });
 });
 
