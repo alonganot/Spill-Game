@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultRunConfig } from '../data/run';
+import { defaultRunConfig, runConfigFor } from '../data/run';
 import { createSeededRng } from './rng';
 import { applyRunAction, battleConfigFor, capUpgradePrice, createRun, repaintPrice, victoryGold } from './run';
 import { botAction } from './testBot';
@@ -105,6 +105,54 @@ describe('createRun', () => {
     const real = start(defaultRunConfig());
     expect(real.dice.map((d) => d.id)).toEqual(['standard', 'standard']);
     expect(real.diceCap).toBe(3);
+  });
+});
+
+describe('characters', () => {
+  it("a Tank's 42 HP and dice reach the fight", () => {
+    const cfg = runConfigFor('tank');
+    const run = start(cfg);
+    expect(run).toMatchObject({ hp: 42, maxHp: 42 });
+    expect(run.battle?.player).toMatchObject({ hp: 42, maxHp: 42 });
+    expect(battleConfigFor(run, cfg)).toMatchObject({ playerMaxHp: 42, playerStartHp: 42 });
+    expect(battleConfigFor(run, cfg).dice.map((d) => d.id)).toEqual(['lagoon', 'standard']);
+  });
+
+  it("each character rolls its own dice in the first fight", () => {
+    const demon = createRun(runConfigFor('demon'), createSeededRng(9)).state;
+    const healer = createRun(runConfigFor('healer'), createSeededRng(9)).state;
+    expect(demon.dice.map((d) => d.id)).toEqual(['standard', 'shade']);
+    expect(healer.dice.map((d) => d.id)).toEqual(['standard', 'halo']);
+    // Same seed, same roll positions; the second die's faces differ between them.
+    const second = (run: RunState) => run.battle!.pool[1];
+    expect(['black', 'red', 'green']).toContain(second(demon));
+    expect(['white', 'red', 'blue']).toContain(second(healer));
+  });
+
+  it('a character run replays exactly from its seed and actions', () => {
+    const cfg = runConfigFor('warrior');
+    const play = (rng = createSeededRng(77)) => {
+      let { state: run } = createRun(cfg, rng);
+      const actions: RunAction[] = [];
+      for (let i = 0; i < 300 && run.phase !== 'victory' && run.phase !== 'defeat'; i++) {
+        const action = botAction(run, cfg);
+        const result = applyRunAction(run, action, cfg, rng);
+        if (!result.ok) throw new Error(result.error);
+        actions.push(action);
+        run = result.state;
+      }
+      return { run, actions };
+    };
+    const first = play();
+    const rng = createSeededRng(77);
+    let { state: replayed } = createRun(cfg, rng);
+    for (const action of first.actions) {
+      const result = applyRunAction(replayed, action, cfg, rng);
+      if (!result.ok) throw new Error(result.error);
+      replayed = result.state;
+    }
+    expect(replayed).toEqual(first.run);
+    expect(replayed.maxHp).toBe(40);
   });
 });
 

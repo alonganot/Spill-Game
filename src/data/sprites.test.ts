@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { ENEMIES } from './enemies';
-import { ENEMY_SPRITES, enemySprite, HERO_SPRITE, TITLE_SPRITE, TRANSPARENT, type SpriteSheet } from './sprites';
+import { CHARACTER_ORDER } from './characters';
+import { ENEMY_SPRITES, enemySprite, HERO_SPRITE, HERO_SPRITES, TITLE_SPRITE, TRANSPARENT, type SpriteSheet } from './sprites';
 
 const sheets: [string, SpriteSheet][] = [
   ...Object.entries(ENEMY_SPRITES).map(([id, sheet]): [string, SpriteSheet] => [id, sheet]),
   ['hero', HERO_SPRITE],
+  ...Object.entries(HERO_SPRITES).map(([id, sheet]): [string, SpriteSheet] => [`hero:${id}`, sheet]),
   ['title', TITLE_SPRITE],
 ];
 
@@ -34,6 +36,18 @@ describe('sprites', () => {
         if (char !== TRANSPARENT) expect(sheet.palette[char], `${name}: '${char}'`).toBeDefined();
       }
     }
+  });
+
+  it('every character has a 16×16 hero sprite, and the Apprentice is the original hero', () => {
+    expect(HERO_SPRITES.apprentice).toBe(HERO_SPRITE);
+    for (const id of CHARACTER_ORDER) {
+      const sheet = HERO_SPRITES[id];
+      expect(sheet.frames.idle, id).toHaveLength(16);
+      expect(sheet.frames.idle[0], id).toHaveLength(16);
+    }
+    // The new heroes look different from each other and from the Apprentice.
+    const looks = new Set(CHARACTER_ORDER.map((id) => JSON.stringify([HERO_SPRITES[id].frames.idle, HERO_SPRITES[id].palette])));
+    expect(looks.size).toBe(CHARACTER_ORDER.length);
   });
 
   it('enemy sprites are 22×22', () => {

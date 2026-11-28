@@ -27,7 +27,7 @@ Players roll colored dice each turn, mix colors to create new colors, and combin
 ## Commands
 - `npm run dev` — play in the browser (Vite dev server).
 - `npm test` / `npm run typecheck` / `npm run build` — Vitest, `tsc -b`, and the production web build (`dist/`).
-- `npm run test:balance` — the slow balance simulation (greedy bot over 200 seeded runs).
+- `npm run test:balance` — the slow balance simulation (greedy bot over 200 seeded runs for each character).
 - `npm run electron:dev` — the game in an Electron window, against the Vite dev server.
 - `npm run electron:start` — build, then run the production build in Electron.
 - `npm run dist:win` — build the versioned Windows installer (`release/Spill-Setup-<version>.exe`) locally, without publishing.

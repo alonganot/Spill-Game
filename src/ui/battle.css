@@ -1239,6 +1239,20 @@
   gap: 6px;
 }
 
+/* A spell's Silence won't land on the current target (Silence Immunity). */
+.attack-note {
+  width: 100%;
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--muted);
+}
+
+.attack-note-blocked {
+  color: #ff8a8d;
+}
+
 button.attack-mix-tag {
   flex: none;
   padding: 3px 7px;

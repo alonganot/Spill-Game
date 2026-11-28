@@ -1,3 +1,4 @@
+import type { CharacterId } from './characters';
 import { ENEMIES } from './enemies';
 
 /**
@@ -478,6 +479,125 @@ export const HERO_SPRITE: SpriteSheet<HeroFrame> = {
     cast: HERO_CAST,
     hit: withRows(HERO_IDLE, { 6: '....kskssksk....' }),
   },
+};
+
+// Character heroes (Milestone 10): the Apprentice's 16×16 body and pose, with a
+// new head, outfit colors, and held item. Row 6 is always the face, at columns 4–11.
+
+/** A hero sheet from its idle and cast frames; the hit frame squints the idle face. */
+function heroSheet(palette: Readonly<Record<string, string>>, idle: readonly string[], cast: readonly string[]): SpriteSheet<HeroFrame> {
+  const face = idle[6]!;
+  return { palette, frames: { idle, cast, hit: withRows(idle, { 6: `${face.slice(0, 4)}kskssksk${face.slice(12)}` }) } };
+}
+
+const HERO_BASE_PALETTE = { k: '#14121a', s: '#f1c7a1', p: '#14121a' } as const;
+
+// Warrior: a steel helmet with a red plume, a red tunic, and a sword.
+const WARRIOR_SPRITE = heroSheet(
+  { ...HERO_BASE_PALETTE, h: '#9aa3b5', c: '#b33a3a', l: '#e5737a', t: '#6b4a2b', b: '#dfe6f0', g: '#f2c94c', r: '#e5484d' },
+  withRows(HERO_IDLE, {
+    0: '.......rr.......',
+    1: '.....kkkkkk.....',
+    2: '....khhhhhhk....',
+    3: '....khhhhhhk....',
+    6: '....kspssspk..b.',
+    7: '....kssssssk..b.',
+    8: '.....kssssk...b.',
+    9: '....kcccccck..b.',
+    10: '...kclcccccckggg',
+    13: '....kkkkkkkk..g.',
+  }),
+  withRows(HERO_CAST, {
+    0: '.......rr.....b.',
+    1: '.....kkkkkk...b.',
+    2: '....khhhhhhk..b.',
+    3: '....khhhhhhk..b.',
+    4: '....kkkkkkkk.ggg',
+  }),
+);
+
+// Tank: a broad helmet, a bulkier blue body, and a gold-crossed shield in front.
+const TANK_SPRITE = heroSheet(
+  { ...HERO_BASE_PALETTE, h: '#5b6478', c: '#2f5fd0', l: '#86afff', w: '#c9d2e3', y: '#f2c94c' },
+  withRows(HERO_IDLE, {
+    1: '.....kkkkkk.....',
+    2: '....khhhhhhk....',
+    3: '...khhhhhhhhk...',
+    4: '...kkkkkkkkkk...',
+    8: '.....ksssskkkkkk',
+    9: '...kccccccckwywk',
+    10: '..kclcccccckyyyk',
+    11: '..kclcccccckwywk',
+    12: '..kcccccccckwwwk',
+    13: '...kkkkkkkk.kwk.',
+  }),
+  withRows(HERO_IDLE, {
+    1: '.....kkkkkk.....',
+    2: '....khhhhhhk....',
+    3: '...khhhhhhhhk...',
+    4: '...kkkkkkkkkk...',
+    6: '....kspssspkkkkk',
+    7: '....ksssssskwywk',
+    8: '.....ksssskkyyyk',
+    9: '...kccccccckwywk',
+    10: '..kclcccccckwwwk',
+    11: '..kclcccccckkwk.',
+    12: '..kcccccccck....',
+    13: '...kkkkkkkk.....',
+  }),
+);
+
+// Venom: a pointed green hood, a dark green robe, and a poison-tipped brush.
+const VENOM_HEAD = {
+  0: '........k.......',
+  1: '.......khk......',
+  2: '.....khhhhk.....',
+  3: '....khhhhhhk....',
+  4: '....khkkkkhk....',
+};
+const VENOM_SPRITE = heroSheet(
+  { ...HERO_BASE_PALETTE, h: '#3a8f4a', c: '#2e5d36', l: '#6fcf7a', t: '#4a3a2a', y: '#8be36b' },
+  withRows(HERO_IDLE, VENOM_HEAD),
+  withRows(HERO_CAST, { ...VENOM_HEAD, 2: '.....khhhhk...y.', 3: '....khhhhhhk..y.', 4: '....khkkkkhk..t.' }),
+);
+
+// Demon: bone horns, black hair, red eyes, a crimson coat, and a brush of shadow paint.
+const DEMON_HEAD = {
+  0: '....n......n....',
+  1: '....nnkkkknn....',
+  2: '.....khhhhk.....',
+};
+const DEMON_SPRITE = heroSheet(
+  { ...HERO_BASE_PALETTE, s: '#e3a88f', p: '#e5484d', h: '#2a2233', n: '#e8dcc0', c: '#8b1e3f', l: '#c94a6b', t: '#3a2f4a', y: '#9b5de5' },
+  withRows(HERO_IDLE, DEMON_HEAD),
+  withRows(HERO_CAST, { ...DEMON_HEAD, 2: '.....khhhhk...y.', 3: '....khhhhhhk..y.' }),
+);
+
+// Healer: a halo, golden hair, a long white robe, and a glowing brush.
+const HEALER_HEAD = {
+  0: '.....aaaaaa.....',
+  2: '.....khhhhk.....',
+  3: '....khhhhhhk....',
+};
+const HEALER_ROBE = {
+  13: '....kcccccck....',
+  14: '....kcccccck....',
+  15: '....kkkkkkkk....',
+};
+const HEALER_SPRITE = heroSheet(
+  { ...HERO_BASE_PALETTE, a: '#fff3b0', h: '#f2c94c', c: '#e9e6f2', l: '#ffffff', t: '#a0703c', y: '#fff3b0' },
+  withRows(HERO_IDLE, { ...HEALER_HEAD, ...HEALER_ROBE, 13: '....kcccccck..t.' }),
+  withRows(HERO_CAST, { ...HEALER_HEAD, ...HEALER_ROBE, 2: '.....khhhhk...y.', 3: '....khhhhhhk..y.' }),
+);
+
+/** Each character's hero sheet; the Apprentice is the original hero. */
+export const HERO_SPRITES: Readonly<Record<CharacterId, SpriteSheet<HeroFrame>>> = {
+  apprentice: HERO_SPRITE,
+  warrior: WARRIOR_SPRITE,
+  tank: TANK_SPRITE,
+  venom: VENOM_SPRITE,
+  demon: DEMON_SPRITE,
+  healer: HEALER_SPRITE,
 };
 
 export function enemySprite(enemyId: string): SpriteSheet<EnemyFrame> | undefined {

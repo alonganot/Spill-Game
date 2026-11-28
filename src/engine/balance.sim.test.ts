@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { defaultRunConfig } from '../data/run';
+import { CHARACTER_ORDER, CHARACTERS } from '../data/characters';
+import { runConfigFor } from '../data/run';
 import { createSeededRng } from './rng';
 import { applyRunAction, createRun } from './run';
 import { botAction } from './testBot';
@@ -26,9 +27,10 @@ function playRun(seed: number, cfg: RunConfig): Outcome {
   return { won: run.phase === 'victory', fight: run.stageIndex + 1 };
 }
 
-describe('balance (greedy bot over many seeded runs)', () => {
+// Every character is held to the same band, so none is a trap or a free win.
+describe.each(CHARACTER_ORDER)('balance as the %s (greedy bot over many seeded runs)', (id) => {
   it('is hard: the bot wins only some runs, and losses spread over the later acts', () => {
-    const cfg = defaultRunConfig();
+    const cfg = runConfigFor(id);
     const outcomes = Array.from({ length: SEEDS }, (_, i) => playRun(i + 1, cfg));
     const wins = outcomes.filter((o) => o.won).length;
     const lossesByFight = new Map<number, number>();
@@ -38,7 +40,7 @@ describe('balance (greedy bot over many seeded runs)', () => {
 
     const histogram = [...lossesByFight.entries()].sort(([a], [b]) => a - b).map(([f, n]) => `${f}:${n}`).join(' ');
     console.log(
-      `Balance: bot won ${wins}/${SEEDS} (${((wins / SEEDS) * 100).toFixed(1)}%); ` +
+      `Balance (${CHARACTERS[id].name}): bot won ${wins}/${SEEDS} (${((wins / SEEDS) * 100).toFixed(1)}%); ` +
         `past fight 3: ${pastFight3}; reached act 3: ${reachedAct3}; losses by fight ${histogram}`,
     );
 

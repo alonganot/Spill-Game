@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer } from 'react';
 
-/** The app's screens. Settings opens over whatever is below it. */
-export type Screen = 'menu' | 'run' | 'settings';
+/** The app's screens. Settings opens over whatever is below it; Character Select comes before a new run. */
+export type Screen = 'menu' | 'run' | 'settings' | 'characters';
 
 /** Screens from bottom to top; the last one is on screen. Never empty. */
 export type ScreenStack = readonly Screen[];

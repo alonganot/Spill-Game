@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PALETTE_ATTACKS } from '../data/attacks';
+import { silenceResisted, silenceWasted } from './attacks';
 import { applyAction, createBattle } from './battle';
 import { findMixPlan } from './mixing';
 import { DUMMY, noopRng, patchEnemy, testConfig, withState } from './testUtils';
@@ -198,13 +199,39 @@ describe('Silence', () => {
     let s = withPool(start(), ['black', 'blue']);
     s = endTurn(cast(s, 'hush').state).state; // turn 1: silenced, skips
     s = withPool(s, ['black', 'blue']);
-    s = cast(s, 'hush').state; // turn 2: immune
-    expect(s.enemies[0]!.silenced).toBe(false);
+    // Turn 2: immune, so Hush (Silence only) can't be cast and the paint stays in the pool.
+    expect(applyAction(s, { type: 'trigger', attackId: 'hush' }, config, noopRng)).toEqual({ ok: false, state: s, error: 'silence_immune' });
     s = endTurn(s).state; // acts: 6 damage, immunity clears
     expect(s.player.hp).toBe(14);
     expect(s.enemies[0]!.silenceImmune).toBe(false);
     s = withPool(s, ['black', 'blue']);
     expect(cast(s, 'hush').state.enemies[0]!.silenced).toBe(true); // turn 3: works again
+  });
+
+  it('stops a Block intent; while immune, Hush is refused but Eclipse still gives its Block', () => {
+    const cfg = { ...config, enemies: [{ ...DUMMY, intents: [{ type: 'block', amount: 9 }, { type: 'block', amount: 9 }] }] } as BattleConfig;
+    let s = withPool(start(cfg), ['black', 'blue']);
+    s = endTurn(cast(s, 'hush', 0, cfg).state, cfg).state; // the Block intent is skipped
+    expect(s.enemies[0]).toMatchObject({ block: 0, silenceImmune: true });
+    s = withPool(s, ['black', 'blue', 'grey']);
+    expect(applyAction(s, { type: 'trigger', attackId: 'hush', target: 0 }, cfg, noopRng)).toMatchObject({ ok: false, error: 'silence_immune' });
+    const eclipse = cast(s, 'eclipse', 0, cfg);
+    expect(eclipse.state.player.block).toBe(8);
+    expect(eclipse.events).toContainEqual({ type: 'silenceResisted', enemy: 0 });
+    expect(endTurn(eclipse.state, cfg).state.enemies[0]!.block).toBe(9); // immune, so this Block goes through
+  });
+
+  it('silenceWasted / silenceResisted: only Silence-only spells on immune targets are wasted', () => {
+    const hush = config.attacks.find((a) => a.id === 'hush')!;
+    const eclipse = config.attacks.find((a) => a.id === 'eclipse')!;
+    const ember = config.attacks.find((a) => a.id === 'ember') ?? config.attacks[0]!;
+    const immune = patchEnemy(start(), { silenceImmune: true }).enemies;
+    const fresh = start().enemies;
+    expect(silenceWasted(hush, immune, 0)).toBe(true);
+    expect(silenceResisted(eclipse, immune, 0)).toBe(true);
+    expect(silenceWasted(eclipse, immune, 0)).toBe(false);
+    expect(silenceWasted(hush, fresh, 0)).toBe(false);
+    expect(silenceResisted(ember, immune, 0)).toBe(false);
   });
 
   it('a Silenced enemy still takes status ticks', () => {

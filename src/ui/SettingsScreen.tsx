@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { ConfirmDialog } from './ConfirmDialog';
+import { DevTools } from './DevTools';
 import { SeedLine } from './SeedLine';
 import { parseSeed } from './seed';
 import { updateSettings, useSettings } from './settings';
@@ -173,6 +174,8 @@ export function SettingsScreen({
             </p>
           )}
         </form>
+
+        {import.meta.env.DEV && <DevTools />}
       </section>
 
       {pending && (

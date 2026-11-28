@@ -36,6 +36,8 @@ export function SpellCard({ spell }: SpellCardProps) {
   const ready = staged.length > 0 && slots.every((slot) => slot.chip !== undefined);
   const locked = status === 'locked';
   const hint = () => status === 'craftable' && wb.hint(attack.id);
+  // Only on castable cards: a locked spell in the Spellbook needs no warning yet.
+  const silence = locked ? null : wb.silenceCheck(attack);
 
   return (
     <div
@@ -70,6 +72,11 @@ export function SpellCard({ spell }: SpellCardProps) {
         )}
       </div>
       <EffectLine effects={attack.effects} base={attack.baseEffects} />
+      {silence && (
+        <p className={`attack-note attack-note-${silence}`} role="note">
+          {silence === 'blocked' ? '🤐 Target is immune to Silence' : 'Target is immune: no Silence'}
+        </p>
+      )}
       <div className="attack-foot">
         <span className="cost-slots" role="group" aria-label={`${attack.name} cost`}>
           {slots.map((slot, i) =>
@@ -104,7 +111,7 @@ export function SpellCard({ spell }: SpellCardProps) {
           <button
             type="button"
             className="btn attack-cast"
-            disabled={wb.locked || !ready}
+            disabled={wb.locked || !ready || silence === 'blocked'}
             onClick={(e) => {
               e.stopPropagation();
               wb.cast(attack.id);

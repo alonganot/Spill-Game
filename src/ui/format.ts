@@ -326,3 +326,8 @@ export function describeUpdate(status: UpdateStatus): { text: string; action?: s
       return { text: `Couldn't download v${status.version}.`, action: 'Retry' };
   }
 }
+
+/** An Essence amount with its glyph, e.g. "1,250 ✦". */
+export function formatEssence(amount: number): string {
+  return `${amount.toLocaleString('en-US')} ✦`;
+}

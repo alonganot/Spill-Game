@@ -1,5 +1,5 @@
 import { createContext, useContext, type PointerEvent as ReactPointerEvent } from 'react';
-import type { Color, MixRecipe, StatusConfig } from '../engine';
+import type { AttackDefinition, Color, MixRecipe, StatusConfig } from '../engine';
 import { PaintDrop } from './PaintDrop';
 import { COLOR_LABEL } from './format';
 import { BOWL_SIZE, bowlResult, type StageTarget, type Staging } from './staging';
@@ -34,11 +34,19 @@ export interface Workbench {
   /** Mixes what is in the bowl; the new color goes into the pool. */
   mix: () => void;
   cast: (attackId: string) => void;
+  /**
+   * How the current target takes a spell's Silence: 'blocked' when the spell only
+   * Silences and the target is immune (it can't be cast), 'resisted' when its
+   * other effects still work, or null.
+   */
+  silenceCheck: (attack: AttackDefinition) => SilenceCheck;
   /** Puts the chips a craftable spell's next mix needs into the bowl. */
   prepareMix: (plan: MixRecipe[]) => void;
   /** Highlights the chips a craftable spell would mix (or clears with null). */
   hint: (attackId: string | null) => void;
 }
+
+export type SilenceCheck = 'blocked' | 'resisted' | null;
 
 const WorkbenchContext = createContext<Workbench | null>(null);
 

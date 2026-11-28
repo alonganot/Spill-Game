@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { desktopBridge } from '../desktop/bridge';
-import { enemySprite, HERO_SPRITE, TITLE_SPRITE } from '../data/sprites';
+import { enemySprite, TITLE_SPRITE, type HeroFrame, type SpriteSheet } from '../data/sprites';
 import { ConfirmDialog } from './ConfirmDialog';
 import { PixelSprite } from './PixelSprite';
+import { formatEssence } from './format';
 import { UpdateNotice } from './UpdateNotice';
 import { APP_VERSION } from './version';
 import { useDesktop } from './useMediaQuery';
@@ -10,6 +11,10 @@ import { useDesktop } from './useMediaQuery';
 interface MainMenuProps {
   /** A run is in progress and hasn't ended, so it can be continued. */
   canContinue: boolean;
+  /** The Essence balance, kept between runs. */
+  essence: number;
+  /** The selected character's hero, on the title scene. */
+  heroSprite: SpriteSheet<HeroFrame>;
   onNewRun: () => void;
   onContinue: () => void;
   onSettings: () => void;
@@ -18,7 +23,7 @@ interface MainMenuProps {
 const SLIME = enemySprite('puddleSlime');
 
 /** The title scene: the pixel logo, the hero facing a slime, and the main buttons. */
-export function MainMenu({ canContinue, onNewRun, onContinue, onSettings }: MainMenuProps) {
+export function MainMenu({ canContinue, essence, heroSprite, onNewRun, onContinue, onSettings }: MainMenuProps) {
   const [confirmingNewRun, setConfirmingNewRun] = useState(false);
   // Twice as big on desktop, still in whole pixels (27px logo, 16px hero, 22px slime).
   const scale = useDesktop() ? 2 : 1;
@@ -35,7 +40,7 @@ export function MainMenu({ canContinue, onNewRun, onContinue, onSettings }: Main
 
       <div className="title-scene" aria-hidden="true">
         <div className="bob bob-slow">
-          <PixelSprite sprite={HERO_SPRITE} frame="idle" size={64 * scale} label="" />
+          <PixelSprite sprite={heroSprite} frame="idle" size={64 * scale} label="" />
         </div>
         {SLIME && (
           <div className="bob">
@@ -69,12 +74,16 @@ export function MainMenu({ canContinue, onNewRun, onContinue, onSettings }: Main
         )}
       </nav>
 
+      <p className="menu-essence muted">
+        Essence <strong>{formatEssence(essence)}</strong>
+      </p>
+
       <p className="app-version muted">v{APP_VERSION}</p>
 
       {confirmingNewRun && (
         <ConfirmDialog
           title="Abandon this run?"
-          body="Starting a new run ends the one in progress. It can't be continued afterwards."
+          body="Starting a new run ends the one in progress once you pick a character. It can't be continued afterwards."
           confirmLabel="New run"
           danger
           onConfirm={() => {

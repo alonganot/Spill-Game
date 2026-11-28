@@ -1,4 +1,4 @@
-import { applyEffect } from './attacks';
+import { applyEffect, silenceWasted } from './attacks';
 import { createCombatant, gainBlock, isDefeated, takeDamage } from './combat';
 import { rollDice } from './dice';
 import { mixColors } from './mixing';
@@ -86,6 +86,8 @@ function triggerAttack(
   const target = requested ?? firstLivingEnemy(state);
   const aimed = state.enemies[target];
   if (!aimed || isDefeated(aimed)) return { ok: false, state, error: 'invalid_target' };
+  // Hush on an enemy immune to Silence would only waste the paint.
+  if (silenceWasted(attack, state.enemies, target)) return { ok: false, state, error: 'silence_immune' };
   const pool = spendColors(state.pool, attack.cost);
   if (!pool) return { ok: false, state, error: 'missing_colors' };
 

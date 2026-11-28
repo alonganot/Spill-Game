@@ -1,5 +1,6 @@
 import type { EnemyDefinition, RunConfig, StageDefinition } from '../engine/types';
 import { STARTING_ATTACKS } from './attacks';
+import { CHARACTERS, type CharacterId } from './characters';
 import { MAX_POOL_SIZE, PLAYER_MAX_HP, STATUS_CONFIG } from './balance';
 import { MIX_RECIPES } from './colors';
 import { SHOP_DICE, STARTING_DICE } from './dice';
@@ -56,5 +57,16 @@ export function defaultRunConfig(): RunConfig {
     maxDiceCap: MAX_DICE_CAP,
     shopDice: SHOP_DICE,
     economy: ECONOMY,
+  };
+}
+
+/** The run config for a character: its starting dice and max HP; everything else is shared. */
+export function runConfigFor(characterId: CharacterId): RunConfig {
+  const character = CHARACTERS[characterId];
+  const config = defaultRunConfig();
+  return {
+    ...config,
+    battle: { ...config.battle, playerMaxHp: character.maxHp },
+    startingDice: character.dice,
   };
 }

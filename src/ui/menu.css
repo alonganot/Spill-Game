@@ -272,3 +272,213 @@
     width: min(100%, 360px);
   }
 }
+
+/* Character Select (Milestone 10): tier groups of character cards, then Start run. */
+.character-select {
+  gap: 14px;
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+
+.character-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: -8px;
+}
+
+.character-head h2 {
+  flex: 1 1 auto;
+  font-size: 1.2rem;
+}
+
+.essence-balance {
+  font-weight: 800;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.character-tier {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.character-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.character-card {
+  height: 100%;
+  display: flex;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.character-card.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+/* Locked cards are dimmed, but the cost and Unlock button stay readable. */
+.character-card.locked .character-sprite,
+.character-card.locked .character-desc,
+.character-card.locked .character-dice {
+  opacity: 0.5;
+}
+
+.character-card.locked .character-sprite {
+  filter: grayscale(0.7);
+}
+
+.character-sprite {
+  flex: none;
+  align-self: center;
+  line-height: 0;
+}
+
+.character-info {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.character-name-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.character-name {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.character-hp {
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.character-desc {
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.character-dice {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.character-die {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.character-die .die-name {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.character-die .face-drop {
+  transform: scale(0.8);
+  margin: -2px;
+}
+
+.character-action {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: auto;
+}
+
+.character-action .btn {
+  width: auto;
+  min-height: 40px;
+  padding: 0 16px;
+  font-size: 0.9rem;
+}
+
+.character-selected-tag {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.character-footer {
+  position: sticky;
+  bottom: 0;
+  padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+  background: linear-gradient(transparent, var(--bg) 30%);
+}
+
+.character-footer .btn {
+  width: 100%;
+}
+
+/* The Essence balance on the main menu, under the buttons. */
+.menu-essence {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.menu-essence strong {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Run End: the Essence the run paid. */
+.essence-earned {
+  width: min(100%, 320px);
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.essence-earned .gold-total dd {
+  color: var(--accent);
+}
+
+@media (min-width: 900px) {
+  .character-select {
+    max-width: 1040px;
+  }
+
+  .character-cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .character-card {
+    flex-direction: column;
+  }
+
+  .character-sprite {
+    align-self: center;
+  }
+
+  .character-footer {
+    width: min(100%, 360px);
+    align-self: center;
+  }
+}

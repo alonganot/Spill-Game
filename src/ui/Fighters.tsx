@@ -77,15 +77,15 @@ function heroFrame(fx: StageFx | null): HeroFrame {
   return 'idle';
 }
 
-export const HeroStage = forwardRef<HTMLDivElement, StageProps>(function HeroStage(
-  { fx, floats, beatKey, defeated, size },
+export const HeroStage = forwardRef<HTMLDivElement, StageProps & { sprite?: SpriteSheet<HeroFrame> }>(function HeroStage(
+  { fx, floats, beatKey, defeated, size, sprite = HERO_SPRITE },
   ref,
 ) {
   return (
     <div className="hero-stage" ref={ref}>
       <div className={defeated ? 'defeated' : 'bob bob-slow'}>
         <div key={fx ? `fx-${beatKey}` : 'still'} className={`fighter${fx ? ` fx-${fx}` : ''}`}>
-          <PixelSprite sprite={HERO_SPRITE} frame={heroFrame(fx)} size={size} label="You" />
+          <PixelSprite sprite={sprite} frame={heroFrame(fx)} size={size} label="You" />
         </div>
       </div>
       <Floats key={`floats-${beatKey}`} floats={floats} />
