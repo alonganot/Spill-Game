@@ -214,6 +214,16 @@ The workbench is one `.px-frame-gold` panel. Sections keep their `section-head` 
 ### 6.5 Footer
 - End turn is the largest `.btn-primary` in the panel, gold with a deep bevel. During playback it is flat and disabled.
 
+### 6.6 Chroma Aura (upgraded `+` spells, Milestone 9)
+An upgraded spell must read as empowered at a glance, in the Workbench, Spellbook, Reward and Shop previews, and tooltips. It uses CSS only: no shaders, no images.
+- **Border:** a 2px border whose color shifts through the cosmic paint hues: magenta `#ff6ad5`, cyan `#6be6ff`, gold `#f2c94c`, emerald `#5ff0a0`. Built with a pseudo-element whose `background` is a linear gradient of those hues, and moved with `background-position` in a `@keyframes chroma` loop of about 6s (ease-in-out, infinite).
+- **Outer glow:** a `box-shadow` of 0 0 12px the current hue, cycling with the border. The card's own pixel frame stays on top.
+- **Badge:** a `+` suffix on the spell title, in the pixel font, with a shimmer: a diagonal highlight sweeping across the badge once every 3s.
+- **Numbers:** upgraded stat numbers on the card, in tooltips and in the Reward/Shop preview use `--gold` with a faint prismatic text-shadow; base numbers stay as they are, so the change is visible.
+- **Casting:** a cast of an upgraded spell sends its paint bolt with a prismatic tint (the same gradient) instead of the flat color, and its floats use the gradient fill.
+- **Reduced motion:** with `prefers-reduced-motion`, the loops stop and the aura keeps a static gradient, so the `+` is still visible.
+- Token names: `--chroma-magenta`, `--chroma-cyan`, `--chroma-gold`, `--chroma-emerald`, defined on `:root`; dark mode defines the same values.
+
 ## 7. Consistency Across Screens
 
 Every screen shares the same backdrop (nebula + stars, without the floor), frames, buttons, and type:
@@ -226,7 +236,9 @@ Every screen shares the same backdrop (nebula + stars, without the floor), frame
 - **Battle Log** (`BattleLog.tsx`): an aged scroll panel (`--parchment-dark`, bronze frame), body-font lines.
 - **Settings** (`SettingsScreen.tsx`): grouped `.px-frame` panels; the seed in the pixel font in a recessed field; danger actions use `.btn-danger`. Two-way choices (Display: Windowed / Fullscreen, Spells: Cast button / Auto-cast) are a row of two buttons, the chosen one primary with `aria-pressed`, plus a one-line hint.
 - **Victory popup** (the battle's result overlay): under the line about the win, a small gold list (`.gold-breakdown`): Victory gold, Unused paint (drops × gold, only when paint is left), and a ruled **Total** in gold.
-- **Run End** (`RunEndScreen.tsx`): a large gold-framed panel, Victory in gold / Defeat in `--danger`, stats in the pixel font.
+- **Run End** (`RunEndScreen.tsx`): a large gold-framed panel, Victory in gold / Defeat in `--danger`, stats in the pixel font. Below the stats, the Essence earned (a small breakdown like the Victory popup's gold list) and the new Essence total.
+- **Character Select** (`CharacterSelect.tsx`, Milestone 10): opened by New run, before the first fight (not a main menu button). Three tier groups stacked top to bottom (Starter, Tier 1, Tier 2), each a row of framed character cards. A card shows the hero sprite, the name, the max HP, the starting dice as small `DieFaces` rows, and an unlock button in the Essence cost (`.btn-buy` style, gold coin price) or a "Selected" tag. Locked cards are dimmed with their cost visible. Tier headings use the pixel font.
+- **Hero variants:** the selected character's hero sprite replaces the Apprentice in the battle arena and on the main menu's title scene. The five new sprites share the Apprentice's palette structure and size, so they sit on the same floor and frame.
 - **Dialogs and overlays** (`ConfirmDialog.tsx`, pause panel, tooltips): gold-framed panels over a `--bg-deep` scrim at ~70% opacity. Tooltips are small bronze-framed panels with body-font text.
 - **Top bar** (`run.css` `.topbar`): a dark strip with a bronze bottom rule; stage, HP, and gold in the pixel font.
 
