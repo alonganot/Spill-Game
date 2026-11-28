@@ -85,7 +85,12 @@ function applyToEnemy(
         return enemy;
       }
       applied('silence', 1);
-      return { ...enemy, silenced: true };
+      // A plain Silence on an enemy Hush+ already silenced keeps Hush+'s promise of no immunity.
+      return {
+        ...enemy,
+        silenced: true,
+        silenceNoImmunity: effect.noImmunity === true || (enemy.silenced && enemy.silenceNoImmunity),
+      };
     case 'chill':
       applied('chill', 1);
       return { ...enemy, chilled: true };

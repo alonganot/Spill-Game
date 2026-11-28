@@ -1,4 +1,13 @@
 import { applyAction, createBattle } from './battle';
+import {
+  canUpgrade,
+  drawDistinct,
+  NO_SHOP_UPGRADES,
+  rollShopUpgrades,
+  runAttacks,
+  targetedUpgradePrice,
+  upgradableSpells,
+} from './upgrades';
 import type {
   BattleConfig,
   BattleEvent,
@@ -12,6 +21,7 @@ import type {
   RunError,
   RunState,
   ShopDieOffer,
+  ShopUpgrades,
   StageDefinition,
   VictoryGold,
 } from './types';
@@ -28,10 +38,12 @@ export function createRun(config: RunConfig, rng: Rng): Started {
     gold: config.startingGold,
     dice: [...config.startingDice],
     diceCap: config.startingDiceCap,
-    purchases: { repaint: 0, cap: 0 },
+    purchases: { repaint: 0, cap: 0, upgrade: 0 },
+    upgradedSpells: [],
     battle: null,
     rewardOffers: [],
     shopStock: [],
+    shopUpgrades: NO_SHOP_UPGRADES,
   };
   return startStage(initial, 0, config, rng);
 }
@@ -40,7 +52,7 @@ export function currentStage(run: RunState, config: RunConfig): StageDefinition 
   return config.stages[run.stageIndex];
 }
 
-/** Battle config for the current stage: the run's dice, HP, and enemies. */
+/** Battle config for the current stage: the run's dice, HP, enemies, and spells (`+` forms included). */
 export function battleConfigFor(run: RunState, config: RunConfig): BattleConfig {
   const stage = currentStage(run, config);
   if (!stage) throw new Error(`No stage at index ${run.stageIndex}`);
@@ -49,6 +61,7 @@ export function battleConfigFor(run: RunState, config: RunConfig): BattleConfig 
     playerMaxHp: run.maxHp,
     playerStartHp: run.hp,
     dice: run.dice,
+    attacks: runAttacks(run, config),
     enemies: stage.enemies,
   };
 }
@@ -78,6 +91,11 @@ export function applyRunAction(run: RunState, action: RunAction, config: RunConf
   const fail = (error: RunError): RunActionResult => ({ ok: false, state: run, error });
   const done = (state: RunState, events: BattleEvent[] = []): RunActionResult => ({ ok: true, state, events });
 
+  // A bought Draft must be picked before anything else happens in the shop.
+  if (run.phase === 'shop' && run.shopUpgrades.draftChoices && action.type !== 'pickDraftUpgrade') {
+    return fail('draft_pending');
+  }
+
   switch (action.type) {
     case 'battle': {
       if (run.phase !== 'battle' || !run.battle) return fail('wrong_phase');
@@ -100,7 +118,7 @@ export function applyRunAction(run: RunState, action: RunAction, config: RunConf
         battle: null,
       };
       if (run.stageIndex >= config.stages.length - 1) return done({ ...won, phase: 'victory' });
-      return done({ ...won, phase: 'reward', rewardOffers: rewardOffersFor(stage, config) });
+      return done({ ...won, phase: 'reward', rewardOffers: rewardOffersFor(won, stage, config, rng) });
     }
 
     case 'chooseReward': {
@@ -110,13 +128,17 @@ export function applyRunAction(run: RunState, action: RunAction, config: RunConf
       let next: RunState;
       if (offer.type === 'gold') next = { ...run, gold: run.gold + offer.amount };
       else if (offer.type === 'heal') next = heal(run, offer.amount);
-      else {
+      else if (offer.type === 'upgrade') {
+        if (!canUpgrade(run, config, offer.attackId)) return fail('not_upgradable');
+        next = upgrade(run, offer.attackId);
+      } else {
         if (!action.repaint) return fail('invalid_target');
         const dice = repaintDice(run.dice, action.repaint);
         if (!dice) return fail('invalid_target');
         next = { ...run, dice };
       }
-      return done({ ...next, phase: 'shop', rewardOffers: [], shopStock: rollShopStock(config, rng) });
+      const shopStock = rollShopStock(config, rng);
+      return done({ ...next, phase: 'shop', rewardOffers: [], shopStock, shopUpgrades: rollShopUpgrades(next, config, rng) });
     }
 
     case 'repaint': {
@@ -173,11 +195,64 @@ export function applyRunAction(run: RunState, action: RunAction, config: RunConf
       });
     }
 
+    case 'buySpotlightUpgrade': {
+      if (run.phase !== 'shop') return fail('wrong_phase');
+      const { spotlight, spotlightSold } = run.shopUpgrades;
+      if (spotlightSold) return fail('sold_out');
+      if (!spotlight || !canUpgrade(run, config, spotlight)) return fail('not_upgradable');
+      return buyUpgrade(run, config.economy.shop.spotlightPrice, spotlight, { spotlightSold: true });
+    }
+
+    case 'buyDraftUpgrade': {
+      if (run.phase !== 'shop') return fail('wrong_phase');
+      if (run.shopUpgrades.draftSold) return fail('sold_out');
+      const spells = upgradableSpells(run, config);
+      if (spells.length === 0) return fail('not_upgradable');
+      const price = config.economy.shop.draftPrice;
+      if (run.gold < price) return fail('not_enough_gold');
+      const choices = drawDistinct(spells, config.economy.shop.draftChoices, rng).map((a) => a.id);
+      return done({
+        ...run,
+        gold: run.gold - price,
+        shopUpgrades: { ...run.shopUpgrades, draftSold: true, draftChoices: choices },
+      });
+    }
+
+    case 'pickDraftUpgrade': {
+      if (run.phase !== 'shop') return fail('wrong_phase');
+      const choices = run.shopUpgrades.draftChoices;
+      if (!choices) return fail('no_draft_pending');
+      if (!choices.includes(action.attackId) || !canUpgrade(run, config, action.attackId)) return fail('invalid_target');
+      return done({
+        ...upgrade(run, action.attackId),
+        purchases: { ...run.purchases, upgrade: run.purchases.upgrade + 1 },
+        shopUpgrades: { ...run.shopUpgrades, draftChoices: null },
+      });
+    }
+
+    case 'buyTargetedUpgrade': {
+      if (run.phase !== 'shop') return fail('wrong_phase');
+      if (run.shopUpgrades.targetedSold) return fail('sold_out');
+      if (!canUpgrade(run, config, action.attackId)) return fail('not_upgradable');
+      return buyUpgrade(run, targetedUpgradePrice(run, config), action.attackId, { targetedSold: true });
+    }
+
     case 'leaveShop': {
       if (run.phase !== 'shop') return fail('wrong_phase');
-      const started = startStage({ ...run, shopStock: [] }, run.stageIndex + 1, config, rng);
+      const started = startStage({ ...run, shopStock: [], shopUpgrades: NO_SHOP_UPGRADES }, run.stageIndex + 1, config, rng);
       return done(started.state, started.events);
     }
+  }
+
+  /** Pays for a shop upgrade, upgrades the spell, and marks that option sold for this visit. */
+  function buyUpgrade(state: RunState, price: number, attackId: string, sold: Partial<ShopUpgrades>): RunActionResult {
+    if (state.gold < price) return fail('not_enough_gold');
+    return done({
+      ...upgrade(state, attackId),
+      gold: state.gold - price,
+      purchases: { ...state.purchases, upgrade: state.purchases.upgrade + 1 },
+      shopUpgrades: { ...state.shopUpgrades, ...sold },
+    });
   }
 }
 
@@ -189,22 +264,25 @@ function startStage(run: RunState, stageIndex: number, config: RunConfig, rng: R
   return { state: { ...next, phase: 'battle', battle }, events };
 }
 
-function rewardOffersFor(stage: StageDefinition, config: RunConfig): RewardOption[] {
+/** Gold, Heal, and a third offer: a Free Spell Upgrade (at `upgradeRewardChance`, while a spell is left) or a Free repaint. */
+function rewardOffersFor(run: RunState, stage: StageDefinition, config: RunConfig, rng: Rng): RewardOption[] {
   const amounts = config.economy.rewards[stage.kind];
-  return [{ type: 'gold', amount: amounts.gold }, { type: 'heal', amount: amounts.heal }, { type: 'repaint' }];
+  const offers: RewardOption[] = [{ type: 'gold', amount: amounts.gold }, { type: 'heal', amount: amounts.heal }];
+  const spells = upgradableSpells(run, config);
+  if (spells.length > 0 && rng() < config.economy.upgradeRewardChance) {
+    const [spell] = drawDistinct(spells, 1, rng);
+    return [...offers, { type: 'upgrade', attackId: spell!.id }];
+  }
+  return [...offers, { type: 'repaint' }];
 }
 
 /** Picks distinct random dice for sale. */
 function rollShopStock(config: RunConfig, rng: Rng): ShopDieOffer[] {
-  const pool = [...config.shopDice];
-  const count = Math.min(config.economy.shop.diceForSale, pool.length);
-  const picked: ShopDieOffer[] = [];
-  for (let i = 0; i < count; i++) {
-    const index = Math.min(Math.floor(rng() * pool.length), pool.length - 1);
-    const [offer] = pool.splice(index, 1);
-    picked.push({ ...offer!, sold: false });
-  }
-  return picked;
+  return drawDistinct(config.shopDice, config.economy.shop.diceForSale, rng).map((offer) => ({ ...offer, sold: false }));
+}
+
+function upgrade(run: RunState, attackId: string): RunState {
+  return { ...run, upgradedSpells: [...run.upgradedSpells, attackId] };
 }
 
 function heal(run: RunState, amount: number): RunState {

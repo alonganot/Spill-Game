@@ -27,7 +27,24 @@ export const COLOR_LABEL: Record<Color, string> = {
   frost: 'Frost',
 };
 
-export function describeEffect(effect: Effect): string {
+/**
+ * A spell's effects as they are shown: repeated Burn effects (each adds one stack) merge into
+ * one entry at the first one's place, with `stacks` counting them. Every other effect has `stacks` 1.
+ */
+export function groupEffects(effects: readonly Effect[]): { effect: Effect; stacks: number }[] {
+  const grouped: { effect: Effect; stacks: number }[] = [];
+  for (const effect of effects) {
+    const same =
+      effect.type === 'burn' &&
+      grouped.find((g) => g.effect.type === 'burn' && (g.effect.area === true) === (effect.area === true));
+    if (same) same.stacks++;
+    else grouped.push({ effect, stacks: 1 });
+  }
+  return grouped;
+}
+
+/** One effect in short form. `stacks` is how many Burn effects it stands for (`2 burn`). */
+export function describeEffect(effect: Effect, stacks = 1): string {
   const all = 'area' in effect && effect.area ? ' all' : '';
   switch (effect.type) {
     case 'damage':
@@ -37,7 +54,7 @@ export function describeEffect(effect: Effect): string {
     case 'poison':
       return `${effect.stacks} poison${all}`;
     case 'burn':
-      return `burn${all}`;
+      return stacks > 1 ? `${stacks} burn${all}` : `burn${all}`;
     case 'heal':
       return `${effect.amount} heal`;
     case 'cleanse':
@@ -45,7 +62,7 @@ export function describeEffect(effect: Effect): string {
     case 'curse':
       return `curse${all}`;
     case 'silence':
-      return `silence${all}`;
+      return effect.noImmunity ? `silence${all}, no immunity` : `silence${all}`;
     case 'chill':
       return `chill${all}`;
     case 'multiplyPoison':
@@ -224,8 +241,8 @@ function intentText(intent: EnemyIntent, enemyName: string, status: StatusConfig
   }
 }
 
-/** One effect as a short sentence, with its real numbers. */
-export function effectSentence(effect: Effect, status: StatusConfig): string {
+/** One effect as a short sentence, with its real numbers. `stacks` is how many Burn effects it stands for. */
+export function effectSentence(effect: Effect, status: StatusConfig, stacks = 1): string {
   switch (effect.type) {
     case 'damage':
       return `Deals ${effect.amount} damage${effect.area ? ' to every enemy' : ''}`;
@@ -236,7 +253,7 @@ export function effectSentence(effect: Effect, status: StatusConfig): string {
     case 'poison':
       return `Poisons ${effect.area ? 'every enemy ' : ''}for ${effect.stacks} (${effect.stacks} damage per turn, falling by ${status.poisonDecay})`;
     case 'burn':
-      return `Sets ${effect.area ? 'every enemy' : 'the enemy'} on fire (+1 Burn: ${status.burnDamage} damage per stack at the end of the turn)`;
+      return `Sets ${effect.area ? 'every enemy' : 'the enemy'} on fire (+${stacks} Burn: ${status.burnDamage} damage per stack at the end of the turn)`;
     case 'heal':
       return `Heals you for ${effect.amount} (up to your max HP)`;
     case 'cleanse':
@@ -246,7 +263,9 @@ export function effectSentence(effect: Effect, status: StatusConfig): string {
     case 'curse':
       return `Curses ${effect.area ? 'every enemy' : 'the enemy'} (+${status.curseBonus} damage from each hit and tick until the end of the turn)`;
     case 'silence':
-      return `Silences ${effect.area ? 'every enemy' : 'the enemy'} (it skips its next action, then can't be Silenced again until it acts)`;
+      return effect.noImmunity
+        ? `Silences ${effect.area ? 'every enemy' : 'the enemy'} (it skips its next action, and can be Silenced again right away)`
+        : `Silences ${effect.area ? 'every enemy' : 'the enemy'} (it skips its next action, then can't be Silenced again until it acts)`;
     case 'chill':
       return `Chills ${effect.area ? 'every enemy' : 'the enemy'} (its next attack deals ${Math.round(status.chillMultiplier * 100)}% damage)`;
     case 'multiplyPoison':
@@ -261,7 +280,9 @@ export function spellTip(
   status: StatusConfig,
   plan?: readonly MixRecipe[],
 ): string {
-  const effects = attack.effects.map((e) => effectSentence(e, status)).join('. ');
+  const effects = groupEffects(attack.effects)
+    .map((g) => effectSentence(g.effect, status, g.stacks))
+    .join('. ');
   const cost = Object.entries(attack.cost)
     .flatMap(([color, n]) => Array.from({ length: n ?? 0 }, () => COLOR_LABEL[color as Color]))
     .join(' + ');
@@ -271,7 +292,18 @@ export function spellTip(
       : readiness === 'craftable' && plan
         ? `Mix first: ${plan.map((r) => `${COLOR_LABEL[r.inputs[0]]} + ${COLOR_LABEL[r.inputs[1]]} → ${COLOR_LABEL[r.output]}`).join(', ')}.`
         : "You don't have these colors yet.";
-  return `${attack.name}: ${effects}. Costs ${cost}. ${how}`;
+  const was = attack.upgraded && attack.baseEffects ? ` Upgraded from ${shownEffects(attack.baseEffects).map((e) => e.text).join(' · ')}.` : '';
+  return `${attack.name}: ${effects}.${was} Costs ${cost}. ${how}`;
+}
+
+/**
+ * A spell's effects as short texts (repeated Burns merged), each marked `changed` when it differs
+ * from the base spell's text in its place, so an upgrade's new numbers can be highlighted.
+ */
+export function shownEffects(effects: readonly Effect[], base?: readonly Effect[]): { text: string; changed: boolean }[] {
+  const texts = (list: readonly Effect[]) => groupEffects(list).map((g) => describeEffect(g.effect, g.stacks));
+  const baseTexts = base ? texts(base) : undefined;
+  return texts(effects).map((text, i) => ({ text, changed: baseTexts !== undefined && baseTexts[i] !== text }));
 }
 
 /** A die's tooltip: its name and all six faces. */

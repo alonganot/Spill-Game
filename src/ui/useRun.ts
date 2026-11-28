@@ -91,7 +91,7 @@ function isOver(run: RunState): boolean {
 /** Keeps the saved run in step with the one on screen. A finished run isn't kept. */
 function persist(view: RunView | null): void {
   if (view === null || isOver(view.run)) clearRun();
-  else saveRun({ version: 3, seed: view.seed, seeded: view.seeded, actions: view.actions });
+  else saveRun({ version: 4, seed: view.seed, seeded: view.seeded, actions: view.actions });
 }
 
 export interface RunControls {

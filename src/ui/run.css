@@ -418,7 +418,8 @@ button.face.face-drop.selected {
 
 /* Shop columns are only real on desktop; on phones they're one column. */
 .shop-columns,
-.shop-col {
+.shop-col,
+.shop-upgrades {
   display: contents;
 }
 
@@ -497,6 +498,23 @@ button.face.face-drop.selected {
     padding: 10px 14px;
   }
 
+  /* Spell upgrades: one row of cards under both columns, so the shop needs no scrolling. */
+  .shop-upgrades {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .shop-upgrade-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 10px;
+  }
+
+  .shop-upgrade-row .item-main {
+    min-width: 0;
+  }
+
   .editor .dice-list {
     max-height: none;
   }
@@ -530,4 +548,56 @@ button.face.face-drop.selected {
     max-width: 360px;
     margin: 0 auto;
   }
+}
+
+/* Spell upgrades: a preview of the + form (reward card, shop rows, upgrade pickers). */
+.upgrade-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 4px;
+}
+
+.upgrade-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  font-size: 0.8rem;
+}
+
+.upgrade-name {
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* The colors a spell costs, as small paint drops beside its name. */
+.upgrade-cost {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.upgrade-fx {
+  color: var(--muted);
+}
+
+.choice-upgrade .choice-detail {
+  margin-top: 2px;
+}
+
+.upgrade-list {
+  max-height: min(50vh, calc(4 * 74px + 3 * 6px));
+}
+
+.die-row.upgrade-pick {
+  display: block;
+  padding: 8px 10px;
+}
+
+.upgrade-pick .upgrade-preview {
+  margin-top: 0;
 }

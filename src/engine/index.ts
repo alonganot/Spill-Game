@@ -7,3 +7,10 @@ export { applyAction, attackHitDamage, createBattle, firstLivingEnemy, getEnemyI
 export { isDefeated } from './combat';
 export { isAreaEffect, isAreaSpell } from './attacks';
 export { applyRunAction, battleConfigFor, capUpgradePrice, createRun, currentStage, repaintPrice, victoryGold } from './run';
+export {
+  canUpgrade,
+  runAttacks,
+  targetedUpgradePrice,
+  upgradableSpells,
+  upgradeAttack,
+} from './upgrades';

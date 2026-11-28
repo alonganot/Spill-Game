@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { defaultBattleConfig } from '../data/battles';
 import { MIX_RECIPES } from '../data/colors';
-import type { AttackDefinition, StatusConfig } from '../engine';
+import { upgradeAttack, type AttackDefinition, type StatusConfig } from '../engine';
 import {
   blockTip,
   burnTip,
@@ -115,5 +115,21 @@ describe('White, Pink, and Black tooltips', () => {
     expect(effectSentence({ type: 'block', amount: 12, cleanAmount: 16 }, status)).toContain('or 16 if you have no Poison or Burn');
     expect(effectSentence({ type: 'curse' }, status)).toContain('+3 damage');
     expect(effectSentence({ type: 'multiplyPoison', factor: 2 }, status)).toContain('Poison by 2');
+  });
+});
+
+describe('upgraded spell tooltips', () => {
+  it('names the + form, its new numbers, and what it was', () => {
+    const inferno = defaultBattleConfig().attacks.find((a) => a.id === 'inferno')!;
+    const tip = spellTip(upgradeAttack(inferno), 'ready', status);
+    expect(tip).toMatch(/^Inferno\+: Deals 8 damage/);
+    expect(tip).toContain('+2 Burn');
+    expect(tip).not.toContain('+1 Burn');
+    expect(tip).toContain('Upgraded from 6 dmg · burn.');
+    expect(spellTip(inferno, 'ready', status)).not.toContain('Upgraded');
+  });
+
+  it('explains that Hush+ leaves no immunity', () => {
+    expect(effectSentence({ type: 'silence', noImmunity: true }, status)).toContain('can be Silenced again right away');
   });
 });

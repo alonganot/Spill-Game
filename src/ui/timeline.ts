@@ -100,7 +100,7 @@ export function buildTimeline(
         // The enemy's old block expires right before it acts (or skips).
         update('enemy', event.enemy, (v) =>
           event.type === 'enemySkipped'
-            ? { ...v, block: 0, silenced: false, silenceImmune: true }
+            ? { ...v, block: 0, silenced: false, silenceImmune: !event.noImmunity }
             : { ...v, block: 0, chilled: false, silenceImmune: false },
         );
         break;

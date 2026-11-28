@@ -98,10 +98,13 @@ export function Projectile({
   from,
   to,
   color,
+  prismatic = false,
 }: {
   from: RefObject<HTMLElement | null>;
   to: RefObject<HTMLElement | null>;
   color: string;
+  /** An upgraded (`+`) spell's bolt: the Chroma gradient instead of the flat paint. */
+  prismatic?: boolean;
 }) {
   const ref = useRef<HTMLSpanElement>(null);
   useLayoutEffect(() => {
@@ -119,5 +122,5 @@ export function Projectile({
     el.style.setProperty('--dy', `${ty - sy}px`);
     el.classList.add('flying');
   }, [from, to]);
-  return <span ref={ref} className="projectile" style={{ '--fx-color': color } as CSSProperties} aria-hidden="true" />;
+  return <span ref={ref} className={`projectile${prismatic ? ' projectile-prismatic' : ''}`} style={{ '--fx-color': color } as CSSProperties} aria-hidden="true" />;
 }

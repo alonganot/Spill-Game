@@ -7,10 +7,12 @@ import { COLOR_LABEL } from './format';
 import { DROP_ROWS, dropPalette } from './PaintDrop';
 import { PixelSprite } from './PixelSprite';
 
-// A 16×16 die: the same paint drop as the pool's colors (DROP_ROWS, 12×13),
-// on a light face with a dark outline and a shaded bottom edge.
+// A 16×16 die: the paint drop (DROP_ROWS, 12×12) on a light face with a dark
+// outline and a shaded bottom edge, with a row of face above and below the drop
+// so it touches neither edge.
 const DIE_ROWS = [
   '.kkkkkkkkkkkkkk.',
+  'kffffffffffffffk',
   ...DROP_ROWS.map((row) => `kf${row.replaceAll('.', 'f')}fk`),
   'ksffffffffffffsk',
   '.kkkkkkkkkkkkkk.',

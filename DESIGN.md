@@ -200,9 +200,9 @@ The workbench is one `.px-frame-gold` panel. Sections keep their `section-head` 
 
 ### 6.3 Craftable spells (`SpellCard` in `Spellbook.tsx`, `.attacks`)
 - **Dark parchment cards** (`--parchment-dark` fill with a faint paper-grain texture, stepped corners) with an **element-tinted border**: the border takes the color of the spell's main cost color (set as a `--spell-color` custom property on the card).
-- **Cost sockets** (`.cost-slots .slot`): **carved stone sockets** (`.px-recess` on `--stone`) with a faint ring of the needed color. When a paint drop fills a socket it **lights up**: the socket rim glows in that color.
+- **Cost sockets** (`.cost-slots .slot`): **carved stone sockets** (`.px-recess` on `--stone`) with a ring of the needed color (every one of the 13 colors has its `.slot-<color>` class; Black uses `--black-rim`) and a faded drop of that color inside (`.slot-ghost`), so the cost reads at a glance. On a card you can't cast yet, only the name, text, and Cast button dim; the sockets stay clear. When a paint drop fills a socket it **lights up**: the socket rim glows in that color.
 - **Cast** is a chunky gold tactile button (§4.2). When every socket is full (`.attack-charged`) the card's border brightens and the Cast button glows. With the Auto-cast setting on there's no Cast button: the spell casts itself as soon as its sockets fill.
-- **Area spells** (Splash, Miasma, anything with an `area` effect) carry a visible **"hits all" marker**: a small parchment tag with a multi-target icon (e.g. three pips) and the text `ALL`, next to the spell name. The effect line keeps "dmg all".
+- **Area spells** (Splash, Miasma, Spore Cloud, anything with an `area` effect) carry a visible **"hits all" marker**: a small parchment tag with a multi-target icon (e.g. three pips) and the text `ALL`, next to the spell name. The effect line keeps "dmg all".
 - `⚗ N mixes` (`.attack-mix-tag`) is a small cauldron-icon tag; locked/dim spells look faded parchment with dark sockets and no glow.
 
 ### 6.4 Color pool (`.pool` in `BattleScreen.tsx`)
@@ -222,7 +222,8 @@ An upgraded spell must read as empowered at a glance, in the Workbench, Spellboo
 - **Numbers:** upgraded stat numbers on the card, in tooltips and in the Reward/Shop preview use `--gold` with a faint prismatic text-shadow; base numbers stay as they are, so the change is visible.
 - **Casting:** a cast of an upgraded spell sends its paint bolt with a prismatic tint (the same gradient) instead of the flat color, and its floats use the gradient fill.
 - **Reduced motion:** with `prefers-reduced-motion`, the loops stop and the aura keeps a static gradient, so the `+` is still visible.
-- Token names: `--chroma-magenta`, `--chroma-cyan`, `--chroma-gold`, `--chroma-emerald`, defined on `:root`; dark mode defines the same values.
+- Token names: `--chroma-magenta`, `--chroma-cyan`, `--chroma-gold`, `--chroma-emerald`, plus `--chroma-gradient` (the four hues as a loop), defined on `:root` in `global.css`; dark mode defines the same values.
+- Classes (`global.css`, `fx.css`): `.chroma-aura` (border and glow, on spell cards and the `+` row of an upgrade preview), `.plus-badge` (the `+`), `.stat-up` (changed numbers), `.projectile-prismatic` (the bolt), and `.cast-upgraded` on the arena while a `+` spell's action plays (gradient floats). Components: `SpellName`, `EffectLine`, `UpgradePreview` in `src/ui/SpellUpgrade.tsx`.
 
 ## 7. Consistency Across Screens
 
@@ -244,7 +245,7 @@ Every screen shares the same backdrop (nebula + stars, without the floor), frame
 
 ## 8. Pixel-Art Sprites
 
-- Sprites stay **code-drawn pixel grids** in `src/data/sprites.ts` (or beside their component, like `DROP_ROWS` in `PaintDrop.tsx`), rendered by `PixelSprite`. No image files, no external sprite sheets.
+- Sprites stay **code-drawn pixel grids** in `src/data/sprites.ts` (or beside their component, like `DROP_ROWS` in `PaintDrop.tsx`, the game's one 12×12 paint drop, also used on the dice faces), rendered by `PixelSprite`. No image files, no external sprite sheets.
 - Every frame in a sheet is a rectangle of the same size (`src/data/sprites.test.ts` checks this); add new sheets to that test.
 - New UI sprites for this theme: **cauldron**, **potion vial** (empty / filled / cracked), **target ring**, **area ("hits all") icon**, **coin**, intent/badge icons where emoji read poorly, and optional floor-tile and star tiles.
 - Palettes use the values in §2. Outlines use `--bg`'s value. Fill colors that depend on paint (vial liquid, socket glow) are passed in at render time, as `dropPalette` does.

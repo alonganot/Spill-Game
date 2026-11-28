@@ -27,7 +27,7 @@
 - **Triggering Attacks / Abilities:** Consumes required colors or combinations from the Color Pool to apply effects such as direct damage, block/shield, status effects, or multi-color/stack combos.
   - Damage, Poison, Burn, Curse, Silence, and Chill hit the **target** enemy. Block, Heal, and Cleanse go to the player.
   - **Targeting:** the player picks which living enemy a spell is aimed at (by default, the first living one). Aiming at a defeated or missing enemy is invalid.
-  - **Area spells** (e.g. Splash, Miasma, Radiant Burst) apply their enemy effects to **every living enemy** instead.
+  - **Area spells** (e.g. Splash, Miasma, Spore Cloud, Radiant Burst) apply their enemy effects to **every living enemy** instead.
   - A spell's effects resolve in their listed order (so a Block that depends on the player's statuses sees any Cleanse listed before it).
   - Attacks can be triggered any number of times per turn while colors remain.
   - Poison stacks add up. **Burn stacks add up too:** each application adds 1 Burn stack.
@@ -42,13 +42,14 @@ Enemies can carry Poison and Burn (above) plus these. All values (`curseBonus`, 
 - **Silence:** the enemy **skips its next action** (no attack, block, or status on the player). The skipped intent counts as used, so its intent cycle moves on. Silence then clears and the enemy gains **Silence Immunity**, which lasts until the end of its next action, so it always acts on the turn after a silence. Hush+ (Milestone 9) silences without granting this immunity. Silence aimed at an immune enemy does nothing (the spell's other effects still apply). An enemy can therefore be silenced at most every other turn.
 - **Chill:** the enemy's next action, if it is an Attack, deals `chillMultiplier` (default `0.5`) damage per hit, rounded down. Chill clears after the enemy's next action, whatever that action is. A silenced enemy keeps its Chill until the action it actually takes.
 
-### Spell upgrades (`+`) (proposed, Milestone 9)
-- A spell with an `upgrade` config in `src/data/attacks.ts` can be upgraded once per run to its `+` form (e.g. Inferno -> Inferno+). Spells without an `upgrade` config can never be upgraded (after Milestone 9, that is none of the 23 starting spells).
+### Spell upgrades (`+`) (Milestone 9)
+- A spell with an `upgrade` config in `src/data/attacks.ts` can be upgraded once per run to its `+` form (e.g. Inferno -> Inferno+). Spells without an `upgrade` config can never be upgraded (after Milestone 9, that is none of the 24 starting spells).
 - An upgrade changes the spell's numbers or effects, never its color cost, so a dice setup that already cast the spell still works.
 - Upgraded stats are roughly +30% to +50% on the numeric value. Area spells are the exception: they cost two colors and hit every enemy, so their upgrades roughly double (up to +100%). Where it fits, an upgrade adds a stack instead (e.g. a second Burn effect: Burn 1 -> 2 stacks).
 - Upgrades last for the rest of the run: `upgradedSpells` in `RunState` lists them, and every later fight resolves them with the `+` effects.
 - The upgraded spell is shown as `Name+` everywhere the spell appears (workbench, Spellbook, previews, tooltips, the battle log).
 - Upgrades are offered at Reward stops and Shop stops (§4). Every choice drawn from the run RNG is part of the action log, so saves replay exactly.
+- The `+` forms (`upgrade` in `src/data/attacks.ts`) add a second Burn to Inferno+ and Wildfire+, Chill to Prism+, make Hex+ curse every enemy, and make Hush+ silence without granting Silence Immunity (so the enemy can be silenced again right after its skipped action).
 
 ## 3. Turn Structure & Resolution Order
 1. **Start of Player Turn:** The player's Block from the previous turn expires (resets to `0`). Roll dice and add resulting colors to the Color Pool (respecting `MAX_POOL_SIZE`).
@@ -77,15 +78,15 @@ Enemies can carry Poison and Burn (above) plus these. All values (`curseBonus`, 
 - **HP carries over** between fights (including HP healed during a fight). Block, all statuses (player and enemy), and the Color Pool reset at the start of each fight.
 - Each won fight pays **gold** (elites and bosses pay more), plus a **leftover paint bonus**: 1 gold for every color still in the Color Pool when the fight is won. The Victory popup shows the base gold, the bonus, and the total. Unspent gold carries over.
 - **Dice:** a run starts with the dice and max HP of the character it was started with (see Characters below). Every character starts with a **dice cap** of 3. Dice faces are base colors only (Red, Blue, Green, White, Black).
-- **Reward stops:** pick 1 of 3 offers: Gold, Heal (can't go above max HP), and one more that the run RNG picks between Free repaint (to any base color, White and Black included) and **Free Spell Upgrade**. Free Spell Upgrade is left out once no spell can be upgraded. A Free Spell Upgrade offer names its spell up front (e.g. `Upgrade Inferno -> Inferno+`) with a before/after preview. Elite and boss rewards are bigger.
+- **Reward stops:** pick 1 of 3 offers: Gold, Heal (can't go above max HP), and one more that the run RNG picks between Free repaint (to any base color, White and Black included) and **Free Spell Upgrade**, at even odds (`upgradeRewardChance`). Free Spell Upgrade is left out once no spell can be upgraded. A Free Spell Upgrade offer names its spell up front (e.g. `Upgrade Inferno -> Inferno+`) with a preview of the `+` form (its new numbers highlighted). Elite and boss rewards are bigger.
 - **Shop stops** (leave whenever you like):
   - **Repaint a face:** set any face of any owned die to Red, Blue, Green, White, or Black. Repeatable; the price rises after each purchase.
   - **Heal:** restore a fixed amount of HP for gold (not allowed at full HP).
   - **+1 dice cap:** price rises after each purchase; the cap can't go above 6.
-  - **Spell upgrades:** three options while an upgradable spell is left, each with its own price (see §2):
-    1. **Spotlight Upgrade** (cheapest, 25g): one spell, picked by the run RNG on arrival at the shop, at a discount. Once per visit.
-    2. **Draft Upgrade** (35g): on purchase, the RNG draws up to 3 upgradable spells; you pick one to upgrade.
-    3. **Targeted Upgrade** (60g, +10g for each upgrade bought earlier in the run): pick any upgradable spell.
+  - **Spell upgrades:** three options while an upgradable spell is left, each with its own price (see §2). Each can be bought **once per visit**:
+    1. **Spotlight Upgrade** (cheapest, 25g): one spell, picked by the run RNG on arrival at the shop (after the reward, so never the spell just upgraded), at a discount.
+    2. **Draft Upgrade** (35g): you pay first, then the RNG draws up to 3 upgradable spells, and you **must** pick one: the pick can't be cancelled, comes back after a reload, and you can't leave the shop until you pick.
+    3. **Targeted Upgrade** (60g, +10g for each spell upgrade bought in a shop earlier in the run; a free reward upgrade doesn't count): pick any upgradable spell.
 - **Dice for sale:** 2 random themed dice per visit; each can be bought once. With a free slot under the cap, it's added to your dice; you can instead **replace** one of your dice with it (the new die takes the old one's place), and with every slot full, replacing is the only way to buy. The pool includes White/Black dice (e.g. Cleric: White/Red/Blue, Occult: Black/Green/Red, Monochrome: White/Black).
 - Prices, rewards, and gold amounts live in `src/data/economy.ts`.
 

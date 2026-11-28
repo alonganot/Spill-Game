@@ -11,10 +11,11 @@ interface ConfirmDialogProps {
   /** Disables the confirm button, e.g. until something is picked. */
   confirmDisabled?: boolean;
   onConfirm: () => void;
-  onCancel: () => void;
+  /** Left out for a choice that must be made: no Cancel button, and Escape does nothing. */
+  onCancel?: () => void;
 }
 
-/** A yes/no question over the screen. Cancel has focus first; Escape cancels. */
+/** A yes/no question over the screen. Cancel (or the first button) has focus first; Escape cancels. */
 export function ConfirmDialog({
   title,
   body,
@@ -29,15 +30,19 @@ export function ConfirmDialog({
   const bodyId = useId();
   const boxRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
+  // The latest onCancel, so a new callback each render doesn't re-run the focus effect (and steal focus).
+  const onCancelRef = useRef(onCancel);
+  onCancelRef.current = onCancel;
 
+  // Runs once while the dialog is open: focus moves in, and back to the opener when it closes.
   useEffect(() => {
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    cancelRef.current?.focus();
+    (cancelRef.current ?? boxRef.current?.querySelector<HTMLElement>('button'))?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         // Handled here, so the global back action doesn't also fire.
         e.preventDefault();
-        onCancel();
+        onCancelRef.current?.();
         return;
       }
       if (e.key !== 'Tab' || !boxRef.current) return;
@@ -58,7 +63,7 @@ export function ConfirmDialog({
       document.removeEventListener('keydown', onKey);
       if (opener?.isConnected) opener.focus();
     };
-  }, [onCancel]);
+  }, []);
 
   return (
     <div className="overlay confirm-overlay">
@@ -76,9 +81,11 @@ export function ConfirmDialog({
         </p>
         {children}
         <div className="confirm-actions">
-          <button type="button" className="btn" ref={cancelRef} onClick={onCancel}>
-            Cancel
-          </button>
+          {onCancel && (
+            <button type="button" className="btn" ref={cancelRef} onClick={onCancel}>
+              Cancel
+            </button>
+          )}
           <button
             type="button"
             className={`btn ${danger ? 'btn-danger' : 'btn-primary'}`}
